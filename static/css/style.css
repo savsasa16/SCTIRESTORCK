@@ -424,7 +424,13 @@ p.no-data {
     }
 }
 
-@media (max-width: 768px) {
+/* --- Your existing CSS above the media query --- */
+/* (Keep all your default table styles, .table-responsive, etc., as they are) */
+
+/* ------------------------------------------- */
+/* @media screen and (max-width: 768px) {      */
+/* ------------------------------------------- */
+@media screen and (max-width: 768px) {
     body {
         font-size: 15px;
     }
@@ -464,10 +470,41 @@ p.no-data {
     .form-section {
         padding: 20px;
     }
-    th, td {
-        padding: 10px 12px;
-        font-size: 0.85em;
+
+    /* === Responsive Table Specific Adjustments (within the media query) === */
+    /* Ensure the table container is set up for horizontal scrolling */
+    .table-responsive {
+        /* This should already have overflow-x: auto; outside the media query. */
+        /* If it doesn't, add it there, not inside here. */
+        /* But ensure touch scrolling is enabled for mobile */
+        -webkit-overflow-scrolling: touch; /* For smoother scrolling on iOS */
     }
+
+    table {
+        /* CRUCIAL: Set a minimum width for the table itself to prevent excessive compression */
+        /* Adjust 800px based on how wide your columns need to be to be readable. */
+        /* Start higher (e.g., 800px) and reduce if it's too much scrolling. */
+        min-width: 800px;
+        /* Reduce font size for tables on mobile for a tighter fit */
+        font-size: 0.85em; /* Main table text */
+    }
+
+    th, td {
+        /* Prevents text from wrapping within cells, forcing horizontal scroll */
+        white-space: nowrap;
+        /* Reduce padding for tighter fit on mobile */
+        padding: 10px 12px; /* You already had this, keeping it. */
+        /* Ensure font size also applies correctly here */
+        font-size: 0.85em; /* You already had this, keeping it. */
+    }
+
+    th {
+        /* Further adjust header font size if needed */
+        font-size: 0.8em; /* Slightly smaller for headers */
+    }
+
+    /* === End of Responsive Table Specific Adjustments === */
+
     .btn {
         padding: 10px 20px;
         font-size: 0.9em;
@@ -476,7 +513,27 @@ p.no-data {
     .wheel-image {
         max-width: 100%;
     }
+
+    /* Adjust summary cards for smaller screens if they are too wide */
+    .summary-cards-overall-container {
+        flex-direction: column; /* Stack summary cards vertically on small screens */
+        gap: 15px; /* Adjust gap between stacked cards */
+    }
+    .summary-card-overall {
+        flex: none; /* Do not grow, take natural width */
+        width: 100%; /* Take full width of parent */
+    }
+
+    /* Report section adjustments if needed */
+    .report-section {
+        padding: 15px; /* Slightly reduce padding for report sections */
+    }
+    .report-section h3 {
+        font-size: 1.2em; /* Adjust heading size */
+        padding-bottom: 8px; /* Smaller padding below heading */
+    }
 }
+
 
 @media (max-width: 480px) {
     h2 {
