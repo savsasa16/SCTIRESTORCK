@@ -424,13 +424,15 @@ p.no-data {
     }
 }
 
-/* --- Your existing CSS above the media query --- */
-/* (Keep all your default table styles, .table-responsive, etc., as they are) */
+/* --- Your existing CSS outside the media query --- */
+/* (Keep all your default table styles, .table-responsive, etc., as they are,
+   including the min-width: 800px; on `table` and white-space: nowrap; on `th, td`) */
 
 /* ------------------------------------------- */
 /* @media screen and (max-width: 768px) {      */
 /* ------------------------------------------- */
 @media screen and (max-width: 768px) {
+    /* --- Your existing media query styles (body, container, navbar, tabs, form-groups etc.) --- */
     body {
         font-size: 15px;
     }
@@ -448,59 +450,67 @@ p.no-data {
         font-size: 0.9em;
     }
     .tabs {
-        flex-wrap: wrap; /* Allow tabs to wrap on smaller screens */
+        flex-wrap: wrap;
     }
     .tab-button {
-        flex: 1 1 auto; /* Allow buttons to wrap and take available space */
+        flex: 1 1 auto;
         font-size: 1em;
         padding: 12px 15px;
-        margin-bottom: 5px; /* Add space when wrapping */
+        margin-bottom: 5px;
     }
     .form-row {
         flex-direction: column;
-        gap: 0; /* Remove gap when stacking vertically */
+        gap: 0;
     }
     .form-group,
     .form-group.half-width,
     .form-group.quarter-width {
         flex-basis: 100%;
-        min-width: unset; /* Remove min-width */
+        min-width: unset;
         margin-bottom: 15px;
     }
     .form-section {
         padding: 20px;
     }
 
-    /* === Responsive Table Specific Adjustments (within the media query) === */
-    /* Ensure the table container is set up for horizontal scrolling */
+    /* === Responsive Table Specific Adjustments === */
     .table-responsive {
-        /* This should already have overflow-x: auto; outside the media query. */
-        /* If it doesn't, add it there, not inside here. */
-        /* But ensure touch scrolling is enabled for mobile */
-        -webkit-overflow-scrolling: touch; /* For smoother scrolling on iOS */
+        -webkit-overflow-scrolling: touch;
     }
 
     table {
-        /* CRUCIAL: Set a minimum width for the table itself to prevent excessive compression */
-        /* Adjust 800px based on how wide your columns need to be to be readable. */
-        /* Start higher (e.g., 800px) and reduce if it's too much scrolling. */
-        min-width: 800px;
-        /* Reduce font size for tables on mobile for a tighter fit */
+        min-width: 800px; /* Keep this value, adjust as needed */
         font-size: 0.85em; /* Main table text */
     }
 
-    th, td {
-        /* Prevents text from wrapping within cells, forcing horizontal scroll */
-        white-space: nowrap;
-        /* Reduce padding for tighter fit on mobile */
-        padding: 10px 12px; /* You already had this, keeping it. */
-        /* Ensure font size also applies correctly here */
-        font-size: 0.85em; /* You already had this, keeping it. */
+    /* NEW/MODIFIED: Specific header styles for mobile */
+    th {
+        /* Allow headers to wrap if they are excessively long, but control it */
+        white-space: normal; /* Allow wrapping for headers */
+        word-break: break-word; /* Break long words if necessary */
+        font-size: 0.75em; /* Further reduce header font size for more space */
+        line-height: 1.2; /* Tighter line height for wrapped text */
+        padding: 8px 10px; /* Further reduce padding for headers */
+        text-align: center; /* Center header text if it wraps into multiple lines */
+
+        /* Optional: Shorten specific very long headers if they are always a problem */
+        /* You'll need to add unique classes to these specific <th> elements in your HTML
+           if you want to target them individually. */
+        /* Example:
+           th.col-รับเข้า,
+           th.col-จ่ายออก,
+           th.col-คงเหลือ {
+               font-size: 0.7em;
+               padding: 5px 8px;
+           }
+        */
     }
 
-    th {
-        /* Further adjust header font size if needed */
-        font-size: 0.8em; /* Slightly smaller for headers */
+    /* Keep td (data cells) from wrapping for horizontal scroll consistency */
+    td {
+        white-space: nowrap; /* Keep data cells from wrapping */
+        padding: 10px 12px;
+        font-size: 0.85em;
     }
 
     /* === End of Responsive Table Specific Adjustments === */
@@ -514,23 +524,23 @@ p.no-data {
         max-width: 100%;
     }
 
-    /* Adjust summary cards for smaller screens if they are too wide */
+    /* Adjust summary cards for smaller screens */
     .summary-cards-overall-container {
-        flex-direction: column; /* Stack summary cards vertically on small screens */
-        gap: 15px; /* Adjust gap between stacked cards */
+        flex-direction: column;
+        gap: 15px;
     }
     .summary-card-overall {
-        flex: none; /* Do not grow, take natural width */
-        width: 100%; /* Take full width of parent */
+        flex: none;
+        width: 100%;
     }
 
-    /* Report section adjustments if needed */
+    /* Report section adjustments */
     .report-section {
-        padding: 15px; /* Slightly reduce padding for report sections */
+        padding: 15px;
     }
     .report-section h3 {
-        font-size: 1.2em; /* Adjust heading size */
-        padding-bottom: 8px; /* Smaller padding below heading */
+        font-size: 1.2em;
+        padding-bottom: 8px;
     }
 }
 
