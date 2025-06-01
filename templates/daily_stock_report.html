@@ -5,7 +5,10 @@
 {% block content %}
 <h2>รายงานสต็อกประจำวัน: {{ today_date }}</h2>
 
+{# ปรับโครงสร้างและ CSS ของ date-navigation #}
 <div class="date-navigation">
+    {# ลบปุ่ม "เมื่อวาน" ออกไปแล้ว #}
+    {# <a href="{{ url_for('daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary"><i class="fas fa-chevron-left"></i> เมื่อวาน</a> #}
     <input type="date" id="reportDateInput" value="{{ report_date_param }}" onchange="goToDate()">
 </div>
 
@@ -19,6 +22,7 @@
     }
 </script>
 
+{# ส่วนสรุปยอดรวมทั้งหมด: สวยงามและอยู่ด้านบน #}
 <div class="summary-cards-overall-container">
     <div class="summary-card-overall">
         <h3>สรุปยาง</h3>
@@ -41,29 +45,30 @@
             <table>
                 <thead>
                     <tr>
-                        <th>ยี่ห้อยาง</th> {# Header 1 #}
-                        <th>รุ่นยาง</th> {# Header 2 #}
-                        <th>เบอร์ยาง</th> {# Header 3 #}
-                        <th>รับเข้า (เส้น)</th> {# Header 4 #}
-                        <th>จ่ายออก (เส้น)</th> {# Header 5 #}
-                        <th>คงเหลือปัจจุบัน (เส้น)</th> {# Header 6 #}
+                        <th>ยี่ห้อยาง</th>
+                        <th>รุ่นยาง</th>
+                        <th>เบอร์ยาง</th>
+                        <th>รับเข้า (เส้น)</th>
+                        <th>จ่ายออก (เส้น)</th>
+                        <th>คงเหลือปัจจุบัน (เส้น)</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% set last_brand_display = "" %}
                     {% for item in tire_report %}
+                        {# ลบ Logic ที่ตรวจสอบ item.is_summary ออกไป #}
                         <tr>
-                            <td data-label="ยี่ห้อยาง"> {# Corresponds to Header 1 #}
+                            <td>
                                 {% if item.brand != last_brand_display %}
                                     {{ item.brand }}
                                     {% set last_brand_display = item.brand %}
                                 {% endif %}
                             </td>
-                            <td data-label="รุ่นยาง">{{ item.model }}</td> {# Corresponds to Header 2 #}
-                            <td data-label="เบอร์ยาง">{{ item.size }}</td> {# Corresponds to Header 3 #}
-                            <td data-label="รับเข้า (เส้น)">{{ item.IN }}</td> {# Corresponds to Header 4 #}
-                            <td data-label="จ่ายออก (เส้น)">{{ item.OUT }}</td> {# Corresponds to Header 5 #}
-                            <td data-label="คงเหลือปัจจุบัน (เส้น)">{{ item.remaining_quantity }}</td> {# Corresponds to Header 6 #}
+                            <td>{{ item.model }}</td>
+                            <td>{{ item.size }}</td>
+                            <td>{{ item.IN }}</td>
+                            <td>{{ item.OUT }}</td>
+                            <td>{{ item.remaining_quantity }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -72,6 +77,9 @@
     {% else %}
         <p>ไม่พบการเคลื่อนไหวของยางสำหรับวันนี้</p>
     {% endif %}
+
+    {# ลบส่วนสรุปยางรายยี่ห้อออก #}
+    {# <div class="summary-card single-summary-card">...</div> #}
 </div>
 
 <div class="report-section" style="margin-top: 30px;">
@@ -81,31 +89,32 @@
             <table>
                 <thead>
                     <tr>
-                        <th>ยี่ห้อแม็ก</th> {# Header 1 #}
-                        <th>ลาย</th> {# Header 2 #}
-                        <th>ขนาด (ขอบ x กว้าง)</th> {# Header 3 #}
-                        <th>รู</th> {# Header 4 #}
-                        <th>รับเข้า (วง)</th> {# Header 5 #}
-                        <th>จ่ายออก (วง)</th> {# Header 6 #}
-                        <th>คงเหลือปัจจุบัน (วง)</th> {# Header 7 #}
+                        <th>ยี่ห้อแม็ก</th>
+                        <th>ลาย</th>
+                        <th>ขนาด (ขอบ x กว้าง)</th>
+                        <th>รู</th>
+                        <th>รับเข้า (วง)</th>
+                        <th>จ่ายออก (วง)</th>
+                        <th>คงเหลือปัจจุบัน (วง)</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% set last_brand_display = "" %}
                     {% for item in wheel_report %}
+                        {# ลบ Logic ที่ตรวจสอบ item.is_summary ออกไป #}
                         <tr>
-                            <td data-label="ยี่ห้อแม็ก"> {# Corresponds to Header 1 #}
+                            <td>
                                 {% if item.brand != last_brand_display %}
                                     {{ item.brand }}
                                     {% set last_brand_display = item.brand %}
                                 {% endif %}
                             </td>
-                            <td data-label="ลาย">{{ item.model }}</td> {# Corresponds to Header 2 #}
-                            <td data-label="ขนาด (ขอบ x กว้าง)">{{ "%.1f"|format(item.diameter) }}x{{ "%.1f"|format(item.width) }}</td> {# Corresponds to Header 3 #}
-                            <td data-label="รู">{{ item.pcd }}</td> {# Corresponds to Header 4 #}
-                            <td data-label="รับเข้า (วง)">{{ item.IN }}</td> {# Corresponds to Header 5 #}
-                            <td data-label="จ่ายออก (วง)">{{ item.OUT }}</td> {# Corresponds to Header 6 #}
-                            <td data-label="คงเหลือปัจจุบัน (วง)">{{ item.remaining_quantity }}</td> {# Corresponds to Header 7 #}
+                            <td>{{ item.model }}</td>
+                            <td>{{ "%.1f"|format(item.diameter) }}x{{ "%.1f"|format(item.width) }}</td>
+                            <td>{{ item.pcd }}</td>
+                            <td>{{ item.IN }}</td>
+                            <td>{{ item.OUT }}</td>
+                            <td>{{ item.remaining_quantity }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -114,6 +123,9 @@
     {% else %}
         <p>ไม่พบการเคลื่อนไหวของแม็กสำหรับวันนี้</p>
     {% endif %}
+
+    {# ลบส่วนสรุปแม็กรายยี่ห้อออก #}
+    {# <div class="summary-card single-summary-card">...</div> #}
 </div>
 
 <a href="{{ url_for('index') }}" class="btn btn-outline" style="margin-top: 20px;"><i class="fas fa-arrow-left"></i> กลับหน้าหลัก</a>
@@ -183,17 +195,23 @@
     }
 
     /* Remove previous summary row styles if they are still present */
-    .summary-row {
+    .summary-row { /* This class will no longer be used if is_summary logic is removed from Python and HTML */
+        /* background-color: var(--primary-color-light) !important; */
+        /* color: var(--primary-color-dark); */
+        /* font-weight: bold; */
+        /* border-top: 2px solid var(--primary-color); */
+        /* border-bottom: 2px solid var(--primary-color); */
     }
+    /* .single-summary-card { ... } Remove this too as it's replaced by summary-card-overall */
 	
 	 /* CSS สำหรับ date-navigation */
     .date-navigation {
-        display: flex;
-        justify-content: flex-end;
+        display: flex; /* ใช้ flexbox */
+        justify-content: flex-end; /* จัดองค์ประกอบไปทางขวา */
         align-items: center;
         margin-bottom: 20px;
-        gap: 10px;
-        width: 100%;
+        gap: 10px; /* ระยะห่างระหว่างปุ่ม/input */
+        width: 100%; /* ให้ div นี้ใช้พื้นที่เต็มความกว้าง */
     }
     .date-navigation input[type="date"] {
         padding: 8px 10px;
@@ -201,8 +219,8 @@
         border-radius: var(--border-radius);
         font-size: 1em;
         cursor: pointer;
-        width: auto;
-        flex-grow: 0;
+        width: auto; /* ตั้งค่า width เป็น auto เพื่อไม่ให้ยาวเกินไป */
+        flex-grow: 0; /* ไม่ให้ input ขยายตัวเต็มพื้นที่ */
     }
     .btn-outline-secondary {
         background-color: transparent;
@@ -214,113 +232,5 @@
         color: white;
     }
 
-    /* ------------------------------------------- */
-    /* Responsive Table Fixes (New/Modified Styles for Mobile) */
-    /* Add this block at the very end of your <style> tag */
-    /* ------------------------------------------- */
-    @media screen and (max-width: 768px) { /* Adjust this breakpoint if needed */
-
-        /* Override .table-responsive to be fully visible and remove its boxing */
-        .table-responsive {
-            border: none;
-            box-shadow: none;
-            background-color: transparent;
-            padding: 0;
-            margin-top: 20px; /* Adjust spacing if summary cards are close */
-            overflow-x: visible; /* Crucial: allow content to flow out for stacking */
-        }
-
-        /* Override report-section styling for tables specifically */
-        .report-section table {
-            width: 100%;
-            border-collapse: collapse;
-            border-spacing: 0;
-            margin-top: 0; /* Reset margin as rows will have their own spacing */
-            border: none; /* No border on the table itself on mobile */
-        }
-
-        .report-section th, .report-section td {
-             /* Reset borders that might interfere with card design */
-            border: none;
-            padding: 0; /* Reset padding here, will be set on td directly */
-        }
-
-        /* Hide the original table headers on small screens */
-        .report-section thead {
-            border: none;
-            clip: rect(0 0 0 0);
-            height: 1px;
-            margin: -1px;
-            overflow: hidden;
-            padding: 0;
-            position: absolute;
-            width: 1px;
-        }
-
-        .report-section tr {
-            /* Make each row behave as a block (a card) */
-            display: block;
-            margin-bottom: 20px; /* Space between each card */
-            border: 1px solid var(--border-color); /* Card border */
-            border-radius: var(--border-radius); /* Use your existing border-radius var */
-            box-shadow: var(--shadow); /* Use your existing shadow var */
-            background-color: var(--card-bg-color); /* Card background */
-            overflow: hidden; /* Important for border-radius */
-        }
-
-        .report-section tbody tr:nth-child(even) {
-            background-color: var(--card-bg-color); /* All cards use the same background */
-        }
-
-        .report-section tr:hover {
-            background-color: #f0f8ff; /* Keep hover effect on cards */
-        }
-
-        .report-section td {
-            /* Make each cell behave as a block within its card */
-            display: block;
-            text-align: right; /* Align the data value to the right */
-            border-bottom: 1px solid var(--border-color); /* Separator between key-value pairs */
-            padding: 12px 15px; /* Adjust padding within each cell */
-            padding-left: 50%; /* Create space for the data-label */
-            position: relative; /* For absolute positioning of the data-label */
-        }
-
-        .report-section td:last-child {
-            border-bottom: 0; /* No border for the last item in a card */
-        }
-
-        .report-section td::before {
-            /* Display the data-label as the "key" on the left */
-            content: attr(data-label); /* Get content from data-label attribute */
-            position: absolute;
-            left: 15px; /* Adjust label position from the left edge */
-            width: calc(50% - 20px); /* Calculate width, leaving space for padding */
-            white-space: nowrap; /* Prevent the label from wrapping */
-            overflow: hidden; /* Hide overflowing text */
-            text-overflow: ellipsis; /* Add ellipsis for overflowing text */
-            font-weight: 600; /* Match header font weight */
-            text-align: left; /* Align the label text to the left */
-            color: var(--text-dark); /* Color for labels */
-            font-size: 0.9em; /* Slightly smaller font for labels */
-        }
-
-        /* Adjustments for action buttons within a stacked cell (if any) */
-        /* You don't have action buttons in these specific tables, but good to have a rule */
-        .report-section td .action-buttons {
-            justify-content: flex-start; /* Align buttons to the left in card view */
-            margin-top: 5px; /* Add some space if needed */
-        }
-
-        /* Adjust summary cards for smaller screens if they are too wide */
-        .summary-cards-overall-container {
-            flex-direction: column; /* Stack summary cards vertically on small screens */
-            gap: 15px; /* Adjust gap between stacked cards */
-        }
-        .summary-card-overall {
-            flex: none; /* Do not grow, take natural width */
-            width: 100%; /* Take full width of parent */
-        }
-    }
 </style>
 {% endblock %}
