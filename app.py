@@ -12,24 +12,44 @@ import re
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# *** เพิ่ม Cloudinary imports ***
+import cloudinary
+import cloudinary.uploader
+from dotenv import load_dotenv # ถ้าใช้ python-dotenv สำหรับ local
+load_dotenv() # โหลด environment variables จากไฟล์ .env สำหรับ local
+
 app = Flask(__name__)
 # **สำคัญมาก: เปลี่ยน 'your_super_secret_key_here_please_change_this_to_a_complex_random_string' เป็นคีย์ลับที่ซับซ้อนของคุณเอง!**
 # คุณสามารถสร้างคีย์ลับที่ซับซ้อนได้โดยใช้ Python prompt:
 # import os
 # os.urandom(24).hex()
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key_here_please_change_this_to_a_complex_random_string') # CHANGE THIS FOR PRODUCTION
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['WHEEL_IMAGE_FOLDER'] = 'static/images/wheels'
 
-# ตรวจสอบและสร้างโฟลเดอร์สำหรับ Local Development เท่านั้น
-if not os.environ.get('RENDER'): # ตรวจสอบว่าไม่ได้รันบน Render
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(app.config['WHEEL_IMAGE_FOLDER'], exist_ok=True)
+# *** ลบ app.config['UPLOAD_FOLDER'] และ app.config['WHEEL_IMAGE_FOLDER'] เก่าออกไป
+# เนื่องจากเราจะไม่เก็บไฟล์รูปภาพล้อในเครื่องแล้ว
+# หากยังคงใช้ app.config['UPLOAD_FOLDER'] สำหรับไฟล์ Excel หรืออื่นๆ ให้คงไว้
+app.config['UPLOAD_FOLDER'] = 'uploads' # สำหรับเก็บไฟล์ Excel และรูปภาพบิล (ถ้าไม่ใช้ Cloudinary)
+
+# *** ตั้งค่า Cloudinary (ใช้ Environment Variables) ***
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
+    secure=True # ใช้ HTTPS
+)
+
+# *** ไม่ต้องสร้างโฟลเดอร์สำหรับ Local Development ในส่วนนี้แล้ว ***
+# เพราะรูปภาพล้อจะไป Cloudinary, และรูปบิลจะถูกสร้างโฟลเดอร์เมื่อมีการอัปโหลดครั้งแรก
+# และไฟล์ Excel จะไม่ต้องการการสร้างโฟลเดอร์ล่วงหน้าแบบนี้
+# if not os.environ.get('RENDER'):
+#     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+#     os.makedirs(app.config['WHEEL_IMAGE_FOLDER'], exist_ok=True)
+
 
 ALLOWED_EXCEL_EXTENSIONS = {'xlsx', 'xls'}
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
-# --- Helper Functions (ต้องอยู่ในระดับบนสุด) ---
+# --- Helper Functions ---
 def allowed_excel_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXCEL_EXTENSIONS
@@ -53,13 +73,8 @@ def setup_database():
     with app.app_context():
         conn = get_db()
         database.init_db(conn)
-        # ตรวจสอบและสร้างผู้ใช้เริ่มต้น (หากยังไม่มี)
-        # นี่คือจุดที่ควรสร้างผู้ใช้ admin ครั้งแรก
-        # ต้องสร้างฟังก์ชัน database.create_initial_admin(conn) ใน database.py
-        # และใน database.py ต้องมั่นใจว่า User model และ add_user ฟังก์ชันทำงานได้
         user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         if user_count == 0:
-            # ใช้ค่าจาก Environment Variable หรือ Default สำหรับ Local
             admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
             admin_password = os.environ.get('ADMIN_PASSWORD', 'adminpassword')
             database.add_user(conn, admin_username, admin_password, role='admin')
@@ -75,22 +90,21 @@ def get_bkk_time():
 def inject_global_data():
     return dict(get_bkk_time=get_bkk_time)
 
-# --- Flask-Login Setup (ต้องอยู่ในระดับบนสุด) ---
+# --- Flask-Login Setup ---
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login' # กำหนด Route สำหรับ Login หากผู้ใช้ยังไม่ได้เข้าสู่ระบบ
+login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
     conn = get_db()
-    # ดึงข้อมูล User จาก database.py.User
     return database.User.get(conn, user_id)
 
-# --- Login/Logout Routes (ต้องอยู่ในระดับบนสุด) ---
+# --- Login/Logout Routes ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('index')) # หากเข้าสู่ระบบแล้ว ให้ไปที่หน้าหลัก
+        return redirect(url_for('index'))
 
     if request.method == 'POST':
         username = request.form['username']
@@ -101,23 +115,22 @@ def login():
         if user and check_password_hash(user.password, password):
             login_user(user)
             flash('เข้าสู่ระบบสำเร็จ!', 'success')
-            next_page = request.args.get('next') # Redirect ไปยังหน้าที่ผู้ใช้พยายามเข้าถึงก่อนหน้านี้
+            next_page = request.args.get('next')
             return redirect(next_page or url_for('index'))
         else:
             flash('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'danger')
     return render_template('login.html')
 
 @app.route('/logout')
-@login_required # เฉพาะผู้ใช้ที่เข้าสู่ระบบแล้วเท่านั้นที่สามารถ Logout ได้
+@login_required
 def logout():
     logout_user()
     flash('ออกจากระบบสำเร็จ!', 'success')
     return redirect(url_for('login'))
 
 # --- Protected Routes with @login_required ---
-# ทุก Route ที่ต้องการให้ผู้ใช้ต้อง Login ก่อนถึงจะเข้าถึงได้ ให้เพิ่ม @login_required
 @app.route('/')
-@login_required # ป้องกัน Route นี้
+@login_required
 def index():
     conn = get_db()
 
@@ -174,7 +187,6 @@ def promotions():
 @app.route('/add_promotion', methods=('GET', 'POST'))
 @login_required
 def add_promotion():
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการเพิ่มโปรโมชัน', 'danger')
         return redirect(url_for('promotions'))
@@ -205,7 +217,7 @@ def add_promotion():
                 return redirect(url_for('promotions'))
             except ValueError as e:
                 flash(f'ข้อมูลไม่ถูกต้อง: {e}', 'danger')
-            except (sqlite3.IntegrityError, Exception) as e: # Catch psycopg2.errors.UniqueViolation also
+            except (sqlite3.IntegrityError, Exception) as e:
                 if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
                     flash(f'ชื่อโปรโมชัน "{name}" มีอยู่ในระบบแล้ว', 'warning')
                 else:
@@ -216,7 +228,6 @@ def add_promotion():
 @app.route('/edit_promotion/<int:promo_id>', methods=('GET', 'POST'))
 @login_required
 def edit_promotion(promo_id):
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการแก้ไขโปรโมชัน', 'danger')
         return redirect(url_for('promotions'))
@@ -253,7 +264,7 @@ def edit_promotion(promo_id):
                 return redirect(url_for('promotions'))
             except ValueError as e:
                 flash(f'ข้อมูลไม่ถูกต้อง: {e}', 'danger')
-            except (sqlite3.IntegrityError, Exception) as e: # Catch psycopg2.errors.UniqueViolation also
+            except (sqlite3.IntegrityError, Exception) as e:
                 if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
                     flash(f'ชื่อโปรโมชัน "{name}" มีอยู่ในระบบแล้ว', 'warning')
                 else:
@@ -264,7 +275,6 @@ def edit_promotion(promo_id):
 @app.route('/delete_promotion/<int:promo_id>', methods=('POST',))
 @login_required
 def delete_promotion(promo_id):
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการลบโปรโมชัน', 'danger')
         return redirect(url_for('promotions'))
@@ -283,11 +293,10 @@ def delete_promotion(promo_id):
     return redirect(url_for('promotions'))
 
 
-# --- Tire Routes (Adjusted for promotion_id) ---
+# --- Tire Routes ---
 @app.route('/add_item', methods=('GET', 'POST'))
 @login_required
 def add_item():
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการเพิ่มสินค้า', 'danger')
         return redirect(url_for('index'))
@@ -339,7 +348,7 @@ def add_item():
                 wholesale_price1 = float(wholesale_price1) if wholesale_price1 and wholesale_price1.strip() else None
                 wholesale_price2 = float(wholesale_price2) if wholesale_price2 and wholesale_price2.strip() else None
                 
-                year_of_manufacture = year_of_manufacture.strip() if year_of_manufacture and year_of_manufacture.strip() else None # Changed from int()
+                year_of_manufacture = year_of_manufacture.strip() if year_of_manufacture and year_of_manufacture.strip() else None
 
                 database.add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, 
                                   wholesale_price1, wholesale_price2, price_per_item, 
@@ -352,7 +361,7 @@ def add_item():
                 flash('ข้อมูลตัวเลขไม่ถูกต้อง กรุณาตรวจสอบ', 'danger')
                 active_tab = 'tire'
                 return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
-            except (sqlite3.IntegrityError, Exception) as e: # Catch psycopg2.errors.UniqueViolation also
+            except (sqlite3.IntegrityError, Exception) as e:
                 if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
                     flash(f'ยางยี่ห้อ {brand} รุ่น {model} เบอร์ {size} มีอยู่ในระบบแล้ว หากต้องการแก้ไข กรุณาไปที่หน้าสต็อก', 'warning')
                 else:
@@ -369,9 +378,7 @@ def add_item():
             quantity = request.form['quantity']
 
             cost = request.form.get('cost')
-
             retail_price = request.form['retail_price']
-
             et = request.form.get('et')
             color = request.form.get('color', '').strip()
             cost_online = request.form.get('cost_online')
@@ -391,34 +398,32 @@ def add_item():
                 retail_price = float(retail_price)
 
                 cost = float(cost) if cost and cost.strip() else None
-
                 et = int(et) if et and et.strip() else None
                 cost_online = float(cost_online) if cost_online and cost_online.strip() else None
                 wholesale_price1 = float(wholesale_price1) if wholesale_price1 and wholesale_price1.strip() else None
                 wholesale_price2 = float(wholesale_price2) if wholesale_price2 and wholesale_price2.strip() else None
 
-                filename = None
-                # ตรวจสอบว่ากำลังรันบน Render หรือไม่ หากใช่ จะไม่มีการจัดการไฟล์ภาพในแอปพลิเคชัน
-                if not os.environ.get('RENDER'):
-                    if image_file and allowed_image_file(image_file.filename):
-                        # current_image_filename is not defined here for add_wheel, should be None initially
-                        # if current_image_filename:
-                        #     old_image_path = os.path.join(app.config['WHEEL_IMAGE_FOLDER'], current_image_filename)
-                        #     if os.path.exists(old_image_path):
-                        #         os.remove(old_image_path)
-
-                        original_filename = secure_filename(image_file.filename)
-                        name, ext = os.path.splitext(original_filename)
-                        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-                        filename = f"{name}_{timestamp}{ext}"
-                        image_path = os.path.join(app.config['WHEEL_IMAGE_FOLDER'], filename)
-                        image_file.save(image_path)
-                    elif image_file and not allowed_image_file(image_file.filename):
+                image_url = None # จะเก็บ URL ของรูปภาพจาก Cloudinary
+                
+                # *** แก้ไขตรงนี้: ลบ if not os.environ.get('RENDER'): ออกไปแล้ว ***
+                if image_file and image_file.filename != '': # ตรวจสอบว่ามีการเลือกไฟล์
+                    if allowed_image_file(image_file.filename): # ตรวจสอบประเภทไฟล์
+                        try:
+                            # อัปโหลดรูปภาพไป Cloudinary
+                            upload_result = cloudinary.uploader.upload(image_file)
+                            image_url = upload_result['secure_url'] # Cloudinary จะคืน URL ของรูปภาพ
+                            
+                        except Exception as e:
+                            flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพไปยัง Cloudinary: {e}', 'danger')
+                            active_tab = 'wheel'
+                            return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
+                    else:
                         flash('ชนิดไฟล์รูปภาพไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
                         active_tab = 'wheel'
                         return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
-
-                database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, filename)
+                
+                # ส่ง image_url ไปยัง database.add_wheel
+                database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
                 flash('เพิ่มแม็กใหม่สำเร็จ!', 'success')
                 return redirect(url_for('add_item', tab='wheel'))
 
@@ -426,7 +431,7 @@ def add_item():
                 flash('ข้อมูลตัวเลขไม่ถูกต้อง กรุณาตรวจสอบ', 'danger')
                 active_tab = 'wheel'
                 return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
-            except (sqlite3.IntegrityError, Exception) as e: # Catch psycopg2.errors.UniqueViolation also
+            except (sqlite3.IntegrityError, Exception) as e:
                 if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
                     flash(f'แม็กยี่ห้อ {brand} ลาย {model} ขอบ {diameter} รู {pcd} กว้าง {width} มีอยู่ในระบบแล้ว หากต้องการแก้ไข กรุณาไปที่หน้าสต็อก', 'warning')
                 else:
@@ -440,7 +445,6 @@ def add_item():
 @app.route('/edit_tire/<int:tire_id>', methods=('GET', 'POST'))
 @login_required
 def edit_tire(tire_id):
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการแก้ไขข้อมูลยาง', 'danger')
         return redirect(url_for('index'))
@@ -497,7 +501,7 @@ def edit_tire(tire_id):
                 return redirect(url_for('index', tab='tires'))
             except ValueError:
                 flash('ข้อมูลตัวเลขไม่ถูกต้อง กรุณาตรวจสอบ', 'danger')
-            except (sqlite3.IntegrityError, Exception) as e: # Catch psycopg2.errors.UniqueViolation also
+            except (sqlite3.IntegrityError, Exception) as e:
                 if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
                     flash(f'ยางยี่ห้อ {brand} รุ่น {model} เบอร์ {size} นี้มีอยู่ในระบบแล้วภายใต้ ID อื่น โปรดตรวจสอบ', 'warning')
                 else:
@@ -508,7 +512,6 @@ def edit_tire(tire_id):
 @app.route('/delete_tire/<int:tire_id>', methods=('POST',))
 @login_required
 def delete_tire(tire_id):
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการลบยาง', 'danger')
         return redirect(url_for('index'))
@@ -548,7 +551,6 @@ def wheel_detail(wheel_id):
 @app.route('/edit_wheel/<int:wheel_id>', methods=('GET', 'POST'))
 @login_required
 def edit_wheel(wheel_id):
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการแก้ไขข้อมูลแม็ก', 'danger')
         return redirect(url_for('index'))
@@ -585,33 +587,45 @@ def edit_wheel(wheel_id):
                 wholesale_price2 = float(wholesale_price2) if wholesale_price2 else None
                 cost = float(cost) if cost and cost.strip() else None
 
-                current_image_filename = wheel['image_filename']
-                # ตรวจสอบว่ากำลังรันบน Render หรือไม่ หากใช่ จะไม่มีการจัดการไฟล์ภาพในแอปพลิเคชัน
-                if not os.environ.get('RENDER'):
-                    if image_file and allowed_image_file(image_file.filename):
-                        if current_image_filename:
-                            old_image_path = os.path.join(app.config['WHEEL_IMAGE_FOLDER'], current_image_filename)
-                            if os.path.exists(old_image_path):
-                                os.remove(old_image_path)
+                current_image_url = wheel['image_filename'] # ดึง URL รูปภาพปัจจุบันจากฐานข้อมูล
+                
+                # *** แก้ไขตรงนี้: ลบ if not os.environ.get('RENDER'): ออกไปแล้ว ***
+                if image_file and image_file.filename != '': # ตรวจสอบว่ามีการเลือกไฟล์ใหม่
+                    if allowed_image_file(image_file.filename):
+                        try:
+                            # อัปโหลดรูปภาพใหม่ไป Cloudinary
+                            upload_result = cloudinary.uploader.upload(image_file)
+                            new_image_url = upload_result['secure_url']
+                            
+                            # (ตัวเลือกเสริม: ลบรูปภาพเก่าจาก Cloudinary หากมีและต้องการลบ)
+                            # ต้องใช้ public_id ในการลบ
+                            if current_image_url and "res.cloudinary.com" in current_image_url:
+                                # ดึง public_id จาก URL ของ Cloudinary
+                                # รูปแบบ URL มักจะเป็น: .../v<version_num>/<public_id>.<extension>
+                                public_id_match = re.search(r'v\d+/([^/.]+)', current_image_url)
+                                if public_id_match:
+                                    public_id = public_id_match.group(1)
+                                    try:
+                                        cloudinary.uploader.destroy(public_id)
+                                    except Exception as e:
+                                        print(f"Error deleting old image from Cloudinary: {e}")
+                            
+                            current_image_url = new_image_url # อัปเดต URL เป็นรูปใหม่
                         
-                        original_filename = secure_filename(image_file.filename)
-                        name, ext = os.path.splitext(original_filename)
-                        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-                        filename = f"{name}_{timestamp}{ext}"
-                        image_path = os.path.join(app.config['WHEEL_IMAGE_FOLDER'], filename)
-                        image_file.save(image_path)
-                        current_image_filename = filename # Corrected variable name from new_filename to filename
-                    elif image_file and not allowed_image_file(image_file.filename):
+                        except Exception as e:
+                            flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพไปยัง Cloudinary: {e}', 'danger')
+                            return render_template('edit_wheel.html', wheel=wheel, current_year=current_year)
+                    else:
                         flash('ชนิดไฟล์รูปภาพไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
                         return render_template('edit_wheel.html', wheel=wheel, current_year=current_year)
+                # else: ถ้าไม่เลือกไฟล์ใหม่, current_image_url จะยังคงเป็นค่าเดิม (URL รูปภาพเก่า)
 
-
-                database.update_wheel(conn, wheel_id, brand, model, diameter, pcd, width, et, color, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, current_image_filename)
+                database.update_wheel(conn, wheel_id, brand, model, diameter, pcd, width, et, color, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, current_image_url)
                 flash('แก้ไขข้อมูลแม็กสำเร็จ!', 'success')
                 return redirect(url_for('wheel_detail', wheel_id=wheel_id))
             except ValueError:
                 flash('ข้อมูลตัวเลขไม่ถูกต้อง กรุณาตรวจสอบ', 'danger')
-            except (sqlite3.IntegrityError, Exception) as e: # Catch psycopg2.errors.UniqueViolation also
+            except (sqlite3.IntegrityError, Exception) as e:
                 if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
                     flash(f'แม็กยี่ห้อ {brand} ลาย {model} ขอบ {diameter} รู {pcd} กว้าง {width} นี้มีอยู่ในระบบแล้วภายใต้ ID อื่น โปรดตรวจสอบ', 'warning')
                 else:
@@ -622,7 +636,6 @@ def edit_wheel(wheel_id):
 @app.route('/delete_wheel/<int:wheel_id>', methods=('POST',))
 @login_required
 def delete_wheel(wheel_id):
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการลบแม็ก', 'danger')
         return redirect(url_for('index'))
@@ -636,13 +649,18 @@ def delete_wheel(wheel_id):
         return redirect(url_for('index', tab='wheels'))
     else:
         try:
-            # ตรวจสอบว่ากำลังรันบน Render หรือไม่ หากใช่ จะไม่มีการจัดการไฟล์ภาพในแอปพลิเคชัน
-            if not os.environ.get('RENDER'):
-                if wheel['image_filename']:
-                    image_path = os.path.join(app.config['WHEEL_IMAGE_FOLDER'], wheel['image_filename'])
-                    if os.path.exists(image_path):
-                        os.remove(image_path)
-            
+            # *** แก้ไขตรงนี้: ลบ if not os.environ.get('RENDER'): ออกไปแล้ว ***
+            # ลบรูปภาพจาก Cloudinary (ถ้ามี)
+            if wheel['image_filename'] and "res.cloudinary.com" in wheel['image_filename']: # ตรวจสอบว่าเป็น URL ของ Cloudinary
+                # ดึง public_id จาก URL Cloudinary
+                public_id_match = re.search(r'v\d+/([^/.]+)', wheel['image_filename'])
+                if public_id_match:
+                    public_id = public_id_match.group(1)
+                    try:
+                        cloudinary.uploader.destroy(public_id) # ลบรูปภาพจาก Cloudinary
+                    except Exception as e:
+                        print(f"Error deleting image from Cloudinary: {e}") # แค่ Log error ไม่ต้องให้หยุด deletion จาก DB
+
             database.delete_wheel(conn, wheel_id)
             flash('ลบแม็กสำเร็จ!', 'success')
         except Exception as e:
@@ -653,7 +671,6 @@ def delete_wheel(wheel_id):
 @app.route('/add_fitment/<int:wheel_id>', methods=('POST',))
 @login_required
 def add_fitment(wheel_id):
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการเพิ่มข้อมูลการรองรับรถยนต์', 'danger')
         return redirect(url_for('wheel_detail', wheel_id=wheel_id))
@@ -685,7 +702,6 @@ def add_fitment(wheel_id):
 @app.route('/delete_fitment/<int:fitment_id>/<int:wheel_id>', methods=('POST',))
 @login_required
 def delete_fitment(fitment_id, wheel_id):
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการลบข้อมูลการรองรับรถยนต์', 'danger')
         return redirect(url_for('wheel_detail', wheel_id=wheel_id))
@@ -703,7 +719,6 @@ def delete_fitment(fitment_id, wheel_id):
 @app.route('/stock_movement', methods=('GET', 'POST'))
 @login_required
 def stock_movement():
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข (รับเข้า/จ่ายออกคือการแก้ไขสต็อก)
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการจัดการการเคลื่อนไหวสต็อก', 'danger')
         return redirect(url_for('index'))
@@ -713,9 +728,6 @@ def stock_movement():
     wheels = database.get_all_wheels(conn)
     active_tab = request.args.get('tab', 'tire_movements')
 
-    # Note: SQLite vs. PostgreSQL query for timestamp extraction might differ slightly.
-    # STRFTIME is SQLite specific. For PostgreSQL, use TO_CHAR(timestamp, 'YYYY-MM-DD').
-    # database.py's get_db_connection() now handles the type, so this should work.
     cursor_tire_movements = conn.execute("SELECT tm.*, t.brand, t.model, t.size FROM tire_movements tm JOIN tires t ON tm.tire_id = t.id ORDER BY tm.timestamp DESC LIMIT 50")
     tire_movements_history = cursor_tire_movements.fetchall()
 
@@ -746,6 +758,30 @@ def stock_movement():
             move_type = request.form['type']
             quantity_change = int(request.form[quantity_form_key])
             notes = request.form.get('notes', '').strip()
+            bill_image_file = request.files.get('bill_image') # รับไฟล์รูปภาพบิล
+
+            bill_image_filename_to_db = None # จะเก็บชื่อไฟล์สำหรับบันทึกลง DB
+            
+            # *** ส่วนจัดการการอัปโหลดรูปภาพบิล (เก็บใน uploads/bill_images บน Render) ***
+            if bill_image_file and bill_image_file.filename != '':
+                if allowed_image_file(bill_image_file.filename):
+                    # สร้างชื่อไฟล์ที่ไม่ซ้ำกัน
+                    original_filename = secure_filename(bill_image_file.filename)
+                    name, ext = os.path.splitext(original_filename)
+                    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                    bill_image_filename_to_db = f"bill_{timestamp}{ext}" # ชื่อไฟล์สำหรับบันทึก
+                    
+                    # กำหนดโฟลเดอร์สำหรับรูปบิล
+                    # app.config['UPLOAD_FOLDER'] คือ 'uploads'
+                    BILL_IMAGE_FOLDER = os.path.join(current_app.root_path, app.config['UPLOAD_FOLDER'], 'bill_images')
+                    if not os.path.exists(BILL_IMAGE_FOLDER):
+                        os.makedirs(BILL_IMAGE_FOLDER)
+
+                    image_path = os.path.join(BILL_IMAGE_FOLDER, bill_image_filename_to_db)
+                    bill_image_file.save(image_path)
+                else:
+                    flash('ชนิดไฟล์รูปภาพบิลไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
+                    return redirect(url_for('stock_movement', tab=active_tab_on_error))
 
             if quantity_change <= 0:
                 flash('จำนวนที่เปลี่ยนแปลงต้องมากกว่า 0', 'danger')
@@ -768,7 +804,8 @@ def stock_movement():
                     new_quantity -= quantity_change
                 
                 database.update_tire_quantity(conn, tire_id, new_quantity)
-                database.add_tire_movement(conn, tire_id, move_type, quantity_change, new_quantity, notes)
+                # *** ส่ง bill_image_filename_to_db ไปด้วย ***
+                database.add_tire_movement(conn, tire_id, move_type, quantity_change, new_quantity, notes, bill_image_filename_to_db)
                 flash(f'บันทึกการเคลื่อนไหวสต็อกยางสำเร็จ! คงเหลือ: {new_quantity} เส้น', 'success')
                 return redirect(url_for('stock_movement', tab='tire_movements'))
 
@@ -789,7 +826,8 @@ def stock_movement():
                     new_quantity -= quantity_change
                 
                 database.update_wheel_quantity(conn, wheel_id, new_quantity)
-                database.add_wheel_movement(conn, wheel_id, move_type, quantity_change, new_quantity, notes)
+                # *** ส่ง bill_image_filename_to_db ไปด้วย ***
+                database.add_wheel_movement(conn, wheel_id, move_type, quantity_change, new_quantity, notes, bill_image_filename_to_db)
                 flash(f'บันทึกการเคลื่อนไหวสต็อกแม็กสำเร็จ! คงเหลือ: {new_quantity} วง', 'success')
                 return redirect(url_for('stock_movement', tab='wheel_movements'))
 
@@ -827,13 +865,11 @@ def daily_stock_report():
         report_date = get_bkk_time().date()
         display_date_str = report_date.strftime('%Y-%m-%d')
 
-    # Adjusted to use database.py's conditional date formatting for SQL
     sql_date_filter = report_date.strftime('%Y-%m-%d')
 
 
     # --- Tire Report Data ---
     sorted_detailed_tire_report = []
-    # Using database.py's get_sql_date_format for compatibility
     tire_movements_query = f"""
         SELECT
             tm.timestamp,
@@ -845,10 +881,13 @@ def daily_stock_report():
             t.size
         FROM tire_movements tm
         JOIN tires t ON tm.tire_id = t.id
-        WHERE {database.get_sql_date_format_for_query('tm.timestamp')} = ?
+        WHERE {database.get_sql_date_format_for_query('tm.timestamp')} = %s
         ORDER BY t.brand, t.model, t.size, tm.timestamp DESC
     """
-    tire_movements = conn.execute(tire_movements_query, (sql_date_filter,)).fetchall()
+    if "psycopg2" in str(type(conn)):
+        tire_movements = conn.execute(tire_movements_query, (sql_date_filter,)).fetchall()
+    else: # SQLite
+        tire_movements = conn.execute(tire_movements_query.replace('%s', '?'), (sql_date_filter,)).fetchall() # แก้ %s เป็น ? สำหรับ SQLite
 
 
     detailed_tire_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0})
@@ -921,10 +960,14 @@ def daily_stock_report():
             w.width
         FROM wheel_movements wm
         JOIN wheels w ON wm.wheel_id = w.id
-        WHERE {database.get_sql_date_format_for_query('wm.timestamp')} = ?
+        WHERE {database.get_sql_date_format_for_query('wm.timestamp')} = %s
         ORDER BY w.brand, w.model, w.diameter, wm.timestamp DESC
     """
-    wheel_movements = conn.execute(wheel_movements_query, (sql_date_filter,)).fetchall()
+    if "psycopg2" in str(type(conn)):
+        wheel_movements = conn.execute(wheel_movements_query, (sql_date_filter,)).fetchall()
+    else: # SQLite
+        wheel_movements = conn.execute(wheel_movements_query.replace('%s', '?'), (sql_date_filter,)).fetchall() # แก้ %s เป็น ? สำหรับ SQLite
+
 
     detailed_wheel_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0})
     current_wheel_quantities = conn.execute("SELECT id, quantity FROM wheels").fetchall()
@@ -982,24 +1025,20 @@ def daily_stock_report():
             'remaining_quantity': summary_data['current_quantity_sum']
         })
 
-    # คำนวณยอดรวมยาง
     tire_total_in = sum(item['IN'] for item in sorted_detailed_tire_report if not item['is_summary'])
     tire_total_out = sum(item['OUT'] for item in sorted_detailed_tire_report if not item['is_summary'])
     all_tires_in_stock = conn.execute("SELECT SUM(quantity) AS total_qty FROM tires").fetchone()[0] or 0
 
-    # คำนวณยอดรวมแม็ก
     wheel_total_in = sum(item['IN'] for item in sorted_detailed_wheel_report if not item['is_summary'])
     wheel_total_out = sum(item['OUT'] for item in sorted_detailed_wheel_report if not item['is_summary'])
     all_wheels_in_stock = conn.execute("SELECT SUM(quantity) AS total_qty FROM wheels").fetchone()[0] or 0
 
-    # คำนวณวันที่สำหรับปุ่ม 'เมื่อวาน' (ลบ 'พรุ่งนี้' ออก)
     yesterday_date = report_date - timedelta(days=1)
     
     return render_template('daily_stock_report.html',
                            display_date_str=display_date_str,
                            report_date_param=report_date.strftime('%Y-%m-%d'),
                            yesterday_date_param=yesterday_date.strftime('%Y-%m-%d'),
-                           # ลบ tomorrow_date_param ออกไป
                            
                            tire_report=sorted_detailed_tire_report,
                            wheel_report=sorted_detailed_wheel_report,
@@ -1015,7 +1054,6 @@ def daily_stock_report():
 @app.route('/export_import', methods=('GET', 'POST'))
 @login_required
 def export_import():
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการนำเข้า/ส่งออกข้อมูล', 'danger')
         return redirect(url_for('index'))
@@ -1025,7 +1063,6 @@ def export_import():
 @app.route('/export_tires_action')
 @login_required
 def export_tires_action():
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการส่งออกข้อมูลยาง', 'danger')
         return redirect(url_for('export_import', tab='tires_excel'))
@@ -1074,7 +1111,6 @@ def export_tires_action():
 @app.route('/import_tires_action', methods=('POST',))
 @login_required
 def import_tires_action():
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการนำเข้าข้อมูลยาง', 'danger')
         return redirect(url_for('export_import', tab='tires_excel'))
@@ -1096,7 +1132,6 @@ def import_tires_action():
             updated_count = 0
             error_rows = []
 
-            # Expected columns from Excel for Tires (Adjusted for promo_id import and price_per_item)
             expected_tire_cols = [
                 'ยี่ห้อ', 'รุ่นยาง', 'เบอร์ยาง', 'สต็อก', 'ทุน SC', 'ทุน Dunlop', 'ทุน Online',
                 'ราคาขายส่ง 1', 'ราคาขายส่ง 2', 'ราคาต่อเส้น', 'ID โปรโมชัน', 'ปีผลิต' 
@@ -1141,12 +1176,12 @@ def import_tires_action():
                         if quantity != old_quantity:
                             movement_type = 'IN' if quantity > old_quantity else 'OUT'
                             quantity_change_diff = abs(quantity - old_quantity)
-                            database.add_tire_movement(conn, tire_id, movement_type, quantity_change_diff, quantity, "Import from Excel (Qty Update)")
+                            database.add_tire_movement(conn, tire_id, movement_type, quantity_change_diff, quantity, "Import from Excel (Qty Update)", None) # ไม่มีรูปบิลจากการ Import
                         
                     else:
                         new_tire_id = database.add_tire_import(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, 
                                                                promotion_id, year_of_manufacture)
-                        database.add_tire_movement(conn, new_tire_id, 'IN', quantity, quantity, "Import from Excel (initial stock)")
+                        database.add_tire_movement(conn, new_tire_id, 'IN', quantity, quantity, "Import from Excel (initial stock)", None) # ไม่มีรูปบิลจากการ Import
                         imported_count += 1
                 except Exception as row_e:
                     error_rows.append(f"แถวที่ {index + 2}: {row_e} - {row.to_dict()}")
@@ -1174,7 +1209,6 @@ def import_tires_action():
 @app.route('/export_wheels_action')
 @login_required
 def export_wheels_action():
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการส่งออกข้อมูลแม็ก', 'danger')
         return redirect(url_for('export_import', tab='wheels_excel'))
@@ -1202,7 +1236,7 @@ def export_wheels_action():
             'ราคาขายส่ง 1': wheel['wholesale_price1'],
             'ราคาขายส่ง 2': wheel['wholesale_price2'],
             'ราคาขายปลีก': wheel['retail_price'],
-            'ไฟล์รูปภาพ': wheel['image_filename']
+            'ไฟล์รูปภาพ': wheel['image_filename'] # ตอนนี้คือ URL แล้ว
         })
     
     df = pd.DataFrame(data)
@@ -1218,7 +1252,6 @@ def export_wheels_action():
 @app.route('/import_wheels_action', methods=('POST',))
 @login_required
 def import_wheels_action():
-    # NEW: ตรวจสอบสิทธิ์การแก้ไข
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการนำเข้าข้อมูลแม็ก', 'danger')
         return redirect(url_for('export_import', tab='wheels_excel'))
@@ -1267,27 +1300,29 @@ def import_wheels_action():
 
                     et = int(row['ET']) if pd.notna(row['ET']) else None
                     color = str(row['สี']).strip() if pd.notna(row['สี']) else None
+                    image_url = str(row['ไฟล์รูปภาพ']).strip() if pd.notna(row['ไฟล์รูปภาพ']) else None # เปลี่ยนชื่อตรงนี้
                     cost_online = float(row['ทุน Online']) if pd.notna(row['ทุน Online']) else None
                     wholesale_price1 = float(row['ราคาขายส่ง 1']) if pd.notna(row['ราคาขายส่ง 1']) else None
                     wholesale_price2 = float(row['ราคาขายส่ง 2']) if pd.notna(row['ราคาขายส่ง 2']) else None
-                    image_filename = str(row['ไฟล์รูปภาพ']).strip() if pd.notna(row['ไฟล์รูปภาพ']) else None
                     
                     existing_wheel = conn.execute("SELECT id, quantity FROM wheels WHERE brand = ? AND model = ? AND diameter = ? AND pcd = ? AND width = ? AND (et IS ? OR et = ?) AND (color IS ? OR color = ?)", 
                                                  (brand, model, diameter, pcd, width, et, et, color, color)).fetchone()
 
                     if existing_wheel:
                         wheel_id = existing_wheel['id']
-                        database.update_wheel_import(conn, wheel_id, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename)
+                        # ส่ง image_url ไปยัง database.update_wheel_import
+                        database.update_wheel_import(conn, wheel_id, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
                         updated_count += 1
                         
                         old_quantity = existing_wheel['quantity']
                         if quantity != old_quantity:
                             movement_type = 'IN' if quantity > old_quantity else 'OUT'
                             quantity_change_diff = abs(quantity - old_quantity)
-                            database.add_wheel_movement(conn, wheel_id, movement_type, quantity_change_diff, quantity, "Import from Excel (Qty Update)")
+                            database.add_wheel_movement(conn, wheel_id, movement_type, quantity_change_diff, quantity, "Import from Excel (Qty Update)", None) # ไม่มีรูปบิลจากการ Import
                     else:
-                        new_wheel_id = database.add_wheel_import(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename)
-                        database.add_wheel_movement(conn, new_wheel_id, 'IN', quantity, quantity, "Import from Excel (initial stock)")
+                        # ส่ง image_url ไปยัง database.add_wheel_import
+                        new_wheel_id = database.add_wheel_import(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
+                        database.add_wheel_movement(conn, new_wheel_id, 'IN', quantity, quantity, "Import from Excel (initial stock)", None) # ไม่มีรูปบิลจากการ Import
                         imported_count += 1
                 except Exception as row_e:
                     error_rows.append(f"แถวที่ {index + 2}: {row_e} - {row.to_dict()}")
@@ -1313,11 +1348,10 @@ def import_wheels_action():
         return redirect(url_for('export_import', tab='wheels_excel'))
 
 
-# --- User management routes (ต้องอยู่ในระดับบนสุด) ---
+# --- User management routes ---
 @app.route('/manage_users')
 @login_required
 def manage_users():
-    # NEW: Admin เท่านั้น
     if not current_user.is_admin():
         flash('คุณไม่มีสิทธิ์เข้าถึงหน้าจัดการผู้ใช้', 'danger')
         return redirect(url_for('index'))
@@ -1328,7 +1362,6 @@ def manage_users():
 @app.route('/add_user', methods=['GET', 'POST'])
 @login_required
 def add_new_user():
-    # NEW: Admin เท่านั้น
     if not current_user.is_admin():
         flash('คุณไม่มีสิทธิ์ในการเพิ่มผู้ใช้', 'danger')
         return redirect(url_for('manage_users'))
@@ -1336,7 +1369,7 @@ def add_new_user():
         username = request.form['username']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
-        role = request.form.get('role', 'viewer') # NEW: รับ role จากฟอร์ม
+        role = request.form.get('role', 'viewer')
 
         if not username or not password or not confirm_password:
             flash('กรุณากรอกข้อมูลให้ครบถ้วน', 'danger')
@@ -1344,7 +1377,6 @@ def add_new_user():
             flash('รหัสผ่านไม่ตรงกัน', 'danger')
         else:
             conn = get_db()
-            # ส่ง role ไปยัง database.add_user
             user_id = database.add_user(conn, username, password, role)
             if user_id:
                 flash(f'เพิ่มผู้ใช้ "{username}" สำเร็จ!', 'success')
@@ -1353,10 +1385,9 @@ def add_new_user():
                 flash(f'ชื่อผู้ใช้ "{username}" มีอยู่ในระบบแล้ว', 'danger')
     return render_template('add_user.html')
 
-@app.route('/edit_user_role/<int:user_id>', methods=['POST']) # NEW: Route สำหรับแก้ไขบทบาทผู้ใช้
+@app.route('/edit_user_role/<int:user_id>', methods=['POST'])
 @login_required
 def edit_user_role(user_id):
-    # NEW: Admin เท่านั้น
     if not current_user.is_admin():
         flash('คุณไม่มีสิทธิ์ในการแก้ไขบทบาทผู้ใช้', 'danger')
         return redirect(url_for('manage_users'))
@@ -1366,7 +1397,7 @@ def edit_user_role(user_id):
         return redirect(url_for('manage_users'))
 
     new_role = request.form.get('role')
-    if new_role not in ['admin', 'editor', 'viewer']: # ตรวจสอบ role ที่ถูกต้อง
+    if new_role not in ['admin', 'editor', 'viewer']:
         flash('บทบาทไม่ถูกต้อง', 'danger')
         return redirect(url_for('manage_users'))
 
@@ -1379,13 +1410,11 @@ def edit_user_role(user_id):
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
 def delete_user(user_id):
-    # NEW: Admin เท่านั้น
     if not current_user.is_admin():
         flash('คุณไม่มีสิทธิ์ในการลบผู้ใช้', 'danger')
         return redirect(url_for('manage_users'))
 
     conn = get_db()
-    # Prevent deleting the currently logged-in user
     if str(user_id) == current_user.get_id():
         flash('ไม่สามารถลบผู้ใช้ที่กำลังเข้าสู่ระบบอยู่ได้', 'danger')
     else:
@@ -1396,5 +1425,5 @@ def delete_user(user_id):
 
 # --- Main entry point ---
 if __name__ == '__main__':
-    setup_database() # ตรวจสอบให้แน่ใจว่าเรียกใช้เพียงครั้งเดียว
+    setup_database()
     app.run(host='0.0.0.0', port=5000, debug=True)
