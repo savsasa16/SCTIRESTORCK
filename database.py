@@ -38,12 +38,7 @@ def get_db_connection():
                 sslmode='require' # For Render, usually requires SSL
             )
             print("Connected to PostgreSQL database!")
-            # เพื่อให้ยังสามารถเรียกใช้ row['column_name'] ได้เหมือน sqlite3.Row
-            # เราจะ override row_factory ที่นี่
-            # ถ้าต้องการใช้ DictCursor ให้สร้าง cursor ด้วย conn.cursor(cursor_factory=DictCursor) แทน
-            # และตรวจสอบการใช้งานในฟังก์ชันอื่นๆ
             
-            # Custom row_factory for psycopg2 to mimic sqlite3.Row
             def psycopg2_row_factory(cursor):
                 column_names = [desc[0] for desc in cursor.description]
                 def make_row(row):
@@ -54,7 +49,6 @@ def get_db_connection():
             return conn
         except Exception as e:
             print(f"Error connecting to PostgreSQL: {e}")
-            # Fallback to SQLite if PostgreSQL connection fails, or raise error
             raise # Re-raise error if PostgreSQL is expected
     else:
         # Connect to SQLite (for Local Development)
@@ -73,13 +67,8 @@ def get_sql_date_format_for_query(column_name):
 def init_db(conn):
     cursor = conn.cursor()
     
-    # ตรวจสอบว่ากำลังใช้ PostgreSQL หรือ SQLite
     is_postgres = "psycopg2" in str(type(conn))
 
-    # SQL commands adjusted for PostgreSQL vs SQLite
-    # Use SERIAL PRIMARY KEY for PostgreSQL for auto-incrementing ID
-    # Use INTEGER PRIMARY KEY AUTOINCREMENT for SQLite
-    
     # Promotions Table
     if is_postgres:
         cursor.execute("""
@@ -148,7 +137,7 @@ def init_db(conn):
             );
         """)
 
-    # Wheels Table
+    # Wheels Table (แก้ไข image_filename ให้ยาวขึ้น)
     if is_postgres:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS wheels (
@@ -166,7 +155,7 @@ def init_db(conn):
                 wholesale_price1 FLOAT NULL,
                 wholesale_price2 FLOAT NULL,
                 retail_price FLOAT NOT NULL,
-                image_filename VARCHAR(255) NULL,
+                image_filename VARCHAR(500) NULL, -- แก้ไขตรงนี้: เพิ่มความยาวเพื่อรองรับ URL
                 UNIQUE(brand, model, diameter, pcd, width, et, color)
             );
         """)
@@ -187,12 +176,12 @@ def init_db(conn):
                 wholesale_price1 REAL NULL,
                 wholesale_price2 REAL NULL,
                 retail_price REAL NOT NULL,
-                image_filename TEXT NULL,
+                image_filename TEXT NULL, -- แก้ไขตรงนี้: TEXT ก็เพียงพอสำหรับ URL ใน SQLite
                 UNIQUE(brand, model, diameter, pcd, width, et, color)
             );
         """)
 
-    # Tire Movements Table
+    # Tire Movements Table (เพิ่ม image_filename)
     if is_postgres:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tire_movements (
@@ -203,6 +192,7 @@ def init_db(conn):
                 quantity_change INTEGER NOT NULL,
                 remaining_quantity INTEGER NOT NULL,
                 notes TEXT,
+                image_filename VARCHAR(255) NULL, -- เพิ่มคอลัมน์นี้สำหรับรูปบิล
                 FOREIGN KEY (tire_id) REFERENCES tires(id)
             );
         """)
@@ -216,11 +206,12 @@ def init_db(conn):
                 quantity_change INTEGER NOT NULL,
                 remaining_quantity INTEGER NOT NULL,
                 notes TEXT,
+                image_filename TEXT NULL, -- เพิ่มคอลัมน์นี้สำหรับรูปบิล
                 FOREIGN KEY (tire_id) REFERENCES tires(id)
             );
         """)
 
-    # Wheel Movements Table
+    # Wheel Movements Table (เพิ่ม image_filename)
     if is_postgres:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS wheel_movements (
@@ -231,6 +222,7 @@ def init_db(conn):
                 quantity_change INTEGER NOT NULL,
                 remaining_quantity INTEGER NOT NULL,
                 notes TEXT,
+                image_filename VARCHAR(255) NULL, -- เพิ่มคอลัมน์นี้สำหรับรูปบิล
                 FOREIGN KEY (wheel_id) REFERENCES wheels(id)
             );
         """)
@@ -248,7 +240,7 @@ def init_db(conn):
             );
         """)
 
-    # Wheel Fitments Table
+    # Wheel Fitments Table (ไม่มีอะไรเปลี่ยน)
     if is_postgres:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS wheel_fitments (
@@ -276,7 +268,7 @@ def init_db(conn):
             );
         """)
 
-    # Users Table
+    # Users Table (ไม่มีอะไรเปลี่ยน)
     if is_postgres:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -297,18 +289,20 @@ def init_db(conn):
         """)
     conn.commit()
 
-# --- User Model (Modified to include role and permission checks) ---
+# --- User Model ---
 class User:
     def __init__(self, id, username, password, role):
         self.id = id
         self.username = username
         self.password = password
-        self.role = role # NEW: Store role
+        self.role = role
 
     @staticmethod
     def get(conn, user_id):
-        # Use PARAMETERIZED queries to prevent SQL injection
-        cursor = conn.execute("SELECT id, username, password, role FROM users WHERE id = %s", (user_id,)) if "psycopg2" in str(type(conn)) else conn.execute("SELECT id, username, password, role FROM users WHERE id = ?", (user_id,))
+        if "psycopg2" in str(type(conn)):
+            cursor = conn.execute("SELECT id, username, password, role FROM users WHERE id = %s", (user_id,))
+        else:
+            cursor = conn.execute("SELECT id, username, password, role FROM users WHERE id = ?", (user_id,))
         user_data = cursor.fetchone()
         if user_data:
             return User(user_data['id'], user_data['username'], user_data['password'], user_data['role'])
@@ -316,14 +310,15 @@ class User:
 
     @staticmethod
     def get_by_username(conn, username):
-        # Use PARAMETERIZED queries
-        cursor = conn.execute("SELECT id, username, password, role FROM users WHERE username = %s", (username,)) if "psycopg2" in str(type(conn)) else conn.execute("SELECT id, username, password, role FROM users WHERE username = ?", (username,))
+        if "psycopg2" in str(type(conn)):
+            cursor = conn.execute("SELECT id, username, password, role FROM users WHERE username = %s", (username,))
+        else:
+            cursor = conn.execute("SELECT id, username, password, role FROM users WHERE username = ?", (username,))
         user_data = cursor.fetchone()
         if user_data:
             return User(user_data['id'], user_data['username'], user_data['password'], user_data['role'])
         return None
     
-    # Flask-Login required properties
     def is_active(self):
         return True
 
@@ -336,7 +331,6 @@ class User:
     def get_id(self):
         return str(self.id)
 
-    # --- NEW: Permission Checkers ---
     def is_admin(self):
         return self.role == 'admin'
 
@@ -346,8 +340,8 @@ class User:
     def can_view(self):
         return self.role in ['admin', 'editor', 'viewer']
 
-# --- User Management Functions (Modified for role) ---
-def add_user(conn, username, password, role='viewer'): # NEW: Default role for new users
+# --- User Management Functions ---
+def add_user(conn, username, password, role='viewer'):
     hashed_password = generate_password_hash(password)
     cursor = conn.cursor()
     try:
@@ -360,13 +354,12 @@ def add_user(conn, username, password, role='viewer'): # NEW: Default role for n
         conn.commit()
         return user_id
     except (sqlite3.IntegrityError, Exception) as e:
-        # Catch psycopg2.errors.UniqueViolation for PostgreSQL
         if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
-            return None # Username already exists
+            return None
         else:
-            raise # Re-raise other exceptions
+            raise
 
-def update_user_role(conn, user_id, new_role): # NEW: Function to update user role
+def update_user_role(conn, user_id, new_role):
     cursor = conn.cursor()
     if "psycopg2" in str(type(conn)):
         cursor.execute("UPDATE users SET role = %s WHERE id = %s", (new_role, user_id))
@@ -445,8 +438,7 @@ def delete_promotion(conn, promo_id):
         conn.execute("DELETE FROM promotions WHERE id = ?", (promo_id,))
     conn.commit()
 
-# --- Tire Functions (Modified) ---
-# ในไฟล์ database.py
+# --- Tire Functions ---
 def add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, promotion_id, year_of_manufacture):
     cursor = conn.cursor()
     is_postgres = "psycopg2" in str(type(conn))
@@ -464,15 +456,13 @@ def add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_onli
         """, (brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, promotion_id, year_of_manufacture))
         tire_id = cursor.lastrowid
     
-    # *** เพิ่มบรรทัดนี้ ***
-    # บันทึกการเคลื่อนไหวสต็อก (นำเข้า)
-    add_tire_movement(conn, tire_id, 'IN', quantity, quantity, 'เพิ่มยางใหม่เข้าสต็อก')
+    # บันทึกการเคลื่อนไหวสต็อก (นำเข้า) พร้อม image_filename=None
+    add_tire_movement(conn, tire_id, 'IN', quantity, quantity, 'เพิ่มยางใหม่เข้าสต็อก', None)
     
     conn.commit()
     return tire_id
 
 def get_tire(conn, tire_id):
-    # Use parameterized queries for both SQLite and PostgreSQL
     if "psycopg2" in str(type(conn)):
         cursor = conn.execute("""
             SELECT t.*, 
@@ -500,21 +490,17 @@ def get_tire(conn, tire_id):
     tire = cursor.fetchone()
     
     if tire:
-        # If using custom row_factory for psycopg2, tire is already dict-like.
-        # Otherwise, if it's a tuple, convert it to a dict first if needed.
-        # With the psycopg2_row_factory, tire will be a dict.
         tire_dict = dict(tire) if not isinstance(tire, dict) else tire
         
-        tire_dict['display_promo_price_per_item'] = None # Default to None
-        tire_dict['display_price_for_4'] = tire_dict['price_per_item'] * 4 if tire_dict['price_per_item'] is not None else None # Default for 4 items
-        tire_dict['display_promo_description'] = None # Default description
+        tire_dict['display_promo_price_per_item'] = None
+        tire_dict['display_price_for_4'] = tire_dict['price_per_item'] * 4 if tire_dict['price_per_item'] is not None else None
+        tire_dict['display_promo_description'] = None
 
-        # PostgreSQL BOOLEANs are fetched as True/False, SQLite as 0/1
         promo_active_check = tire_dict['promo_is_active']
         if "psycopg2" in str(type(conn)):
-            promo_active_check = bool(promo_active_check) # Ensure boolean for psycopg2
+            promo_active_check = bool(promo_active_check)
         else:
-            promo_active_check = (promo_active_check == 1) # Ensure boolean for sqlite
+            promo_active_check = (promo_active_check == 1)
 
         if tire_dict['promotion_id'] is not None and promo_active_check:
             promo_calc_result = calculate_tire_promo_prices(
@@ -566,7 +552,6 @@ def update_tire(conn, tire_id, brand, model, size, cost_sc, cost_dunlop, cost_on
         """, (brand, model, size, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, promotion_id, year_of_manufacture, tire_id))
     conn.commit()
 
-# Function for Import from Excel (updated for promotion_id and price_per_item)
 def add_tire_import(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, promotion_id, year_of_manufacture): 
     cursor = conn.cursor()
     if "psycopg2" in str(type(conn)):
@@ -622,7 +607,6 @@ def update_tire_import(conn, tire_id, brand, model, size, quantity, cost_sc, cos
         """, (brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, promotion_id, year_of_manufacture, tire_id))
     conn.commit()
 
-# NEW: Unified function to calculate prices for display based on promo type
 def calculate_tire_promo_prices(price_per_item, promo_type, promo_value1, promo_value2):
     price_per_item_promo = price_per_item
     price_for_4_promo = price_per_item * 4
@@ -637,18 +621,15 @@ def calculate_tire_promo_prices(price_per_item, promo_type, promo_value1, promo_
 
     if promo_type == 'buy_x_get_y' and promo_value1 is not None and promo_value2 is not None:
         if (promo_value1 > 0 and promo_value2 >= 0):
-            # Price for (X + Y) items = price_per_item * X
-            # Price per item (promo) = (price_per_item * X) / (X + Y)
-            # Price for 4 items (promo) = price_per_item_promo * 4
-            if (promo_value1 + promo_value2) > 0: # Avoid division by zero
+            if (promo_value1 + promo_value2) > 0:
                 price_per_item_promo = (price_per_item * promo_value1) / (promo_value1 + promo_value2)
                 price_for_4_promo = price_per_item_promo * 4
                 promo_description_text = f"ซื้อ {int(promo_value1)} แถม {int(promo_value2)} ฟรี"
-            else: # If X+Y is 0, promo is invalid
+            else:
                 price_per_item_promo = None
                 price_for_4_promo = None
                 promo_description_text = "โปรไม่ถูกต้อง (X+Y=0)"
-        else: # Invalid X or Y
+        else:
             price_per_item_promo = None
             price_for_4_promo = None
             promo_description_text = "โปรไม่ถูกต้อง (X,Y<=0)"
@@ -658,24 +639,21 @@ def calculate_tire_promo_prices(price_per_item, promo_type, promo_value1, promo_
             price_per_item_promo = price_per_item * (1 - (promo_value1 / 100))
             price_for_4_promo = price_per_item_promo * 4
             promo_description_text = f"ลด {promo_value1}%"
-        else: # Invalid percentage
+        else:
             price_per_item_promo = None
             price_for_4_promo = None
             promo_description_text = "โปรไม่ถูกต้อง (%ไม่ถูกต้อง)"
     
     elif promo_type == 'fixed_price_per_n' and promo_value1 is not None and promo_value2 is not None:
-        # promo_value1 is fixed price for promo_value2 items
-        # Example: 3 items for $2900 (Value1=2900, Value2=3)
         if promo_value2 > 0:
             price_per_item_promo = promo_value1 / promo_value2
             price_for_4_promo = price_per_item_promo * 4
             promo_description_text = f"ราคา {promo_value1:.2f} บาท สำหรับ {int(promo_value2)} เส้น"
-        else: # Invalid N
+        else:
             price_per_item_promo = None
             price_for_4_promo = None
             promo_description_text = "โปรไม่ถูกต้อง (N<=0)"
             
-    # Fallback to normal price if promo type is not recognized or values are invalid
     if price_per_item_promo is None:
         price_per_item_promo = price_per_item
         price_for_4_promo = price_per_item * 4
@@ -725,17 +703,14 @@ def get_all_tires(conn, query=None, brand_filter='all'):
 
     processed_tires = []
     for tire in tires:
-        # Ensure tire is a dictionary (for both SQLite.Row and psycopg2_row_factory)
         tire_dict = dict(tire) if not isinstance(tire, dict) else tire
 
-        # Calculate display prices for each tire
         promo_calc_result = {
             'price_per_item_promo': None,
             'price_for_4_promo': tire_dict['price_per_item'] * 4 if tire_dict['price_per_item'] is not None else None,
             'promo_description_text': None
         }
 
-        # PostgreSQL BOOLEANs are fetched as True/False, SQLite as 0/1
         promo_active_check = tire_dict['promo_is_active']
         if "psycopg2" in str(type(conn)):
             promo_active_check = bool(promo_active_check)
@@ -758,18 +733,14 @@ def get_all_tires(conn, query=None, brand_filter='all'):
 
     def sort_key_for_tire_size(tire_item):
         size_str = tire_item.get('size', '')
-        # Use Regular Expression เพื่อหาตัวเลขที่อยู่หลัง 'R' หรือตัวเลขท้ายสุด
-        match = re.search(r'R(\d+)$', size_str) # เช่น '215/65R16' -> 16
+        match = re.search(r'R(\d+)$', size_str)
         if not match:
-            # ลองหาตัวเลขท้ายสุดเฉยๆ ถ้าไม่มี 'R' (บางทีอาจเป็นแค่ '14', '15')
             match = re.search(r'(\d+)$', size_str)
 
         try:
-            # ถ้าเจอตัวเลข ให้แปลงเป็น int เพื่อเรียงลำดับแบบตัวเลข
             rim_size = int(match.group(1)) if match else 0
             return rim_size
         except ValueError:
-            # ถ้าแปลงไม่ได้ หรือไม่เจอตัวเลข ให้คืนค่า 0 หรือค่าอื่นที่เหมาะสม
             return 0
     
     sorted_processed_tires = sorted(processed_tires, key=lambda x: (x.get('brand', ''), x.get('model', ''), sort_key_for_tire_size(x)))
@@ -783,18 +754,18 @@ def update_tire_quantity(conn, tire_id, new_quantity):
         conn.execute("UPDATE tires SET quantity = ? WHERE id = ?", (new_quantity, tire_id))
     conn.commit()
 
-def add_tire_movement(conn, tire_id, move_type, quantity_change, remaining_quantity, notes):
+def add_tire_movement(conn, tire_id, move_type, quantity_change, remaining_quantity, notes, image_filename=None): # เพิ่ม image_filename
     timestamp = get_bkk_time().isoformat()
     if "psycopg2" in str(type(conn)):
         conn.execute("""
-            INSERT INTO tire_movements (tire_id, timestamp, type, quantity_change, remaining_quantity, notes)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (tire_id, timestamp, move_type, quantity_change, remaining_quantity, notes))
+            INSERT INTO tire_movements (tire_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (tire_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename))
     else:
         conn.execute("""
-            INSERT INTO tire_movements (tire_id, timestamp, type, quantity_change, remaining_quantity, notes)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (tire_id, timestamp, move_type, quantity_change, remaining_quantity, notes))
+            INSERT INTO tire_movements (tire_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (tire_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename))
     conn.commit()
 
 def delete_tire(conn, tire_id):
@@ -854,10 +825,8 @@ def get_wheel(conn, wheel_id):
         cursor = conn.execute("SELECT * FROM wheels WHERE id = ?", (wheel_id,))
     return cursor.fetchone()
 
-# ในไฟล์ database.py
-# (ต้องมั่นใจว่า add_wheel_movement ถูกประกาศไว้แล้วในไฟล์นี้)
-
-def add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename):
+# แก้ไขพารามิเตอร์: image_filename -> image_url
+def add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url):
     cursor = conn.cursor()
     is_postgres = "psycopg2" in str(type(conn))
 
@@ -865,40 +834,23 @@ def add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cos
         cursor.execute("""
             INSERT INTO wheels (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename))
+        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url))
         wheel_id = cursor.fetchone()['id']
     else:
         cursor.execute("""
             INSERT INTO wheels (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename))
+        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url))
         wheel_id = cursor.lastrowid
     
-    # *** เพิ่มบรรทัดนี้ ***
-    # บันทึกการเคลื่อนไหวสต็อก (นำเข้า)
-    add_wheel_movement(conn, wheel_id, 'IN', quantity, quantity, 'เพิ่มแม็กใหม่เข้าสต็อก') #
+    # บันทึกการเคลื่อนไหวสต็อก (นำเข้า) พร้อม image_filename=None
+    add_wheel_movement(conn, wheel_id, 'IN', quantity, quantity, 'เพิ่มแม็กใหม่เข้าสต็อก', None)
     
     conn.commit()
     return wheel_id
-
-# ตรวจสอบให้แน่ใจว่าฟังก์ชันนี้มีการประกาศอยู่แล้วใน database.py
-def add_wheel_movement(conn, wheel_id, move_type, quantity_change, remaining_quantity, notes):
-    timestamp = get_bkk_time().isoformat()
-    is_postgres = "psycopg2" in str(type(conn))
-
-    if is_postgres:
-        conn.execute("""
-            INSERT INTO wheel_movements (wheel_id, timestamp, type, quantity_change, remaining_quantity, notes)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (wheel_id, timestamp, move_type, quantity_change, remaining_quantity, notes))
-    else:
-        conn.execute("""
-            INSERT INTO wheel_movements (wheel_id, timestamp, type, quantity_change, remaining_quantity, notes)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (wheel_id, timestamp, move_type, quantity_change, remaining_quantity, notes))
-    conn.commit()
-
-def update_wheel(conn, wheel_id, brand, model, diameter, pcd, width, et, color, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename):
+    
+# แก้ไขพารามิเตอร์: image_filename -> image_url
+def update_wheel(conn, wheel_id, brand, model, diameter, pcd, width, et, color, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url):
     cursor = conn.cursor()
     if "psycopg2" in str(type(conn)):
         cursor.execute("""
@@ -917,7 +869,7 @@ def update_wheel(conn, wheel_id, brand, model, diameter, pcd, width, et, color, 
                 retail_price = %s,
                 image_filename = %s
             WHERE id = %s
-        """, (brand, model, diameter, pcd, width, et, color, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename, wheel_id))
+        """, (brand, model, diameter, pcd, width, et, color, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url, wheel_id))
     else:
         cursor.execute("""
             UPDATE wheels SET
@@ -935,27 +887,46 @@ def update_wheel(conn, wheel_id, brand, model, diameter, pcd, width, et, color, 
                 retail_price = ?,
                 image_filename = ?
             WHERE id = ?
-        """, (brand, model, diameter, pcd, width, et, color, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename, wheel_id))
+        """, (brand, model, diameter, pcd, width, et, color, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url, wheel_id))
     conn.commit()
 
-def add_wheel_import(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename):
+# เพิ่ม image_filename เป็นพารามิเตอร์
+def add_wheel_movement(conn, wheel_id, move_type, quantity_change, remaining_quantity, notes, image_filename=None):
+    timestamp = get_bkk_time().isoformat()
+    is_postgres = "psycopg2" in str(type(conn))
+
+    if is_postgres:
+        conn.execute("""
+            INSERT INTO wheel_movements (wheel_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (wheel_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename))
+    else:
+        conn.execute("""
+            INSERT INTO wheel_movements (wheel_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (wheel_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename))
+    conn.commit()
+
+# แก้ไขพารามิเตอร์: image_filename -> image_url
+def add_wheel_import(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url):
     cursor = conn.cursor()
     if "psycopg2" in str(type(conn)):
         cursor.execute("""
             INSERT INTO wheels (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename))
+        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url))
         wheel_id = cursor.fetchone()['id']
     else:
         cursor.execute("""
             INSERT INTO wheels (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename))
+        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url))
         wheel_id = cursor.lastrowid
     conn.commit()
     return wheel_id
 
-def update_wheel_import(conn, wheel_id, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename):
+# แก้ไขพารามิเตอร์: image_filename -> image_url
+def update_wheel_import(conn, wheel_id, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url):
     cursor = conn.cursor()
     if "psycopg2" in str(type(conn)):
         cursor.execute("""
@@ -975,7 +946,7 @@ def update_wheel_import(conn, wheel_id, brand, model, diameter, pcd, width, et, 
                 retail_price = %s,
                 image_filename = %s
             WHERE id = %s
-        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename, wheel_id))
+        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url, wheel_id))
     else:
         cursor.execute("""
             UPDATE wheels SET
@@ -994,7 +965,7 @@ def update_wheel_import(conn, wheel_id, brand, model, diameter, pcd, width, et, 
                 retail_price = ?,
                 image_filename = ?
             WHERE id = ?
-        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename, wheel_id))
+        """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url, wheel_id))
     conn.commit()
 
 def delete_wheel(conn, wheel_id):
