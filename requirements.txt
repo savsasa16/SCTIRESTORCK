@@ -1,8 +1,9 @@
 Flask
 pandas
-pytz
-Flask-Login
-werkzeug
 gunicorn
-psycopg2-binary
-cloudinary
+pytz
+werkzeug
+Flask-Login
+psycopg2-binary # ถ้าใช้ PostgreSQL
+python-dotenv # เพิ่มบรรทัดนี้
+cloudinary # เพิ่มบรรทัดนี้
