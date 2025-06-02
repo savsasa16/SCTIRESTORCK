@@ -446,9 +446,12 @@ def delete_promotion(conn, promo_id):
     conn.commit()
 
 # --- Tire Functions (Modified) ---
+# ในไฟล์ database.py
 def add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, promotion_id, year_of_manufacture):
     cursor = conn.cursor()
-    if "psycopg2" in str(type(conn)):
+    is_postgres = "psycopg2" in str(type(conn))
+
+    if is_postgres:
         cursor.execute("""
             INSERT INTO tires (brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, promotion_id, year_of_manufacture)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
@@ -460,6 +463,11 @@ def add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_onli
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, promotion_id, year_of_manufacture))
         tire_id = cursor.lastrowid
+    
+    # *** เพิ่มบรรทัดนี้ ***
+    # บันทึกการเคลื่อนไหวสต็อก (นำเข้า)
+    add_tire_movement(conn, tire_id, 'IN', quantity, quantity, 'เพิ่มยางใหม่เข้าสต็อก')
+    
     conn.commit()
     return tire_id
 
@@ -846,9 +854,14 @@ def get_wheel(conn, wheel_id):
         cursor = conn.execute("SELECT * FROM wheels WHERE id = ?", (wheel_id,))
     return cursor.fetchone()
 
+# ในไฟล์ database.py
+# (ต้องมั่นใจว่า add_wheel_movement ถูกประกาศไว้แล้วในไฟล์นี้)
+
 def add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename):
     cursor = conn.cursor()
-    if "psycopg2" in str(type(conn)):
+    is_postgres = "psycopg2" in str(type(conn))
+
+    if is_postgres:
         cursor.execute("""
             INSERT INTO wheels (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
@@ -860,8 +873,30 @@ def add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cos
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename))
         wheel_id = cursor.lastrowid
+    
+    # *** เพิ่มบรรทัดนี้ ***
+    # บันทึกการเคลื่อนไหวสต็อก (นำเข้า)
+    add_wheel_movement(conn, wheel_id, 'IN', quantity, quantity, 'เพิ่มแม็กใหม่เข้าสต็อก') #
+    
     conn.commit()
     return wheel_id
+
+# ตรวจสอบให้แน่ใจว่าฟังก์ชันนี้มีการประกาศอยู่แล้วใน database.py
+def add_wheel_movement(conn, wheel_id, move_type, quantity_change, remaining_quantity, notes):
+    timestamp = get_bkk_time().isoformat()
+    is_postgres = "psycopg2" in str(type(conn))
+
+    if is_postgres:
+        conn.execute("""
+            INSERT INTO wheel_movements (wheel_id, timestamp, type, quantity_change, remaining_quantity, notes)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (wheel_id, timestamp, move_type, quantity_change, remaining_quantity, notes))
+    else:
+        conn.execute("""
+            INSERT INTO wheel_movements (wheel_id, timestamp, type, quantity_change, remaining_quantity, notes)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (wheel_id, timestamp, move_type, quantity_change, remaining_quantity, notes))
+    conn.commit()
 
 def update_wheel(conn, wheel_id, brand, model, diameter, pcd, width, et, color, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_filename):
     cursor = conn.cursor()
