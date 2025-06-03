@@ -747,6 +747,72 @@ def get_all_tires(conn, query=None, brand_filter='all'):
 
     return sorted_processed_tires
 
+def get_tire_movement(conn, movement_id):
+    if "psycopg2" in str(type(conn)):
+        cursor = conn.execute("""
+            SELECT tm.*, t.brand, t.model, t.size
+            FROM tire_movements tm
+            JOIN tires t ON tm.tire_id = t.id
+            WHERE tm.id = %s
+        """, (movement_id,))
+    else:
+        cursor = conn.execute("""
+            SELECT tm.*, t.brand, t.model, t.size
+            FROM tire_movements tm
+            JOIN tires t ON tm.tire_id = t.id
+            WHERE tm.id = ?
+        """, (movement_id,))
+    return cursor.fetchone()
+
+def get_wheel_movement(conn, movement_id):
+    if "psycopg2" in str(type(conn)):
+        cursor = conn.execute("""
+            SELECT wm.*, w.brand, w.model, w.diameter
+            FROM wheel_movements wm
+            JOIN wheels w ON wm.wheel_id = w.id
+            WHERE wm.id = %s
+        """, (movement_id,))
+    else:
+        cursor = conn.execute("""
+            SELECT wm.*, w.brand, w.model, w.diameter
+            FROM wheel_movements wm
+            JOIN wheels w ON wm.wheel_id = w.id
+            WHERE wm.id = ?
+        """, (movement_id,))
+    return cursor.fetchone()
+
+def update_wheel_movement(conn, movement_id, new_notes, new_image_filename=None):
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("""
+            UPDATE wheel_movements
+            SET notes = %s, image_filename = %s
+            WHERE id = %s
+        """, (new_notes, new_image_filename, movement_id))
+    else:
+        cursor.execute("""
+            UPDATE wheel_movements
+            SET notes = ?, image_filename = ?
+            WHERE id = ?
+        """, (new_notes, new_image_filename, movement_id))
+    conn.commit()
+
+def update_tire_movement(conn, movement_id, new_notes, new_image_filename=None):
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("""
+            UPDATE tire_movements
+            SET notes = %s, image_filename = %s
+            WHERE id = %s
+        """, (new_notes, new_image_filename, movement_id))
+    else:
+        cursor.execute("""
+            UPDATE tire_movements
+            SET notes = ?, image_filename = ?
+            WHERE id = ?
+        """, (new_notes, new_image_filename, movement_id))
+    conn.commit()
+
 def update_tire_quantity(conn, tire_id, new_quantity):
     if "psycopg2" in str(type(conn)):
         conn.execute("UPDATE tires SET quantity = %s WHERE id = %s", (new_quantity, tire_id))
