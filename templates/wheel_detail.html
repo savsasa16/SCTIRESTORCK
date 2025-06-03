@@ -6,7 +6,7 @@
 <div class="form-section detail-page">
     <div class="detail-image-container">
         {% if wheel.image_filename %}
-            <img src="{{ url_for('static', filename='images/wheels/' + wheel.image_filename) }}" alt="รูปแม็ก" class="detail-image">
+            <img src="{{ wheel.image_filename }}" alt="{{ wheel.brand }} {{ wheel.model }}" class="img-fluid" style="max-width: 100px;">
         {% else %}
             <p>ไม่มีรูปภาพสำหรับแม็กนี้</p>
         {% endif %}
