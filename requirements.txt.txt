@@ -1,7 +1,0 @@
-Flask
-pandas
-pytz
-Flask-Login
-werkzeug
-gunicorn
-psycopg2-binary
