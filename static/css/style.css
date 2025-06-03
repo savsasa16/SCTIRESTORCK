@@ -378,17 +378,6 @@ a:hover {
     text-decoration: underline;
 }
 
-/* --- Image styling for wheel details --- */
-.wheel-image {
-    max-width: 400px;
-    height: auto;
-    display: block;
-    margin: 0 auto 30px auto; /* Centered */
-    border-radius: 10px;
-    box-shadow: var(--shadow-medium);
-    border: 1px solid var(--border-color);
-}
-
 /* --- No data message --- */
 p.no-data {
     text-align: center;
@@ -699,4 +688,14 @@ p.no-data {
     width: auto !important; /* Allow it to determine its own width */
     min-width: 250px; /* Set a consistent min-width */
 }
+}
+
+/* สำหรับหน้ารายละเอียดแม็ก */
+.wheel-detail-image {
+    max-width: 350px; /* กำหนดขนาดสูงสุด */
+    height: auto;    /* รักษาสัดส่วน */
+    display: block;  /* ทำให้รูปภาพเป็น block-level เพื่อจัดการ margin ได้ง่ายขึ้น */
+    margin: 0 auto;  /* จัดให้อยู่ตรงกลาง (ถ้าพื้นที่เหลือ) */
+    border: 1px solid #ddd; /* เพิ่มกรอบให้ดูดีขึ้น */
+    padding: 5px; /* เพิ่ม padding ภายในกรอบ */
 }
