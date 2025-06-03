@@ -6,46 +6,57 @@
 <div class="form-section detail-page">
     <div class="detail-image-container">
         {% if wheel.image_filename %}
-    <img src="{{ wheel.image_filename }}" 
-         alt="{{ wheel.brand }} {{ wheel.model }}" 
-         class="img-fluid wheel-image"> {# ใช้ class "wheel-image" ที่คุณบอกว่ามีอยู่แล้ว #}
-{% else %}
-    {# ส่วนนี้จะแสดงเมื่อ wheel.image_filename เป็นค่าว่างหรือ None #}
-    <img src="{{ url_for('static', filename='images/placeholder.png') }}" 
-         alt="No Image" 
-         class="img-fluid wheel-image"> {# อาจใช้รูป placeholder หรือจะแสดงข้อความอย่างเดียวก็ได้ #}
-    <p class="text-center text-muted mt-3">ไม่มีรูปภาพสำหรับแม็กนี้</p> {# แสดงข้อความเมื่อไม่มีรูป #}
-{% endif %}
+            <img src="{{ wheel.image_filename }}" 
+                 alt="{{ wheel.brand }} {{ wheel.model }}" 
+                 class="img-fluid wheel-image">
+        {% else %}
+            <img src="{{ url_for('static', filename='images/placeholder.png') }}" 
+                 alt="No Image" 
+                 class="img-fluid wheel-image">
+            <p class="text-center text-muted mt-3">ไม่มีรูปภาพสำหรับแม็กนี้</p>
+        {% endif %}
     </div>
+    
     <div class="detail-info-container">
-        <p><strong>ยี่ห้อ:</strong> {{ wheel.brand }}</p>
-        <p><strong>ลาย (รุ่น):</strong> {{ wheel.model }}</p>
-        <p><strong>ขอบ:</strong> {{ "%.1f"|format(wheel.diameter) }} นิ้ว</p>
-        <p><strong>รู (PCD):</strong> {{ wheel.pcd }}</p>
-        <p><strong>กว้าง:</strong> {{ "%.1f"|format(wheel.width) }} นิ้ว</p>
-        <p><strong>ET (Offset):</strong> {{ wheel.et if wheel.et is not none else '-' }}</p>
-        <p><strong>สี:</strong> {{ wheel.color if wheel.color is not none else '-' }}</p>
-        <p><strong>จำนวนในสต็อก:</strong> {{ wheel.quantity }} วง</p>
-        <p><strong>ทุน:</strong>
-    {% if wheel.cost is not none %}
-        {{ "%.2f"|format(wheel.cost) }}
-    {% else %}
-        ไม่ระบุ
-    {% endif %}
-</p>
-        <p><strong>ทุน Online:</strong> {{ "%.2f"|format(wheel.cost_online) if wheel.cost_online is not none else '-' }}</p>
-        <p><strong>ราคาขายส่ง 1:</strong> {{ "%.2f"|format(wheel.wholesale_price1) if wheel.wholesale_price1 is not none else '-' }}</p>
-        <p><strong>ราคาขายส่ง 2:</strong> {{ "%.2f"|format(wheel.wholesale_price2) if wheel.wholesale_price2 is not none else '-' }}</p>
-        <p><strong>ราคาขายปลีก:</strong> {{ "%.2f"|format(wheel.retail_price) }}</p>
+        {# ใช้ div แทน p และเพิ่ม class เพื่อจัด Layout #}
+        <div class="wheel-specs-grid"> {# เพิ่ม div ใหม่สำหรับ grid/flexbox layout #}
+            <div class="spec-item"><strong>ยี่ห้อ:</strong> <span>{{ wheel.brand }}</span></div>
+            <div class="spec-item"><strong>ลาย (รุ่น):</strong> <span>{{ wheel.model }}</span></div>
+            <div class="spec-item"><strong>ขอบ:</strong> <span>{{ "%.1f"|format(wheel.diameter) }} นิ้ว</span></div>
+            <div class="spec-item"><strong>รู (PCD):</strong> <span>{{ wheel.pcd }}</span></div>
+            <div class="spec-item"><strong>กว้าง:</strong> <span>{{ "%.1f"|format(wheel.width) }} นิ้ว</span></div>
+            <div class="spec-item"><strong>ET (Offset):</strong> <span>{{ wheel.et if wheel.et is not none else '-' }}</span></div>
+            <div class="spec-item"><strong>สี:</strong> <span>{{ wheel.color if wheel.color is not none else '-' }}</span></div>
+            <div class="spec-item"><strong>จำนวนในสต็อก:</strong> <span class="badge bg-info">{{ wheel.quantity }} วง</span></div>
+        </div>
+
+        <hr class="my-4"> {# เพิ่มเส้นแบ่งเพื่อแยกข้อมูลสเปคกับราคา #}
+
+        <div class="wheel-prices-grid"> {# เพิ่ม div ใหม่สำหรับราคา #}
+            <div class="price-item">
+                <strong>ทุน:</strong>
+                {% if wheel.cost is not none %}
+                    <span>{{ "%.2f"|format(wheel.cost) }}</span>
+                {% else %}
+                    <span>ไม่ระบุ</span>
+                {% endif %}
+            </div>
+            <div class="price-item"><strong>ทุน Online:</strong> <span>{{ "%.2f"|format(wheel.cost_online) if wheel.cost_online is not none else '-' }}</span></div>
+            <div class="price-item"><strong>ราคาขายส่ง 1:</strong> <span>{{ "%.2f"|format(wheel.wholesale_price1) if wheel.wholesale_price1 is not none else '-' }}</span></div>
+            <div class="price-item"><strong>ราคาขายส่ง 2:</strong> <span>{{ "%.2f"|format(wheel.wholesale_price2) if wheel.wholesale_price2 is not none else '-' }}</span></div>
+            <div class="price-item main-price"><strong>ราคาขายปลีก:</strong> <span>{{ "%.2f"|format(wheel.retail_price) }}</span></div>
+        </div>
+
         <div class="btn-group" style="justify-content: flex-start; margin-top: 20px;">
             <a href="{{ url_for('edit_wheel', wheel_id=wheel.id) }}" class="btn btn-warning">แก้ไขข้อมูลแม็ก</a>
         </div>
     </div>
 </div>
 
+{# ส่วนเพิ่ม/แสดงข้อมูลรถยนต์ที่รองรับยังคงเดิม #}
 <div class="form-section" style="margin-top: 2rem;">
     <h3>เพิ่มข้อมูลรถยนต์ที่รองรับ</h3>
-    <form action="{{ url_for('add_fitment', wheel_id=wheel.id) }}" method="post"> {# แก้ไข action ตรงนี้ #}
+    <form action="{{ url_for('add_fitment', wheel_id=wheel.id) }}" method="post">
         <div class="form-row">
             <div class="form-group third-width">
                 <label for="fitment_brand">ยี่ห้อรถ: <span style="color:red;">*</span></label>
