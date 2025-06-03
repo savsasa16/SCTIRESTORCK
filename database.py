@@ -192,7 +192,7 @@ def init_db(conn):
                 quantity_change INTEGER NOT NULL,
                 remaining_quantity INTEGER NOT NULL,
                 notes TEXT,
-                image_filename VARCHAR(255) NULL, -- เพิ่มคอลัมน์นี้สำหรับรูปบิล
+                image_filename VARCHAR(500) NULL, -- เปลี่ยนเป็น VARCHAR(500) สำหรับ URL Cloudinary
                 FOREIGN KEY (tire_id) REFERENCES tires(id)
             );
         """)
@@ -206,7 +206,7 @@ def init_db(conn):
                 quantity_change INTEGER NOT NULL,
                 remaining_quantity INTEGER NOT NULL,
                 notes TEXT,
-                image_filename TEXT NULL, -- เพิ่มคอลัมน์นี้สำหรับรูปบิล
+                image_filename TEXT NULL, -- TEXT ก็เพียงพอสำหรับ URL ใน SQLite
                 FOREIGN KEY (tire_id) REFERENCES tires(id)
             );
         """)
@@ -222,7 +222,7 @@ def init_db(conn):
                 quantity_change INTEGER NOT NULL,
                 remaining_quantity INTEGER NOT NULL,
                 notes TEXT,
-                image_filename VARCHAR(255) NULL, -- เพิ่มคอลัมน์นี้สำหรับรูปบิล
+                image_filename VARCHAR(500) NULL, -- เปลี่ยนเป็น VARCHAR(500) สำหรับ URL Cloudinary
                 FOREIGN KEY (wheel_id) REFERENCES wheels(id)
             );
         """)
@@ -236,6 +236,7 @@ def init_db(conn):
                 quantity_change INTEGER NOT NULL,
                 remaining_quantity INTEGER NOT NULL,
                 notes TEXT,
+                image_filename TEXT NULL, -- TEXT ก็เพียงพอสำหรับ URL ใน SQLite
                 FOREIGN KEY (wheel_id) REFERENCES wheels(id)
             );
         """)
