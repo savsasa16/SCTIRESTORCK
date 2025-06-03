@@ -22,7 +22,7 @@
 <div id="tire_movements" class="tab-content {{ 'active' if active_tab == 'tire_movements' }}">
     <h3>จัดการสต็อกยาง</h3>
     <div class="form-section">
-        <form action="{{ url_for('stock_movement') }}" method="post">
+        <form action="{{ url_for('stock_movement') }}" method="post" enctype="multipart/form-data">
             <input type="hidden" name="submit_type" value="tire_movement">
             <div class="form-row">
                 <div class="form-group half-width">
@@ -51,37 +51,62 @@
                 <label for="notes">หมายเหตุ (ถ้ามี):</label>
                 <input type="text" id="notes" name="notes">
             </div>
-            <button type="submit" class="btn btn-primary">บันทึกการเคลื่อนไหว</button>
-        </form>
-    </div>
+			
+			<div class="form-group">
+            <label for="tire_bill_image">อัปโหลดรูปบิล (ถ้ามี):</label>
+            <input type="file" id="tire_bill_image" name="bill_image" accept="image/*">
+        </div>
+		
+        <button type="submit" class="btn btn-primary">บันทึกการเคลื่อนไหว</button>
+    </form>
+</div>
+            {# ส่วนนี้เป็นโค้ดซ้ำที่ควรลบออก หากไม่ได้ตั้งใจให้มีสองปุ่ม #}
+            {# <button type="submit" class="btn btn-primary">บันทึกการเคลื่อนไหว</button> #}
+        {# </form> #}
+    {# </div> #}
 
     <h3>ประวัติการเคลื่อนไหวล่าสุดของยาง</h3>
     {% if tire_movements %}
         <div class="table-responsive">
             <table>
-                <thead>
-                    <tr>
-                        <th>เวลา</th>
-                        <th>ID ยาง</th>
-                        <th>ข้อมูลยาง</th>
-                        <th>ประเภท</th>
-                        <th>จำนวน</th>
-                        <th>คงเหลือ</th>
-                        <th>หมายเหตุ</th>
-                    </tr>
-                </thead>
+                 <thead>
+                <tr>
+                    <th>เวลา</th>
+                    <th>ID ยาง</th>
+                    <th>ข้อมูลยาง</th>
+                    <th>ประเภท</th>
+                    <th>จำนวน</th>
+                    <th>คงเหลือ</th>
+                    <th>หมายเหตุ</th>
+                    <th>หลักฐาน</th> {# เพิ่มคอลัมน์นี้ #}
+                </tr>
+            </thead>
                 <tbody>
                     {% for movement in tire_movements %}
-                        <tr>
-                            <td>{{ movement.timestamp }}</td>
-                            <td>{{ movement.tire_id }}</td>
-                            <td>{{ movement.brand }} {{ movement.model }} {{ movement.size }}</td>
-                            <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
-                            <td>{{ movement.quantity_change }}</td>
-                            <td>{{ movement.remaining_quantity }}</td>
-                            <td>{{ movement.notes if movement.notes else '-' }}</td>
-                        </tr>
-                    {% endfor %}
+                    <tr>
+                        <td>{{ movement.timestamp }}</td>
+                        <td>{{ movement.tire_id }}</td>
+                        <td>{{ movement.brand }} {{ movement.model }} {{ movement.size }}</td>
+                        <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
+                        <td>{{ movement.quantity_change }}</td>
+                        <td>{{ movement.remaining_quantity }}</td>
+                        <td>
+                            {# ตรวจสอบว่า movement.notes มีค่าหรือไม่ #}
+                            {% if movement.notes %}
+                                {{ movement.notes }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if movement.image_filename %}
+                                <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a> {# เปลี่ยน url_for ไปใช้ URL โดยตรง #}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td> {# เพิ่มเซลล์นี้ #}
+                    </tr>
+                {% endfor %}
                 </tbody>
             </table>
         </div>
@@ -93,7 +118,7 @@
 <div id="wheel_movements" class="tab-content {{ 'active' if active_tab == 'wheel_movements' }}">
     <h3>จัดการสต็อกแม็ก</h3>
     <div class="form-section">
-        <form action="{{ url_for('stock_movement') }}" method="post">
+        <form action="{{ url_for('stock_movement') }}" method="post" enctype="multipart/form-data"> {# เพิ่ม enctype #}
             <input type="hidden" name="submit_type" value="wheel_movement">
             <div class="form-row">
                 <div class="form-group half-width">
@@ -122,37 +147,57 @@
                 <label for="notes">หมายเหตุ (ถ้ามี):</label>
                 <input type="text" id="notes" name="notes">
             </div>
-            <button type="submit" class="btn btn-primary">บันทึกการเคลื่อนไหว</button>
+			
+			<div class="form-group">
+            <label for="wheel_bill_image">อัปโหลดรูปบิล (ถ้ามี):</label>
+            <input type="file" id="wheel_bill_image" name="bill_image" accept="image/*">
+        </div>
+			 <button type="submit" class="btn btn-primary">บันทึกการเคลื่อนไหว</button>
         </form>
     </div>
 
-    <h3>ประวัติการเคลื่อนไหวล่าสุดของแม็ก</h3>
+    <h3>ประวัติการเคลื่อนไหวล่าสุดของแม็ก</h3> {# แก้ไขตรงนี้ #}
     {% if wheel_movements %}
         <div class="table-responsive">
             <table>
                 <thead>
-                    <tr>
-                        <th>เวลา</th>
-                        <th>ID แม็ก</th>
-                        <th>ข้อมูลแม็ก</th>
-                        <th>ประเภท</th>
-                        <th>จำนวน</th>
-                        <th>คงเหลือ</th>
-                        <th>หมายเหตุ</th>
-                    </tr>
-                </thead>
+                <tr>
+                    <th>เวลา</th>
+                    <th>ID แม็ก</th>
+                    <th>ข้อมูลแม็ก</th>
+                    <th>ประเภท</th>
+                    <th>จำนวน</th>
+                    <th>คงเหลือ</th>
+                    <th>หมายเหตุ</th>
+                    <th>หลักฐาน</th> {# เพิ่มคอลัมน์นี้ #}
+                </tr>
+            </thead>
                 <tbody>
-                    {% for movement in wheel_movements %}
-                        <tr>
-                            <td>{{ movement.timestamp }}</td>
-                            <td>{{ movement.wheel_id }}</td>
-                            <td>{{ movement.brand }} {{ movement.model }} {{ "%.1f"|format(movement.diameter) }} นิ้ว</td>
-                            <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
-                            <td>{{ movement.quantity_change }}</td>
-                            <td>{{ movement.remaining_quantity }}</td>
-                            <td>{{ movement.notes if movement.notes else '-' }}</td>
-                        </tr>
-                    {% endfor %}
+                     {% for movement in wheel_movements %}
+                    <tr>
+                        <td>{{ movement.timestamp }}</td>
+                        <td>{{ movement.wheel_id }}</td>
+                        <td>{{ movement.brand }} {{ movement.model }} {{ "%.1f"|format(movement.diameter) }} นิ้ว</td>
+                        <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
+                        <td>{{ movement.quantity_change }}</td>
+                        <td>{{ movement.remaining_quantity }}</td>
+                        <td>
+                            {# ตรวจสอบว่า movement.notes มีค่าหรือไม่ #}
+                            {% if movement.notes %}
+                                {{ movement.notes }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if movement.image_filename %}
+                                <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a> {# เปลี่ยน url_for ไปใช้ URL โดยตรง #}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td> {# เพิ่มเซลล์นี้ #}
+                    </tr>
+                {% endfor %}
                 </tbody>
             </table>
         </div>

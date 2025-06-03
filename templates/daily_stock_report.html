@@ -144,7 +144,7 @@
                             <td>{{ movement.notes if movement.notes else '-' }}</td>
                             <td>
                                 {% if movement.image_filename %}
-                                    <a href="{{ url_for('static', filename='uploads/bill_images/' + movement.image_filename) }}" target="_blank">
+                                    <a href="{{ movement.image_filename }}" target="_blank"> {# แก้ไขตรงนี้ #}
                                         <i class="fas fa-image"></i> ดูบิล
                                     </a>
                                 {% else %}
@@ -200,7 +200,7 @@
                             <td>{{ movement.notes if movement.notes else '-' }}</td>
                             <td>
                                 {% if movement.image_filename %}
-                                    <a href="{{ url_for('static', filename='uploads/bill_images/' + movement.image_filename) }}" target="_blank">
+                                    <a href="{{ movement.image_filename }}" target="_blank"> {# แก้ไขตรงนี้ #}
                                         <i class="fas fa-image"></i> ดูบิล
                                     </a>
                                 {% else %}
