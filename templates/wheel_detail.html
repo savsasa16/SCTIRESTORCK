@@ -8,9 +8,14 @@
         {% if wheel.image_filename %}
     <img src="{{ wheel.image_filename }}" 
          alt="{{ wheel.brand }} {{ wheel.model }}" 
-         class="img-fluid wheel-detail-image"> {# เพิ่ม class "wheel-detail-image" #}
-            <p>ไม่มีรูปภาพสำหรับแม็กนี้</p>
-        {% endif %}
+         class="img-fluid wheel-image"> {# ใช้ class "wheel-image" ที่คุณบอกว่ามีอยู่แล้ว #}
+{% else %}
+    {# ส่วนนี้จะแสดงเมื่อ wheel.image_filename เป็นค่าว่างหรือ None #}
+    <img src="{{ url_for('static', filename='images/placeholder.png') }}" 
+         alt="No Image" 
+         class="img-fluid wheel-image"> {# อาจใช้รูป placeholder หรือจะแสดงข้อความอย่างเดียวก็ได้ #}
+    <p class="text-center text-muted mt-3">ไม่มีรูปภาพสำหรับแม็กนี้</p> {# แสดงข้อความเมื่อไม่มีรูป #}
+{% endif %}
     </div>
     <div class="detail-info-container">
         <p><strong>ยี่ห้อ:</strong> {{ wheel.brand }}</p>
