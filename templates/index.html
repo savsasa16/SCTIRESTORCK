@@ -152,10 +152,10 @@
                                 <td>{{ "%.2f"|format(wheel.cost) if wheel.cost is not none else '-' }}</td> 
                                 <td>{{ "%.2f"|format(wheel.retail_price) }}</td>
                                 <td>
-                                    {% if wheel.image_filename %}
-                                        <img src="{{ url_for('static', filename='images/wheels/' + wheel.image_filename) }}" alt="รูปภาพ {{ wheel.model }}" style="width: 50px; height: auto; border-radius: 4px;">
-                                    {% else %}
-                                        -
+                                {% if wheel.image_filename %}
+                                    <img src="{{ wheel.image_filename }}" alt="{{ wheel.brand }} {{ wheel.model }}" class="img-fluid" style="max-width: 100px;">
+                                {% else %}
+                                <img src="{{ url_for('static', filename='images/placeholder.png') }}" alt="No Image" class="img-fluid" style="max-width: 100px;">
                                     {% endif %}
                                 </td>
                                 <td class="action-buttons">
