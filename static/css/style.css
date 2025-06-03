@@ -690,22 +690,13 @@ p.no-data {
 }
 }
 
-/* สำหรับหน้ารายละเอียดแม็ก */
-.wheel-detail-image {
-    max-width: 350px; /* กำหนดขนาดสูงสุด */
-    height: auto;    /* รักษาสัดส่วน */
-    display: block;  /* ทำให้รูปภาพเป็น block-level เพื่อจัดการ margin ได้ง่ายขึ้น */
-    margin: 0 auto;  /* จัดให้อยู่ตรงกลาง (ถ้าพื้นที่เหลือ) */
-    border: 1px solid #ddd; /* เพิ่มกรอบให้ดูดีขึ้น */
-    padding: 5px; /* เพิ่ม padding ภายในกรอบ */
-}
-
 /* สำหรับจัดเรียงข้อมูลรายละเอียดใน wheel_detail */
 .detail-page {
     display: flex; /* ใช้ Flexbox สำหรับจัดเรียงรูปภาพและข้อมูลหลัก */
     flex-wrap: wrap; /* ให้ห่อขึ้นบรรทัดใหม่เมื่อหน้าจอเล็ก */
     gap: 30px; /* ช่องว่างระหว่างส่วนรูปภาพและส่วนข้อมูล */
     align-items: flex-start; /* จัดให้เนื้อหาด้านบนเท่ากัน */
+    padding: 20px; /* เพิ่ม padding ให้กับทั้งส่วน */
 }
 
 .detail-image-container {
@@ -715,12 +706,13 @@ p.no-data {
     display: flex; /* เพื่อจัดกึ่งกลางรูปภาพด้านใน */
     justify-content: center;
     align-items: center;
+    padding-top: 15px; /* เพิ่ม padding ด้านบนเล็กน้อย */
 }
 
 .detail-info-container {
     flex: 2; /* ให้ใช้พื้นที่มากกว่าส่วนรูปภาพ */
     min-width: 350px; /* ขนาดขั้นต่ำของ container ข้อมูล */
-    padding: 20px 0; /* เพิ่ม padding ด้านบนและล่าง */
+    /* ไม่ต้องมี padding: 20px 0; ที่นี่แล้ว เพราะ detail-page มี padding แล้ว */
 }
 
 /* ปรับปรุง wheel-image เพื่อให้เข้ากับ container */
@@ -738,44 +730,55 @@ p.no-data {
 .wheel-specs-grid,
 .wheel-prices-grid {
     display: grid;
-    /* แบ่งเป็น 2 คอลัมน์สำหรับจอใหญ่ และ 1 คอลัมน์สำหรับจอเล็ก */
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-    gap: 15px 25px; /* ช่องว่างแถวและคอลัมน์ */
-    margin-bottom: 15px; /* ช่องว่างด้านล่างแต่ละกลุ่ม */
+    /* แบ่งเป็นคอลัมน์อัตโนมัติ 2 คอลัมน์สำหรับจอใหญ่ แต่ละคอลัมน์กว้างเท่ากัน */
+    /* ถ้าหน้าจอเล็กมาก อาจปรับเหลือ 1 คอลัมน์ใน media query */
+    grid-template-columns: repeat(2, 1fr); /* 2 คอลัมน์เท่าๆ กัน */
+    gap: 15px 30px; /* ช่องว่างแถวและคอลัมน์ (ปรับช่องว่างคอลัมน์เพิ่ม) */
+    margin-bottom: 25px; /* ช่องว่างด้านล่างแต่ละกลุ่ม */
+    padding: 15px; /* เพิ่ม padding ภายใน Grid เพื่อให้ดูมีพื้นที่หายใจ */
+    border: 1px solid var(--border-color-light); /* เพิ่มกรอบรอบกลุ่มข้อมูล */
+    border-radius: 8px; /* ขอบมนเล็กน้อย */
+    background-color: var(--card-bg-light); /* สีพื้นหลังอ่อนๆ ให้ดูเป็นกลุ่ม */
 }
 
 .spec-item,
 .price-item {
     font-size: 1.0em; /* ขนาดฟอนต์ */
     line-height: 1.5; /* ระยะห่างระหว่างบรรทัด */
-    display: flex; /* ใช้ flex เพื่อจัดเรียง Label และ Value ให้อยู่ในบรรทัดเดียวกัน */
-    align-items: baseline; /* จัดให้ text baseline ตรงกัน */
-    word-break: break-word; /* ป้องกันข้อความยาวเกินไป */
+    /* เปลี่ยนจาก display: flex เป็นการจัด Label และ Value ด้วย min-width ของ Label และ text-align */
+    /* display: flex;  */ /* ไม่ใช้ flex ที่นี่แล้ว */
+    /* align-items: baseline; */
+    padding: 5px 0; /* เพิ่ม padding ให้แต่ละ item */
+    /* border-bottom: 1px dashed #eee; */ /* อาจเพิ่มเส้นใต้สำหรับแต่ละ item */
+    /* background-color: rgba(255, 255, 255, 0.5); */ /* ถ้าต้องการให้แต่ละช่องมีพื้นหลัง */
+    /* border-radius: 5px; */
 }
 
 .spec-item strong,
 .price-item strong {
-    min-width: 100px; /* กำหนดความกว้างขั้นต่ำของ Label เพื่อให้เรียงสวยงาม */
-    display: inline-block; /* ทำให้เป็น block-like เพื่อควบคุม width */
-    margin-right: 10px;
-    color: var(--text-muted); /* หรือสีอื่นที่จางกว่าเพื่อแยก Label */
+    min-width: 120px; /* เพิ่มความกว้างขั้นต่ำของ Label ให้มากกว่าเดิม (เพื่อให้ข้อความไม่ติดกัน) */
+    display: inline-block; /* ทำให้ Label อยู่บรรทัดเดียวกันกับค่า */
+    margin-right: 10px; /* เพิ่มระยะห่างระหว่าง Label กับ Value */
+    color: var(--text-muted); /* ทำให้ Label ดูแตกต่างเล็กน้อย */
     font-weight: 600; /* อาจทำให้หนาขึ้นเล็กน้อย */
+    text-align: right; /* จัด Label ให้อยู่ชิดขวาของพื้นที่ Label */
 }
 
 .spec-item span,
 .price-item span {
-    flex-grow: 1; /* ให้ค่าใช้พื้นที่ที่เหลือทั้งหมด */
+    /* flex-grow: 1; */ /* ไม่จำเป็นเมื่อไม่ได้ใช้ display: flex ที่ spec-item */
+    text-align: left; /* จัด Value ให้อยู่ชิดซ้าย */
 }
 
 .price-item.main-price {
-    font-size: 1.2em; /* ทำให้ราคาขายปลีกดูเด่นขึ้น */
+    font-size: 1.3em; /* ทำให้ราคาขายปลีกดูเด่นขึ้น (เพิ่มขนาด) */
     font-weight: bold;
     color: var(--primary-color); /* หรือสีที่เด่นกว่า */
     grid-column: 1 / -1; /* ทำให้กินพื้นที่เต็มความกว้างของ grid */
     text-align: center; /* จัดกึ่งกลางสำหรับราคาหลัก */
     margin-top: 15px;
-    border-top: 1px solid var(--border-color-light); /* เพิ่มเส้นด้านบน */
     padding-top: 15px;
+    border-top: 2px dashed var(--border-color); /* เปลี่ยนเป็น dashed และหนาขึ้น */
 }
 
 /* ปรับแต่งสำหรับ badge */
@@ -791,6 +794,7 @@ p.no-data {
     .detail-page {
         flex-direction: column; /* เรียงจากบนลงล่างบนจอมือถือ */
         align-items: center; /* จัดกึ่งกลางทั้งหมด */
+        padding: 15px; /* ลด padding บนมือถือ */
     }
 
     .detail-image-container,
@@ -802,11 +806,20 @@ p.no-data {
     .wheel-specs-grid,
     .wheel-prices-grid {
         grid-template-columns: 1fr; /* 1 คอลัมน์บนจอมือถือ */
+        padding: 10px; /* ลด padding ภายใน grid บนมือถือ */
+        gap: 10px;
     }
 
     .spec-item strong,
     .price-item strong {
         min-width: unset; /* ไม่ต้องกำหนด min-width บนจอมือถือ */
-        margin-right: 5px;
+        text-align: left; /* จัด Label ให้อยู่ชิดซ้ายบนมือถือ */
+        display: block; /* ทำให้ Label ขึ้นบรรทัดใหม่จาก Value */
+        margin-bottom: 3px; /* เพิ่มช่องว่างเล็กน้อย */
+    }
+
+    .spec-item span,
+    .price-item span {
+        display: block; /* ทำให้ Value ขึ้นบรรทัดใหม่จาก Label */
     }
 }
