@@ -8,3 +8,4 @@ psycopg2-binary # ถ้าใช้ PostgreSQL
 python-dotenv # เพิ่มบรรทัดนี้
 cloudinary # เพิ่มบรรทัดนี้
 openpyxl
+xlsxwriter
