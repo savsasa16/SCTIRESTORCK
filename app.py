@@ -1206,6 +1206,227 @@ def import_tires_action():
         flash('ชนิดไฟล์ไม่ถูกต้อง อนุญาตเฉพาะ .xlsx และ .xls เท่านั้น', 'danger')
         return redirect(url_for('export_import', tab='tires_excel'))
 
+@app.route('/edit_tire_movement/<int:movement_id>', methods=['GET', 'POST'])
+@login_required
+def edit_tire_movement(movement_id):
+    # อนุญาตเฉพาะ admin เท่านั้นที่แก้ไขได้
+    if not current_user.is_admin():
+        flash('คุณไม่มีสิทธิ์ในการแก้ไขข้อมูลการเคลื่อนไหวสต็อกยาง', 'danger')
+        return redirect(url_for('daily_stock_report'))
+
+    conn = get_db()
+    movement = database.get_tire_movement(conn, movement_id)
+
+    if movement is None:
+        flash('ไม่พบข้อมูลการเคลื่อนไหวที่ระบุ', 'danger')
+        return redirect(url_for('daily_stock_report'))
+
+    if request.method == 'POST':
+        new_notes = request.form.get('notes', '').strip()
+        bill_image_file = request.files.get('bill_image')
+        delete_existing_image = request.form.get('delete_existing_image') == 'on'
+
+        current_image_filename = movement['image_filename']
+        bill_image_filename_to_db = current_image_filename
+
+        # จัดการการลบรูปภาพเก่า
+        if delete_existing_image:
+            if current_image_filename:
+                old_image_path = os.path.join(current_app.root_path, app.config['UPLOAD_FOLDER'], 'bill_images', current_image_filename)
+                if os.path.exists(old_image_path):
+                    try:
+                        os.remove(old_image_path)
+                    except Exception as e:
+                        print(f"Error deleting old tire movement image: {e}")
+            bill_image_filename_to_db = None
+
+        # จัดการการอัปโหลดรูปภาพใหม่
+        if bill_image_file and bill_image_file.filename != '':
+            if allowed_image_file(bill_image_file.filename):
+                original_filename = secure_filename(bill_image_file.filename)
+                name, ext = os.path.splitext(original_filename)
+                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                bill_image_filename_to_db = f"bill_{timestamp}{ext}"
+
+                BILL_IMAGE_FOLDER = os.path.join(current_app.root_path, app.config['UPLOAD_FOLDER'], 'bill_images')
+                os.makedirs(BILL_IMAGE_FOLDER, exist_ok=True) # Ensure folder exists
+                image_path = os.path.join(BILL_IMAGE_FOLDER, bill_image_filename_to_db)
+                try:
+                    bill_image_file.save(image_path)
+                    # ถ้าอัปโหลดสำเร็จและมีรูปเก่า ให้ลบรูปเก่าออก (ถ้ายังไม่ถูกลบไปแล้ว)
+                    if current_image_filename and current_image_filename != bill_image_filename_to_db:
+                        old_image_path = os.path.join(current_app.root_path, app.config['UPLOAD_FOLDER'], 'bill_images', current_image_filename)
+                        if os.path.exists(old_image_path):
+                            try:
+                                os.remove(old_image_path)
+                            except Exception as e:
+                                print(f"Error deleting old tire movement image after new upload: {e}")
+                except Exception as e:
+                    flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพบิล: {e}', 'danger')
+                    return render_template('edit_tire_movement.html', movement=movement)
+            else:
+                flash('ชนิดไฟล์รูปภาพบิลไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
+                return render_template('edit_tire_movement.html', movement=movement)
+
+        try:
+            database.update_tire_movement(conn, movement_id, new_notes, bill_image_filename_to_db)
+            flash('แก้ไขข้อมูลการเคลื่อนไหวสต็อกยางสำเร็จ!', 'success')
+            return redirect(url_for('daily_stock_report'))
+        except Exception as e:
+            flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูล: {e}', 'danger')
+
+    return render_template('edit_tire_movement.html', movement=movement)
+
+@app.route('/edit_wheel_movement/<int:movement_id>', methods=['GET', 'POST'])
+@login_required
+def edit_wheel_movement(movement_id):
+    # อนุญาตเฉพาะ admin เท่านั้นที่แก้ไขได้
+    if not current_user.is_admin():
+        flash('คุณไม่มีสิทธิ์ในการแก้ไขข้อมูลการเคลื่อนไหวสต็อกแม็ก', 'danger')
+        return redirect(url_for('daily_stock_report'))
+
+    conn = get_db()
+    movement = database.get_wheel_movement(conn, movement_id)
+
+    if movement is None:
+        flash('ไม่พบข้อมูลการเคลื่อนไหวที่ระบุ', 'danger')
+        return redirect(url_for('daily_stock_report'))
+
+    if request.method == 'POST':
+        new_notes = request.form.get('notes', '').strip()
+        bill_image_file = request.files.get('bill_image')
+        delete_existing_image = request.form.get('delete_existing_image') == 'on'
+
+        current_image_filename = movement['image_filename']
+        bill_image_filename_to_db = current_image_filename
+
+        # จัดการการลบรูปภาพเก่า
+        if delete_existing_image:
+            if current_image_filename:
+                old_image_path = os.path.join(current_app.root_path, app.config['UPLOAD_FOLDER'], 'bill_images', current_image_filename)
+                if os.path.exists(old_image_path):
+                    try:
+                        os.remove(old_image_path)
+                    except Exception as e:
+                        print(f"Error deleting old wheel movement image: {e}")
+            bill_image_filename_to_db = None
+
+        # จัดการการอัปโหลดรูปภาพใหม่
+        if bill_image_file and bill_image_file.filename != '':
+            if allowed_image_file(bill_image_file.filename):
+                original_filename = secure_filename(bill_image_file.filename)
+                name, ext = os.path.splitext(original_filename)
+                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                bill_image_filename_to_db = f"bill_{timestamp}{ext}"
+
+                BILL_IMAGE_FOLDER = os.path.join(current_app.root_path, app.config['UPLOAD_FOLDER'], 'bill_images')
+                os.makedirs(BILL_IMAGE_FOLDER, exist_ok=True) # Ensure folder exists
+                image_path = os.path.join(BILL_IMAGE_FOLDER, bill_image_filename_to_db)
+                try:
+                    bill_image_file.save(image_path)
+                    # ถ้าอัปโหลดสำเร็จและมีรูปเก่า ให้ลบรูปเก่าออก (ถ้ายังไม่ถูกลบไปแล้ว)
+                    if current_image_filename and current_image_filename != bill_image_filename_to_db:
+                        old_image_path = os.path.join(current_app.root_path, app.config['UPLOAD_FOLDER'], 'bill_images', current_image_filename)
+                        if os.path.exists(old_image_path):
+                            try:
+                                os.remove(old_image_path)
+                            except Exception as e:
+                                print(f"Error deleting old wheel movement image after new upload: {e}")
+                except Exception as e:
+                    flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพบิล: {e}', 'danger')
+                    return render_template('edit_wheel_movement.html', movement=movement)
+            else:
+                flash('ชนิดไฟล์รูปภาพบิลไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
+                return render_template('edit_wheel_movement.html', movement=movement)
+
+        try:
+            database.update_wheel_movement(conn, movement_id, new_notes, bill_image_filename_to_db)
+            flash('แก้ไขข้อมูลการเคลื่อนไหวสต็อกแม็กสำเร็จ!', 'success')
+            return redirect(url_for('daily_stock_report'))
+        except Exception as e:
+            flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูล: {e}', 'danger')
+
+    return render_template('edit_wheel_movement.html', movement=movement)
+
+# เพิ่มหรือแก้ไข app.route('/daily_stock_report') เพื่อให้ส่งข้อมูล image_filename ไปด้วย
+@app.route('/daily_stock_report')
+@login_required
+def daily_stock_report():
+    conn = get_db()
+    
+    report_date_str = request.args.get('date')
+    
+    if report_date_str:
+        try:
+            report_date = datetime.strptime(report_date_str, '%Y-%m-%d').date()
+            display_date_str = report_date.strftime('%Y-%m-%d')
+        except ValueError:
+            flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้ YYYY-MM-DD", "danger")
+            report_date = get_bkk_time().date()
+            display_date_str = report_date.strftime('%Y-%m-%d')
+    else:
+        report_date = get_bkk_time().date()
+        display_date_str = report_date.strftime('%Y-%m-%d')
+
+    sql_date_filter = report_date.strftime('%Y-%m-%d')
+
+
+    # --- Tire Report Data ---
+    # แก้ไข Query เพื่อดึง image_filename ด้วย
+    tire_movements_query = f"""
+        SELECT
+            tm.id, tm.timestamp, tm.type, tm.quantity_change, tm.image_filename,
+            t.id AS tire_main_id, t.brand, t.model, t.size
+        FROM tire_movements tm
+        JOIN tires t ON tm.tire_id = t.id
+        WHERE {database.get_sql_date_format_for_query('tm.timestamp')} = %s
+        ORDER BY t.brand, t.model, t.size, tm.timestamp DESC
+    """
+    if "psycopg2" in str(type(conn)):
+        tire_movements_raw = conn.execute(tire_movements_query, (sql_date_filter,)).fetchall()
+    else: # SQLite
+        tire_movements_raw = conn.execute(tire_movements_query.replace('%s', '?'), (sql_date_filter,)).fetchall()
+
+    # ... (ส่วนที่เหลือของ tire_movements_raw และ detailed_tire_report logic ยังคงเหมือนเดิม) ...
+
+    # --- Wheel Report Data ---
+    # แก้ไข Query เพื่อดึง image_filename ด้วย
+    wheel_movements_query = f"""
+        SELECT
+            wm.id, wm.timestamp, wm.type, wm.quantity_change, wm.image_filename,
+            w.id AS wheel_main_id, w.brand, w.model, w.diameter, w.pcd, w.width
+        FROM wheel_movements wm
+        JOIN wheels w ON wm.wheel_id = w.id
+        WHERE {database.get_sql_date_format_for_query('wm.timestamp')} = %s
+        ORDER BY w.brand, w.model, w.diameter, wm.timestamp DESC
+    """
+    if "psycopg2" in str(type(conn)):
+        wheel_movements_raw = conn.execute(wheel_movements_query, (sql_date_filter,)).fetchall()
+    else: # SQLite
+        wheel_movements_raw = conn.execute(wheel_movements_query.replace('%s', '?'), (sql_date_filter,)).fetchall()
+
+    # ... (ส่วนที่เหลือของ wheel_movements_raw และ detailed_wheel_report logic ยังคงเหมือนเดิม) ...
+
+    # ต้องส่ง tire_movements_raw และ wheel_movements_raw ไปที่ template ด้วย
+    return render_template('daily_stock_report.html',
+                           display_date_str=display_date_str,
+                           report_date_param=report_date.strftime('%Y-%m-%d'),
+                           yesterday_date_param=yesterday_date.strftime('%Y-%m-%d'),
+                           
+                           tire_report=sorted_detailed_tire_report,
+                           wheel_report=sorted_detailed_wheel_report,
+                           tire_total_in=tire_total_in,
+                           tire_total_out=tire_total_out,
+                           tire_total_remaining=all_tires_in_stock,
+                           wheel_total_in=wheel_total_in,
+                           wheel_total_out=wheel_total_out,
+                           wheel_total_remaining=all_wheels_in_stock,
+                           
+                           # เพิ่มข้อมูล movement raw เพื่อใช้ในการแสดงผลและแก้ไข
+                           tire_movements_raw=tire_movements_raw,
+                           wheel_movements_raw=wheel_movements_raw
+                          )
+
 @app.route('/export_wheels_action')
 @login_required
 def export_wheels_action():
