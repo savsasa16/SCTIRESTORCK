@@ -1,236 +1,229 @@
 {% extends 'base.html' %}
 
-{% block title %}รายงานสต็อกประจำวัน{% endblock %}
-
 {% block content %}
-<h2>รายงานสต็อกประจำวัน: {{ today_date }}</h2>
+<h2>รายงานสต็อกประจำวัน: {{ display_date_str }}</h2>
 
-{# ปรับโครงสร้างและ CSS ของ date-navigation #}
-<div class="date-navigation">
-    {# ลบปุ่ม "เมื่อวาน" ออกไปแล้ว #}
-    {# <a href="{{ url_for('daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary"><i class="fas fa-chevron-left"></i> เมื่อวาน</a> #}
-    <input type="date" id="reportDateInput" value="{{ report_date_param }}" onchange="goToDate()">
+<div class="report-date-selector">
+    <form action="{{ url_for('daily_stock_report') }}" method="get" class="d-flex align-items-center mb-3">
+        <label for="report_date" class="me-2 mb-0">เลือกวันที่:</label>
+        <input type="date" id="report_date" name="date" value="{{ report_date_param }}" class="form-control me-2" style="width: 180px;">
+        <button type="submit" class="btn btn-primary me-2">แสดงรายงาน</button>
+        <a href="{{ url_for('daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-chevron-left"></i> วันที่แล้ว
+        </a>
+    </form>
 </div>
 
-<script>
-    function goToDate() {
-        const dateInput = document.getElementById('reportDateInput');
-        const selectedDate = dateInput.value;
-        if (selectedDate) {
-            window.location.href = "{{ url_for('daily_stock_report') }}?date=" + selectedDate;
-        }
-    }
-</script>
-
-{# ส่วนสรุปยอดรวมทั้งหมด: สวยงามและอยู่ด้านบน #}
-<div class="summary-cards-overall-container">
-    <div class="summary-card-overall">
-        <h3>สรุปยาง</h3>
-        <p>รับเข้ารวม: <strong>{{ tire_total_in }}</strong> เส้น</p>
-        <p>จ่ายออกรวม: <strong>{{ tire_total_out }}</strong> เส้น</p>
-        <p>คงเหลือในคลังทั้งหมด: <strong>{{ tire_total_remaining }}</strong> เส้น</p>
-    </div>
-    <div class="summary-card-overall">
-        <h3>สรุปแม็ก</h3>
-        <p>รับเข้ารวม: <strong>{{ wheel_total_in }}</strong> วง</p>
-        <p>จ่ายออกรวม: <strong>{{ wheel_total_out }}</strong> วง</p>
-        <p>คงเหลือในคลังทั้งหมด: <strong>{{ wheel_total_remaining }}</strong> วง</p>
-    </div>
-</div>
-
-<div class="report-section">
-    <h3>รายงานสต็อกยาง</h3>
-    {% if tire_report %}
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ยี่ห้อยาง</th>
-                        <th>รุ่นยาง</th>
-                        <th>เบอร์ยาง</th>
-                        <th>รับเข้า (เส้น)</th>
-                        <th>จ่ายออก (เส้น)</th>
-                        <th>คงเหลือปัจจุบัน (เส้น)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% set last_brand_display = "" %}
-                    {% for item in tire_report %}
-                        {# ลบ Logic ที่ตรวจสอบ item.is_summary ออกไป #}
+<div class="form-section">
+    <h3>สรุปการเคลื่อนไหวสต็อกยางประจำวัน</h3>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>ยี่ห้อ</th>
+                    <th>รุ่นยาง</th>
+                    <th>เบอร์ยาง</th>
+                    <th>รับเข้า (เส้น)</th>
+                    <th>จ่ายออก (เส้น)</th>
+                    <th>คงเหลือ (เส้น)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in tire_report %}
+                    {% if item.is_summary %}
+                        <tr class="summary-row">
+                            <td colspan="3"><strong>รวม {{ item.brand }}</strong></td>
+                            <td><strong>{{ item.IN }}</strong></td>
+                            <td><strong>{{ item.OUT }}</strong></td>
+                            <td><strong>{{ item.remaining_quantity }}</strong></td>
+                        </tr>
+                    {% else %}
                         <tr>
-                            <td>
-                                {% if item.brand != last_brand_display %}
-                                    {{ item.brand }}
-                                    {% set last_brand_display = item.brand %}
-                                {% endif %}
-                            </td>
+                            <td>{{ item.brand }}</td>
                             <td>{{ item.model }}</td>
                             <td>{{ item.size }}</td>
                             <td>{{ item.IN }}</td>
                             <td>{{ item.OUT }}</td>
                             <td>{{ item.remaining_quantity }}</td>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <p>ไม่พบการเคลื่อนไหวของยางสำหรับวันนี้</p>
-    {% endif %}
-
-    {# ลบส่วนสรุปยางรายยี่ห้อออก #}
-    {# <div class="summary-card single-summary-card">...</div> #}
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="3"><strong>รวมทั้งหมด</strong></td>
+                    <td><strong>{{ tire_total_in }}</strong></td>
+                    <td><strong>{{ tire_total_out }}</strong></td>
+                    <td><strong>{{ tire_total_remaining }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
 </div>
 
-<div class="report-section" style="margin-top: 30px;">
-    <h3>รายงานสต็อกแม็ก</h3>
-    {% if wheel_report %}
+<div class="form-section">
+    <h3>สรุปการเคลื่อนไหวสต็อกแม็กประจำวัน</h3>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>ยี่ห้อ</th>
+                    <th>ลาย</th>
+                    <th>ขอบ</th>
+                    <th>กว้าง</th>
+                    <th>รับเข้า (วง)</th>
+                    <th>จ่ายออก (วง)</th>
+                    <th>คงเหลือ (วง)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in wheel_report %}
+                    {% if item.is_summary %}
+                        <tr class="summary-row">
+                            <td colspan="4"><strong>รวม {{ item.brand }}</strong></td>
+                            <td><strong>{{ item.IN }}</strong></td>
+                            <td><strong>{{ item.OUT }}</strong></td>
+                            <td><strong>{{ item.remaining_quantity }}</strong></td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td>{{ item.brand }}</td>
+                            <td>{{ item.model }}</td>
+                            <td>{{ "%.1f"|format(item.diameter) }}</td>
+                            <td>{{ "%.1f"|format(item.width) }}</td>
+                            <td>{{ item.IN }}</td>
+                            <td>{{ item.OUT }}</td>
+                            <td>{{ item.remaining_quantity }}</td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="4"><strong>รวมทั้งหมด</strong></td>
+                    <td><strong>{{ wheel_total_in }}</strong></td>
+                    <td><strong>{{ wheel_total_out }}</strong></td>
+                    <td><strong>{{ wheel_total_remaining }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<div class="form-section">
+    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ display_date_str }}</h3>
+    {% if tire_movements_raw %}
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>ยี่ห้อแม็ก</th>
-                        <th>ลาย</th>
-                        <th>ขนาด (ขอบ x กว้าง)</th>
-                        <th>รู</th>
-                        <th>รับเข้า (วง)</th>
-                        <th>จ่ายออก (วง)</th>
-                        <th>คงเหลือปัจจุบัน (วง)</th>
+                        <th>เวลา</th>
+                        <th>ประเภท</th>
+                        <th>จำนวน</th>
+                        <th>คงเหลือ</th>
+                        <th>ยี่ห้อ</th>
+                        <th>รุ่น</th>
+                        <th>เบอร์ยาง</th>
+                        <th>หมายเหตุ</th>
+                        <th>หลักฐาน</th>
+                        {% if current_user.is_admin() %}
+                        <th>จัดการ</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
-                    {% set last_brand_display = "" %}
-                    {% for item in wheel_report %}
-                        {# ลบ Logic ที่ตรวจสอบ item.is_summary ออกไป #}
+                    {% for movement in tire_movements_raw %}
                         <tr>
+                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp.strftime else movement.timestamp }}</td>
+                            <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
+                            <td>{{ movement.quantity_change }}</td>
+                            <td>{{ movement.remaining_quantity }}</td>
+                            <td>{{ movement.brand }}</td>
+                            <td>{{ movement.model }}</td>
+                            <td>{{ movement.size }}</td>
+                            <td>{{ movement.notes if movement.notes else '-' }}</td>
                             <td>
-                                {% if item.brand != last_brand_display %}
-                                    {{ item.brand }}
-                                    {% set last_brand_display = item.brand %}
+                                {% if movement.image_filename %}
+                                    <a href="{{ url_for('static', filename='uploads/bill_images/' + movement.image_filename) }}" target="_blank">
+                                        <i class="fas fa-image"></i> ดูบิล
+                                    </a>
+                                {% else %}
+                                    -
                                 {% endif %}
                             </td>
-                            <td>{{ item.model }}</td>
-                            <td>{{ "%.1f"|format(item.diameter) }}x{{ "%.1f"|format(item.width) }}</td>
-                            <td>{{ item.pcd }}</td>
-                            <td>{{ item.IN }}</td>
-                            <td>{{ item.OUT }}</td>
-                            <td>{{ item.remaining_quantity }}</td>
+                            {% if current_user.is_admin() %}
+                            <td>
+                                <a href="{{ url_for('edit_tire_movement', movement_id=movement.id) }}" class="btn btn-warning btn-small">แก้ไข</a>
+                            </td>
+                            {% endif %}
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     {% else %}
-        <p>ไม่พบการเคลื่อนไหวของแม็กสำหรับวันนี้</p>
+        <p>ไม่มีการเคลื่อนไหวสต็อกยางในวันนี้</p>
     {% endif %}
-
-    {# ลบส่วนสรุปแม็กรายยี่ห้อออก #}
-    {# <div class="summary-card single-summary-card">...</div> #}
 </div>
 
-<a href="{{ url_for('index') }}" class="btn btn-outline" style="margin-top: 20px;"><i class="fas fa-arrow-left"></i> กลับหน้าหลัก</a>
+<div class="form-section">
+    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ display_date_str }}</h3>
+    {% if wheel_movements_raw %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>เวลา</th>
+                        <th>ประเภท</th>
+                        <th>จำนวน</th>
+                        <th>คงเหลือ</th>
+                        <th>ยี่ห้อ</th>
+                        <th>ลาย</th>
+                        <th>ขอบ</th>
+                        <th>หมายเหตุ</th>
+                        <th>หลักฐาน</th>
+                        {% if current_user.is_admin() %}
+                        <th>จัดการ</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for movement in wheel_movements_raw %}
+                        <tr>
+                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp.strftime else movement.timestamp }}</td>
+                            <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
+                            <td>{{ movement.quantity_change }}</td>
+                            <td>{{ movement.remaining_quantity }}</td>
+                            <td>{{ movement.brand }}</td>
+                            <td>{{ movement.model }}</td>
+                            <td>{{ "%.1f"|format(movement.diameter) }}</td>
+                            <td>{{ movement.notes if movement.notes else '-' }}</td>
+                            <td>
+                                {% if movement.image_filename %}
+                                    <a href="{{ url_for('static', filename='uploads/bill_images/' + movement.image_filename) }}" target="_blank">
+                                        <i class="fas fa-image"></i> ดูบิล
+                                    </a>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            {% if current_user.is_admin() %}
+                            <td>
+                                <a href="{{ url_for('edit_wheel_movement', movement_id=movement.id) }}" class="btn btn-warning btn-small">แก้ไข</a>
+                            </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>ไม่มีการเคลื่อนไหวสต็อกแม็กในวันนี้</p>
+    {% endif %}
+</div>
 
-<style>
-    .report-section {
-        background-color: var(--card-bg-color);
-        padding: 20px;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
-        margin-bottom: 30px;
-    }
-    .report-section h3 {
-        color: var(--primary-color);
-        margin-bottom: 15px;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 10px;
-    }
-    .report-section table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 15px;
-    }
-    .report-section th, .report-section td {
-        border: 1px solid var(--border-color);
-        padding: 10px;
-        text-align: left;
-    }
-    .report-section th {
-        background-color: var(--header-bg-color);
-        color: var(--text-color);
-    }
-    .report-section tbody tr:nth-child(even) {
-        background-color: var(--secondary-bg-color);
-    }
-    /* Styles for the overall summary cards at the top */
-    .summary-cards-overall-container {
-        display: flex;
-        justify-content: space-around;
-        gap: 20px;
-        margin-bottom: 30px; /* Add margin below the summary cards */
-    }
-    .summary-card-overall {
-        background-color: var(--card-bg-color);
-        padding: 20px;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
-        flex: 1;
-        text-align: center;
-        border: 1px solid var(--border-color); /* Add a subtle border */
-    }
-    .summary-card-overall h3 {
-        color: var(--primary-color);
-        margin-top: 0;
-        margin-bottom: 15px;
-        border-bottom: 1px solid var(--border-color); /* Add a line below the heading */
-        padding-bottom: 10px;
-    }
-    .summary-card-overall p {
-        margin: 8px 0; /* Adjust spacing */
-        font-size: 1.15em; /* Slightly larger font */
-        color: var(--text-color);
-    }
-    .summary-card-overall strong {
-        color: var(--dark-text-color); /* Stronger color for numbers */
-        font-size: 1.2em; /* Emphasize numbers */
-    }
+<div class="back-link">
+    <a href="{{ url_for('stock_movement') }}" class="btn btn-secondary">กลับไปหน้าจัดการสต็อก</a>
+</div>
 
-    /* Remove previous summary row styles if they are still present */
-    .summary-row { /* This class will no longer be used if is_summary logic is removed from Python and HTML */
-        /* background-color: var(--primary-color-light) !important; */
-        /* color: var(--primary-color-dark); */
-        /* font-weight: bold; */
-        /* border-top: 2px solid var(--primary-color); */
-        /* border-bottom: 2px solid var(--primary-color); */
-    }
-    /* .single-summary-card { ... } Remove this too as it's replaced by summary-card-overall */
-	
-	 /* CSS สำหรับ date-navigation */
-    .date-navigation {
-        display: flex; /* ใช้ flexbox */
-        justify-content: flex-end; /* จัดองค์ประกอบไปทางขวา */
-        align-items: center;
-        margin-bottom: 20px;
-        gap: 10px; /* ระยะห่างระหว่างปุ่ม/input */
-        width: 100%; /* ให้ div นี้ใช้พื้นที่เต็มความกว้าง */
-    }
-    .date-navigation input[type="date"] {
-        padding: 8px 10px;
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
-        font-size: 1em;
-        cursor: pointer;
-        width: auto; /* ตั้งค่า width เป็น auto เพื่อไม่ให้ยาวเกินไป */
-        flex-grow: 0; /* ไม่ให้ input ขยายตัวเต็มพื้นที่ */
-    }
-    .btn-outline-secondary {
-        background-color: transparent;
-        color: var(--secondary-color);
-        border: 1px solid var(--secondary-color);
-    }
-    .btn-outline-secondary:hover {
-        background-color: var(--secondary-color);
-        color: white;
-    }
-
-</style>
 {% endblock %}
