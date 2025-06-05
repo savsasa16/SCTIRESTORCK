@@ -294,27 +294,31 @@ class User:
 
     @staticmethod
     def get(conn, user_id):
-        # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
-        cursor = conn.cursor()
+        cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
         if "psycopg2" in str(type(conn)):
             cursor.execute("SELECT id, username, password, role FROM users WHERE id = %s", (user_id,))
         else:
             cursor.execute("SELECT id, username, password, role FROM users WHERE id = ?", (user_id,))
         user_data = cursor.fetchone()
         if user_data:
+            # Convert to dict explicitly for sqlite3.Row for consistent access
+            if isinstance(user_data, sqlite3.Row):
+                user_data = dict(user_data)
             return User(user_data['id'], user_data['username'], user_data['password'], user_data['role'])
         return None
 
     @staticmethod
     def get_by_username(conn, username):
-        # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
-        cursor = conn.cursor()
+        cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
         if "psycopg2" in str(type(conn)):
             cursor.execute("SELECT id, username, password, role FROM users WHERE username = %s", (username,))
         else:
             cursor.execute("SELECT id, username, password, role FROM users WHERE username = ?", (username,))
         user_data = cursor.fetchone()
         if user_data:
+            # Convert to dict explicitly for sqlite3.Row for consistent access
+            if isinstance(user_data, sqlite3.Row):
+                user_data = dict(user_data)
             return User(user_data['id'], user_data['username'], user_data['password'], user_data['role'])
         return None
     
@@ -368,16 +372,16 @@ def update_user_role(conn, user_id, new_role):
 
 def delete_user(conn, user_id):
     cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
-    if str(user_id) == current_user.get_id():
-        # การตรวจสอบนี้ไม่ควรอยู่ในฟังก์ชัน database ควรอยู่ใน app.py
-        # แต่ถ้ามีอยู่แล้ว ก็ปล่อยไว้
-        pass # จะถูกจัดการใน app.py
+    # การตรวจสอบนี้ไม่ควรอยู่ในฟังก์ชัน database ควรอยู่ใน app.py
+    # แต่ถ้ามีอยู่แล้ว ก็ปล่อยไว้
+    # if str(user_id) == current_user.get_id(): # current_user ไม่รู้จักที่นี่
+    #     pass 
+    # else:
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
     else:
-        if "psycopg2" in str(type(conn)):
-            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
-        else:
-            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-        conn.commit()
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
 
 # --- Promotion Functions ---
 def add_promotion(conn, name, promo_type, value1, value2, is_active):
@@ -404,7 +408,11 @@ def get_promotion(conn, promo_id):
         cursor.execute("SELECT * FROM promotions WHERE id = %s", (promo_id,))
     else:
         cursor.execute("SELECT * FROM promotions WHERE id = ?", (promo_id,))
-    return cursor.fetchone()
+    promo_data = cursor.fetchone()
+    # Convert to dict explicitly for sqlite3.Row for consistent access
+    if isinstance(promo_data, sqlite3.Row):
+        promo_data = dict(promo_data)
+    return promo_data
 
 def get_all_promotions(conn, include_inactive=False):
     cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
@@ -417,7 +425,13 @@ def get_all_promotions(conn, include_inactive=False):
         cursor.execute(sql_query, params)
     else:
         cursor.execute(sql_query, params)
-    return cursor.fetchall()
+    promotions_data = cursor.fetchall()
+    
+    # Convert to dict explicitly for sqlite3.Row for consistent access
+    processed_promotions = []
+    for promo in promotions_data:
+        processed_promotions.append(dict(promo) if isinstance(promo, sqlite3.Row) else promo)
+    return processed_promotions
 
 def update_promotion(conn, promo_id, name, promo_type, value1, value2, is_active):
     cursor = conn.cursor()
@@ -514,9 +528,9 @@ def get_tire(conn, tire_id):
 
         promo_active_check = tire_dict['promo_is_active']
         if "psycopg2" in str(type(conn)):
-            promo_active_check = bool(promo_active_check)
+            promo_active_check = bool(promo_active_check) # Ensure boolean conversion for psycopg2
         else:
-            promo_active_check = (promo_active_check == 1)
+            promo_active_check = (promo_active_check == 1) # SQLite stores boolean as 1/0
 
         if tire_dict['promotion_id'] is not None and promo_active_check:
             promo_calc_result = calculate_tire_promo_prices(
@@ -720,7 +734,7 @@ def get_all_tires(conn, query=None, brand_filter='all'):
 
     processed_tires = []
     for tire in tires:
-        tire_dict = dict(tire) if not isinstance(tire, dict) else tire
+        tire_dict = dict(tire) if isinstance(tire, sqlite3.Row) else tire # Convert to dict explicitly for sqlite3.Row
 
         promo_calc_result = {
             'price_per_item_promo': None,
@@ -730,9 +744,9 @@ def get_all_tires(conn, query=None, brand_filter='all'):
 
         promo_active_check = tire_dict['promo_is_active']
         if "psycopg2" in str(type(conn)):
-            promo_active_check = bool(promo_active_check)
+            promo_active_check = bool(promo_active_check) # Ensure boolean conversion for psycopg2
         else:
-            promo_active_check = (promo_active_check == 1)
+            promo_active_check = (promo_active_check == 1) # SQLite stores boolean as 1/0
 
         if tire_dict['promotion_id'] is not None and promo_active_check:
             promo_calc_result = calculate_tire_promo_prices(
@@ -780,7 +794,10 @@ def get_tire_movement(conn, movement_id):
             JOIN tires t ON tm.tire_id = t.id
             WHERE tm.id = ?
         """, (movement_id,))
-    return cursor.fetchone()
+    movement_data = cursor.fetchone()
+    if isinstance(movement_data, sqlite3.Row):
+        movement_data = dict(movement_data)
+    return movement_data
 
 def get_wheel_movement(conn, movement_id):
     cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
@@ -798,7 +815,10 @@ def get_wheel_movement(conn, movement_id):
             JOIN wheels w ON wm.wheel_id = w.id
             WHERE wm.id = ?
         """, (movement_id,))
-    return cursor.fetchone()
+    movement_data = cursor.fetchone()
+    if isinstance(movement_data, sqlite3.Row):
+        movement_data = dict(movement_data)
+    return movement_data
 
 def update_wheel_movement(conn, movement_id, new_notes, new_image_filename=None):
     cursor = conn.cursor()
@@ -869,7 +889,8 @@ def get_all_tire_brands(conn):
         cursor.execute("SELECT DISTINCT brand FROM tires ORDER BY brand")
     else:
         cursor.execute("SELECT DISTINCT brand FROM tires ORDER BY brand")
-    return [row['brand'] for row in cursor.fetchall()]
+    brands_data = cursor.fetchall()
+    return [row['brand'] for row in brands_data]
 
 # --- Wheel Functions ---
 def get_all_wheels(conn, query=None, brand_filter='all'):
@@ -906,7 +927,13 @@ def get_all_wheels(conn, query=None, brand_filter='all'):
         cursor.execute(sql_query, params)
     else:
         cursor.execute(sql_query, params)
-    return cursor.fetchall()
+    wheels_data = cursor.fetchall()
+    
+    # Convert to dict explicitly for sqlite3.Row for consistent access
+    processed_wheels = []
+    for wheel in wheels_data:
+        processed_wheels.append(dict(wheel) if isinstance(wheel, sqlite3.Row) else wheel)
+    return processed_wheels
 
 def get_wheel(conn, wheel_id):
     cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
@@ -914,7 +941,10 @@ def get_wheel(conn, wheel_id):
         cursor.execute("SELECT * FROM wheels WHERE id = %s", (wheel_id,))
     else:
         cursor.execute("SELECT * FROM wheels WHERE id = ?", (wheel_id,))
-    return cursor.fetchone()
+    wheel_data = cursor.fetchone()
+    if isinstance(wheel_data, sqlite3.Row):
+        wheel_data = dict(wheel_data)
+    return wheel_data
 
 # แก้ไขพารามิเตอร์: image_filename -> image_url
 def add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url):
@@ -1072,7 +1102,8 @@ def get_all_wheel_brands(conn):
         cursor.execute("SELECT DISTINCT brand FROM wheels ORDER BY brand")
     else:
         cursor.execute("SELECT DISTINCT brand FROM wheels ORDER BY brand")
-    return [row['brand'] for row in cursor.fetchall()]
+    brands_data = cursor.fetchall()
+    return [row['brand'] for row in brands_data]
 
 def add_wheel_fitment(conn, wheel_id, brand, model, year_start, year_end):
     cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
@@ -1094,7 +1125,13 @@ def get_wheel_fitments(conn, wheel_id):
         cursor.execute("SELECT * FROM wheel_fitments WHERE wheel_id = %s ORDER BY brand, model, year_start", (wheel_id,))
     else:
         cursor.execute("SELECT * FROM wheel_fitments WHERE wheel_id = ? ORDER BY brand, model, year_start", (wheel_id,))
-    return cursor.fetchall()
+    fitments_data = cursor.fetchall()
+    
+    # Convert to dict explicitly for sqlite3.Row for consistent access
+    processed_fitments = []
+    for fitment in fitments_data:
+        processed_fitments.append(dict(fitment) if isinstance(fitment, sqlite3.Row) else fitment)
+    return processed_fitments
 
 def delete_wheel_fitment(conn, fitment_id):
     cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
