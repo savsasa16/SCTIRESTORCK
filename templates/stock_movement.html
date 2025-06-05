@@ -26,11 +26,11 @@
             <input type="hidden" name="submit_type" value="tire_movement">
             <div class="form-row">
                 <div class="form-group half-width">
-                    <label for="tire_id">เลือกยาง (ID - ยี่ห้อ รุ่น เบอร์ยาง):</label>
+                    <label for="tire_id">เลือกยาง (ยี่ห้อ รุ่น เบอร์ยาง):</label>
                     <select id="tire_id" name="tire_id" required>
                         <option value="">-- เลือกยาง --</option>
                         {% for tire in tires %}
-                            <option value="{{ tire.id }}">{{ tire.id }} - {{ tire.brand }} {{ tire.model }} {{ tire.size }} (คงเหลือ: {{ tire.quantity }})</option>
+                            <option value="{{ tire.id }}">{{ tire.brand }} {{ tire.model }} {{ tire.size }} (คงเหลือ: {{ tire.quantity }})</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -60,10 +60,6 @@
         <button type="submit" class="btn btn-primary">บันทึกการเคลื่อนไหว</button>
     </form>
 </div>
-            {# ส่วนนี้เป็นโค้ดซ้ำที่ควรลบออก หากไม่ได้ตั้งใจให้มีสองปุ่ม #}
-            {# <button type="submit" class="btn btn-primary">บันทึกการเคลื่อนไหว</button> #}
-        {# </form> #}
-    {# </div> #}
 
     <h3>ประวัติการเคลื่อนไหวล่าสุดของยาง</h3>
     {% if tire_movements %}
@@ -72,26 +68,23 @@
                  <thead>
                 <tr>
                     <th>เวลา</th>
-                    <th>ID ยาง</th>
-                    <th>ข้อมูลยาง</th>
+                    <th>ข้อมูลยาง</th> {# Changed from ID ยาง #}
                     <th>ประเภท</th>
                     <th>จำนวน</th>
                     <th>คงเหลือ</th>
                     <th>หมายเหตุ</th>
-                    <th>หลักฐาน</th> {# เพิ่มคอลัมน์นี้ #}
+                    <th>หลักฐาน</th>
                 </tr>
             </thead>
                 <tbody>
                     {% for movement in tire_movements %}
                     <tr>
-                        <td>{{ movement.timestamp }}</td>
-                        <td>{{ movement.tire_id }}</td>
-                        <td>{{ movement.brand }} {{ movement.model }} {{ movement.size }}</td>
+                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        <td>{{ movement.brand }} {{ movement.model }} {{ movement.size }}</td> {# Removed ID #}
                         <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                         <td>{{ movement.quantity_change }}</td>
                         <td>{{ movement.remaining_quantity }}</td>
                         <td>
-                            {# ตรวจสอบว่า movement.notes มีค่าหรือไม่ #}
                             {% if movement.notes %}
                                 {{ movement.notes }}
                             {% else %}
@@ -100,11 +93,11 @@
                         </td>
                         <td>
                             {% if movement.image_filename %}
-                                <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a> {# เปลี่ยน url_for ไปใช้ URL โดยตรง #}
+                                <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a>
                             {% else %}
                                 -
                             {% endif %}
-                        </td> {# เพิ่มเซลล์นี้ #}
+                        </td>
                     </tr>
                 {% endfor %}
                 </tbody>
@@ -118,15 +111,15 @@
 <div id="wheel_movements" class="tab-content {{ 'active' if active_tab == 'wheel_movements' }}">
     <h3>จัดการสต็อกแม็ก</h3>
     <div class="form-section">
-        <form action="{{ url_for('stock_movement') }}" method="post" enctype="multipart/form-data"> {# เพิ่ม enctype #}
+        <form action="{{ url_for('stock_movement') }}" method="post" enctype="multipart/form-data">
             <input type="hidden" name="submit_type" value="wheel_movement">
             <div class="form-row">
                 <div class="form-group half-width">
-                    <label for="wheel_id">เลือกแม็ก (ID - ยี่ห้อ ลาย ขอบ):</label>
+                    <label for="wheel_id">เลือกแม็ก (ยี่ห้อ ลาย ขอบ):</label>
                     <select id="wheel_id" name="wheel_id" required>
                         <option value="">-- เลือกแม็ก --</option>
                         {% for wheel in wheels %}
-                            <option value="{{ wheel.id }}">{{ wheel.id }} - {{ wheel.brand }} {{ wheel.model }} {{ "%.1f"|format(wheel.diameter) }} นิ้ว (คงเหลือ: {{ wheel.quantity }})</option>
+                            <option value="{{ wheel.id }}">{{ wheel.brand }} {{ wheel.model }} {{ "%.1f"|format(wheel.diameter) }} นิ้ว (คงเหลือ: {{ wheel.quantity }})</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -156,33 +149,30 @@
         </form>
     </div>
 
-    <h3>ประวัติการเคลื่อนไหวล่าสุดของแม็ก</h3> {# แก้ไขตรงนี้ #}
+    <h3>ประวัติการเคลื่อนไหวล่าสุดของแม็ก</h3>
     {% if wheel_movements %}
         <div class="table-responsive">
             <table>
                 <thead>
                 <tr>
                     <th>เวลา</th>
-                    <th>ID แม็ก</th>
-                    <th>ข้อมูลแม็ก</th>
+                    <th>ข้อมูลแม็ก</th> {# Changed from ID แม็ก #}
                     <th>ประเภท</th>
                     <th>จำนวน</th>
                     <th>คงเหลือ</th>
                     <th>หมายเหตุ</th>
-                    <th>หลักฐาน</th> {# เพิ่มคอลัมน์นี้ #}
+                    <th>หลักฐาน</th>
                 </tr>
             </thead>
                 <tbody>
                      {% for movement in wheel_movements %}
                     <tr>
-                        <td>{{ movement.timestamp }}</td>
-                        <td>{{ movement.wheel_id }}</td>
-                        <td>{{ movement.brand }} {{ movement.model }} {{ "%.1f"|format(movement.diameter) }} นิ้ว</td>
+                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        <td>{{ movement.brand }} {{ movement.model }} {{ "%.1f"|format(movement.diameter) }} นิ้ว</td> {# Removed ID #}
                         <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                         <td>{{ movement.quantity_change }}</td>
                         <td>{{ movement.remaining_quantity }}</td>
                         <td>
-                            {# ตรวจสอบว่า movement.notes มีค่าหรือไม่ #}
                             {% if movement.notes %}
                                 {{ movement.notes }}
                             {% else %}
@@ -191,11 +181,11 @@
                         </td>
                         <td>
                             {% if movement.image_filename %}
-                                <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a> {# เปลี่ยน url_for ไปใช้ URL โดยตรง #}
+                                <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a>
                             {% else %}
                                 -
                             {% endif %}
-                        </td> {# เพิ่มเซลล์นี้ #}
+                        </td>
                     </tr>
                 {% endfor %}
                 </tbody>
