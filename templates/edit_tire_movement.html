@@ -22,8 +22,8 @@
             <label>รูปบิลปัจจุบัน:</label>
             {% if movement.image_filename %}
                 <p>
-                    <a href="{{ url_for('static', filename='uploads/bill_images/' + movement.image_filename) }}" target="_blank">
-                        <img src="{{ url_for('static', filename='uploads/bill_images/' + movement.image_filename) }}" alt="Bill Image" style="max-width: 150px; height: auto; border: 1px solid #ccc;">
+                    <a href="{{ movement.image_filename }}" target="_blank">
+                        <img src="{{ movement.image_filename }}" alt="Bill Image" style="max-width: 150px; height: auto; border: 1px solid #ccc;">
                     </a>
                 </p>
                 <div class="form-check">
