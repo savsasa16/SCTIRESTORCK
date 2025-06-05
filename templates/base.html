@@ -3,47 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ระบบจัดการสต็อกยางและแม็ก{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <title>{% block title %}ระบบจัดการสต็อกสินค้า{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
-    <link rel="icon" type="image/png" sizes="16x16" href="https://res.cloudinary.com/dr1mvng0e/image/upload/v1749139683/favicon-16x16_qglrom.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="https://res.cloudinary.com/dr1mvng0e/image/upload/v1749139683/favicon-32x32_mqkifl.png">
-
-    <link rel="apple-touch-icon" sizes="180x180" href="https://res.cloudinary.com/dr1mvng0e/image/upload/v1749139683/apple-touch-icon_mo3lzy.png">
-
-    <link rel="icon" type="image/png" sizes="192x192" href="https://res.cloudinary.com/dr1mvng0e/image/upload/v1749139684/android-chrome-192x192_urzdvt.png">
-
-    <link rel="shortcut icon" href="https://res.cloudinary.com/dr1mvng0e/image/upload/v1749139683/favicon_svybox.ico"> 
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+	<link href="{{ url_for('static', filename='lib/select2/select2.min.css') }}" rel="stylesheet" />
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='lib/flatpickr/flatpickr.min.css') }}">
 </head>
 <body>
-    <header>
-        <div class="navbar">
-            <div class="logo">
-                <a href="{{ url_for('index') }}">
-                    <img src="YOUR_EXTERNAL_URL/your_main_logo.png" alt="Your Company Logo" class="site-logo">
-                </a>
-            </div>
-            <nav>
-                <ul>
-                    <li><a href="{{ url_for('index') }}">หน้าหลัก</a></li>
-                    <li><a href="{{ url_for('tires') }}">จัดการยาง</a></li>
-                    <li><a href="{{ url_for('wheels') }}">จัดการแม็ก</a></li>
-                    <li><a href="{{ url_for('stock_movement') }}">รับเข้า / จ่ายออกสต็อก</a></li>
-                    <li><a href="{{ url_for('daily_stock_report') }}">รายงานสต็อกประจำวัน</a></li>
-                </ul>
-            </nav>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="{{ url_for('index') }}">ระบบจัดการสต็อก</a>
         </div>
-    </header>
-    <main>
+        <div class="navbar-links">
+            <a href="{{ url_for('index') }}"><i class="fas fa-warehouse"></i> สต็อกสินค้า</a>
+            <a href="{{ url_for('add_item') }}"><i class="fas fa-plus-circle"></i> เพิ่มสินค้า</a>
+            <a href="{{ url_for('stock_movement') }}"><i class="fas fa-exchange-alt"></i> รับเข้า/จ่ายออก</a>
+            <a href="{{ url_for('export_import') }}"><i class="fas fa-file-excel"></i> นำเข้า/ส่งออก Excel</a>
+            <a href="{{ url_for('promotions') }}"><i class="fas fa-tags"></i> จัดการโปรโมชัน</a>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('manage_users') }}"><i class="fas fa-users"></i> จัดการผู้ใช้</a>
+                <span class="user-info">สวัสดี, {{ current_user.username }}!</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger">ออกจากระบบ</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flash-messages">
+                    {% for category, message in messages %}
+                        <li class="flash-message {{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
-    </main>
+    </div>
+
     <footer>
-        <p>&copy; 2025 ระบบจัดการสต็อกยางและแม็ก</p>
+        <p>&copy; {{ get_bkk_time().year }} ระบบจัดการสต็อกสินค้า. All rights reserved.</p>
     </footer>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script> 
+    <script src="{{ url_for('static', filename='lib/select2/select2.min.js') }}"></script>
+    
+    <script src="{{ url_for('static', filename='lib/flatpickr/flatpickr.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/flatpickr/th.min.js') }}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(msg => {
+                setTimeout(() => {
+                    msg.style.opacity = '0';
+                    msg.style.height = '0';
+                    msg.style.padding = '0';
+                    msg.style.marginBottom = '0';
+                    msg.style.overflow = 'hidden';
+                    msg.style.transition = 'opacity 0.6s ease-out, height 0.6s ease-out, padding 0.6s ease-out, margin-bottom 0.6s ease-out';
+                    msg.addEventListener('transitionend', () => msg.remove());
+                }, 5000); 
+            });
+        });
+    </script>
 </body>
 </html>
