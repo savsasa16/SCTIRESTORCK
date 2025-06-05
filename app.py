@@ -59,30 +59,30 @@ def close_db(e=None):
     if db is not None:
         db.close()
 
-# **แก้ไข:** ปรับปรุง setup_database ให้มีการเชื่อมต่อและ init_db อย่างถูกต้อง
+# **ถูกลบออกแล้ว:** ปรับปรุง setup_database ให้มีการเชื่อมต่อและ init_db อย่างถูกต้อง
 # และเพิ่มการตรวจสอบว่า database มีการสร้างตาราง users หรือยัง
-def setup_database():
-    with app.app_context():
-        conn = get_db() # เรียก get_db เพื่อให้แน่ใจว่าเชื่อมต่อแล้ว
-        database.init_db(conn) # เรียก init_db เพื่อสร้างตารางถ้ายังไม่มี
+# def setup_database():
+#     with app.app_context():
+#         conn = get_db() # เรียก get_db เพื่อให้แน่ใจว่าเชื่อมต่อแล้ว
+#         database.init_db(conn) # เรียก init_db เพื่อสร้างตารางถ้ายังไม่มี
         
-        # ตรวจสอบและสร้าง admin user เฉพาะถ้าตาราง users ยังไม่มีข้อมูล
-        try:
-            # ต้องสร้าง cursor เพื่อ execute query
-            cursor = conn.cursor() 
-            cursor.execute("SELECT COUNT(*) FROM users")
-            user_count = cursor.fetchone()[0] # ดึงผลลัพธ์จาก cursor
+#         # ตรวจสอบและสร้าง admin user เฉพาะถ้าตาราง users ยังไม่มีข้อมูล
+#         try:
+#             # ต้องสร้าง cursor เพื่อ execute query
+#             cursor = conn.cursor()
+#             cursor.execute("SELECT COUNT(*) FROM users")
+#             user_count = cursor.fetchone()[0] # ดึงผลลัพธ์จาก cursor
             
-            if user_count == 0:
-                admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-                admin_password = os.environ.get('ADMIN_PASSWORD', 'adminpassword')
-                database.add_user(conn, admin_username, admin_password, role='admin')
-                print(f"Initial admin user '{admin_username}' created with password '{admin_password}' and role 'admin'. PLEASE CHANGE THIS!")
-        except Exception as e:
-            # Log ข้อผิดพลาด แต่ไม่ raise เพื่อให้แอปทำงานต่อได้ในครั้งแรกที่ตารางยังไม่ถูกสร้าง
-            # ตารางจะถูกสร้างโดย init_db แต่ถ้า app.py รันก่อน init_db ทันทีอาจจะ fail
-            print(f"Warning: Error during initial user setup (table might not exist yet): {e}")
-            pass # ไม่ต้อง raise error เพื่อให้แอปทำงานได้
+#             if user_count == 0:
+#                 admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
+#                 admin_password = os.environ.get('ADMIN_PASSWORD', 'adminpassword')
+#                 database.add_user(conn, admin_username, admin_password, role='admin')
+#                 print(f"Initial admin user '{admin_username}' created with password '{admin_password}' and role 'admin'. PLEASE CHANGE THIS!")
+#         except Exception as e:
+#             # Log ข้อผิดพลาด แต่ไม่ raise เพื่อให้แอปทำงานต่อได้ในครั้งแรกที่ตารางยังไม่ถูกสร้าง
+#             # ตารางจะถูกสร้างโดย init_db แต่ถ้า app.py รันก่อน init_db ทันทีอาจจะ fail
+#             print(f"Warning: Error during initial user setup (table might not exist yet): {e}")
+#             pass # ไม่ต้อง raise error เพื่อให้แอปทำงานได้
 
         # close_db() # ไม่ต้องเรียก close_db ตรงนี้ เพราะ @app.teardown_appcontext จะจัดการให้
 
@@ -105,7 +105,7 @@ def load_user(user_id):
     
     # **แก้ไขตรงนี้**: ลบ database.init_db(conn) ออกจาก user_loader 
     # เพราะควรจะถูกจัดการโดย init_db.py หรือ setup_database ที่รันครั้งแรก
-    # database.init_db(conn) 
+    # database.init_db(conn) # <-- ถูกลบออกแล้ว
 
     return database.User.get(conn, user_id)
 
@@ -573,33 +573,28 @@ def edit_wheel(wheel_id):
     if request.method == 'POST':
         brand = request.form['brand'].strip()
         model = request.form['model'].strip()
-        diameter = request.form['diameter']
+        diameter = float(request.form['diameter'])
         pcd = request.form['pcd'].strip()
-        width = request.form['width']
+        width = float(request.form['width'])
         et = request.form.get('et')
         color = request.form.get('color', '').strip()
         cost = request.form.get('cost')
         cost_online = request.form.get('cost_online')
         wholesale_price1 = request.form.get('wholesale_price1')
         wholesale_price2 = request.form.get('wholesale_price2')
-        retail_price = request.form['retail_price']
+        retail_price = float(request.form['retail_price'])
         image_file = request.files.get('image_file')
 
         if not brand or not model or not pcd or not str(diameter) or not str(width) or not str(retail_price):
             flash('กรุณากรอกข้อมูลแม็กให้ครบถ้วนในช่องที่มีเครื่องหมาย *', 'danger')
         else:
             try:
-                # Type conversions
-                diameter = float(diameter)
-                width = float(width)
-                retail_price = float(retail_price)
-
-                et = int(et) if et and et.strip() else None
+                et = int(et) if et else None
+                cost_online = float(cost_online) if cost_online else None
+                wholesale_price1 = float(wholesale_price1) if wholesale_price1 else None
+                wholesale_price2 = float(wholesale_price2) if wholesale_price2 else None
                 cost = float(cost) if cost and cost.strip() else None
-                cost_online = float(cost_online) if cost_online and cost_online.strip() else None
-                wholesale_price1 = float(wholesale_price1) if wholesale_price1 and wholesale_price1.strip() else None
-                wholesale_price2 = float(wholesale_price2) if wholesale_price2 and wholesale_price2.strip() else None
-                
+
                 current_image_url = wheel['image_filename'] # ดึง URL รูปภาพปัจจุบันจากฐานข้อมูล
                 
                 if image_file and image_file.filename != '': # ตรวจสอบว่ามีการเลือกไฟล์ใหม่
@@ -743,39 +738,21 @@ def stock_movement():
 
     # --- Fetch movements for BOTH tabs, regardless of active_tab ---
     # ดึงประวัติยาง 50 รายการล่าสุดเสมอ
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
-    tire_movements_query_sql = """
-        SELECT tm.*, t.brand, t.model, t.size 
-        FROM tire_movements tm 
-        JOIN tires t ON tm.tire_id = t.id 
-        ORDER BY tm.timestamp DESC 
-        LIMIT 50
-    """
-    if "psycopg2" in str(type(conn)):
-        cursor.execute(tire_movements_query_sql)
-    else:
-        cursor.execute(tire_movements_query_sql)
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
+    cursor.execute("SELECT tm.*, t.brand, t.model, t.size FROM tire_movements tm JOIN tires t ON tm.tire_id = t.id ORDER BY tm.timestamp DESC LIMIT 50")
     tire_movements_history = cursor.fetchall()
 
     # ดึงประวัติแม็ก 50 รายการล่าสุดเสมอ
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
-    wheel_movements_query_sql = """
-        SELECT wm.*, w.brand, w.model, w.diameter 
-        FROM wheel_movements wm 
-        JOIN wheels w ON wm.wheel_id = w.id 
-        ORDER BY wm.timestamp DESC 
-        LIMIT 50
-    """
-    if "psycopg2" in str(type(conn)):
-        cursor.execute(wheel_movements_query_sql)
-    else:
-        cursor.execute(wheel_movements_query_sql)
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
+    cursor.execute("SELECT wm.*, w.brand, w.model, w.diameter FROM wheel_movements wm JOIN wheels w ON wm.wheel_id = w.id ORDER BY wm.timestamp DESC LIMIT 50")
     wheel_movements_history = cursor.fetchall()
 
     # **แก้ไขเพิ่มเติม:** แปลง timestamp strings ให้เป็น datetime objects สำหรับ tire_movements_history
     processed_tire_movements_history = []
     for movement in tire_movements_history:
-        m_dict = dict(movement) if isinstance(movement, sqlite3.Row) else movement # Convert to dict explicitly for sqlite3.Row
+        m_dict = dict(movement) # Convert to dict to make it mutable
         if isinstance(m_dict['timestamp'], str):
             try:
                 m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
@@ -788,7 +765,7 @@ def stock_movement():
     # **แก้ไขเพิ่มเติม:** แปลง timestamp strings ให้เป็น datetime objects สำหรับ wheel_movements_history
     processed_wheel_movements_history = []
     for movement in wheel_movements_history:
-        m_dict = dict(movement) if isinstance(movement, sqlite3.Row) else movement # Convert to dict explicitly for sqlite3.Row
+        m_dict = dict(movement) # Convert to dict to make it mutable
         if isinstance(m_dict['timestamp'], str):
             try:
                 m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
@@ -1089,7 +1066,8 @@ def daily_stock_report():
         ORDER BY t.brand, t.model, t.size, tm.timestamp DESC
     """
     if "psycopg2" in str(type(conn)):
-        cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+        # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+        cursor = conn.cursor()
         cursor.execute(tire_movements_query, (sql_date_filter,))
         tire_movements_raw = cursor.fetchall()
     else: # SQLite
@@ -1099,7 +1077,7 @@ def daily_stock_report():
     # Make sure items are mutable (e.g., dict) if they are sqlite3.Row objects
     processed_tire_movements_raw = []
     for movement in tire_movements_raw:
-        m_dict = dict(movement) if isinstance(movement, sqlite3.Row) else movement # Convert to dict explicitly for sqlite3.Row
+        m_dict = dict(movement) # Convert to dict to make it mutable
         if isinstance(m_dict['timestamp'], str):
             try:
                 # Use fromisoformat for robust parsing of ISO 8601 strings
@@ -1117,11 +1095,11 @@ def daily_stock_report():
 
     sorted_detailed_tire_report = []
     detailed_tire_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0})
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
     cursor.execute("SELECT id, quantity FROM tires")
     current_tire_quantities = cursor.fetchall()
-    # Convert to dict explicitly for sqlite3.Row for consistent access
-    tire_current_qty_map = {t['id'] if isinstance(t, sqlite3.Row) else t['id']: t['quantity'] if isinstance(t, sqlite3.Row) else t['quantity'] for t in current_tire_quantities}
+    tire_current_qty_map = {t['id']: t['quantity'] for t in current_tire_quantities}
 
     for movement in tire_movements_raw: # ใช้ tire_movements_raw
         key = (movement['brand'], movement['model'], movement['size'])
@@ -1188,7 +1166,8 @@ def daily_stock_report():
         ORDER BY w.brand, w.model, w.diameter, wm.timestamp DESC
     """
     if "psycopg2" in str(type(conn)):
-        cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+        # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+        cursor = conn.cursor()
         cursor.execute(wheel_movements_query, (sql_date_filter,))
         wheel_movements_raw = cursor.fetchall()
     else: # SQLite
@@ -1197,7 +1176,7 @@ def daily_stock_report():
     # Convert timestamp strings to datetime objects for wheel movements
     processed_wheel_movements_raw = []
     for movement in wheel_movements_raw:
-        m_dict = dict(movement) if isinstance(movement, sqlite3.Row) else movement # Convert to dict explicitly for sqlite3.Row
+        m_dict = dict(movement) # Convert to dict to make it mutable
         if isinstance(m_dict['timestamp'], str):
             try:
                 # Use fromisoformat for robust parsing of ISO 8601 strings
@@ -1211,11 +1190,11 @@ def daily_stock_report():
 
     sorted_detailed_wheel_report = []
     detailed_wheel_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0})
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
     cursor.execute("SELECT id, quantity FROM wheels")
     current_wheel_quantities = cursor.fetchall()
-    # Convert to dict explicitly for sqlite3.Row for consistent access
-    wheel_current_qty_map = {w['id'] if isinstance(w, sqlite3.Row) else w['id']: w['quantity'] if isinstance(w, sqlite3.Row) else w['quantity'] for w in current_wheel_quantities}
+    wheel_current_qty_map = {w['id']: w['quantity'] for w in current_wheel_quantities}
 
     for movement in wheel_movements_raw: # ใช้ wheel_movements_raw
         key = (movement['brand'], movement['model'], movement['diameter'], movement['pcd'], movement['width'])
@@ -1273,11 +1252,13 @@ def daily_stock_report():
 
     tire_total_in = sum(item['IN'] for item in sorted_detailed_tire_report if not item['is_summary'])
     tire_total_out = sum(item['OUT'] for item in sorted_detailed_tire_report if not item['is_summary'])
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
     cursor.execute("SELECT SUM(quantity) AS total_qty FROM tires")
     all_tires_in_stock = cursor.fetchone()[0] or 0
 
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
     cursor.execute("SELECT SUM(quantity) AS total_qty FROM wheels")
     all_wheels_in_stock = cursor.fetchone()[0] or 0
 
@@ -1417,14 +1398,12 @@ def import_tires_action():
                     
                     year_of_manufacture = str(row['ปีผลิต']).strip() if pd.notna(row['ปีผลิต']) else None
                     
-                    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+                    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+                    cursor = conn.cursor()
                     cursor.execute("SELECT id, quantity FROM tires WHERE brand = %s AND model = %s AND size = %s", (brand, model, size))
                     existing_tire = cursor.fetchone()
 
                     if existing_tire:
-                        # Convert to dict explicitly for sqlite3.Row for consistent access
-                        if isinstance(existing_tire, sqlite3.Row):
-                            existing_tire = dict(existing_tire)
                         tire_id = existing_tire['id']
                         database.update_tire_import(conn, tire_id, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, 
                                                     promotion_id, year_of_manufacture)
@@ -1563,15 +1542,13 @@ def import_wheels_action():
                     wholesale_price1 = float(row['ราคาขายส่ง 1']) if pd.notna(row['ราคาขายส่ง 1']) else None
                     wholesale_price2 = float(row['ราคาขายส่ง 2']) if pd.notna(row['ราคาขายส่ง 2']) else None
                     
-                    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+                    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+                    cursor = conn.cursor()
                     cursor.execute("SELECT id, quantity FROM wheels WHERE brand = %s AND model = %s AND diameter = %s AND pcd = %s AND width = %s AND (et IS %s OR et = %s) AND (color IS %s OR color = %s)", 
                                                  (brand, model, diameter, pcd, width, et, et, color, color))
                     existing_wheel = cursor.fetchone()
 
                     if existing_wheel:
-                        # Convert to dict explicitly for sqlite3.Row for consistent access
-                        if isinstance(existing_wheel, sqlite3.Row):
-                            existing_wheel = dict(existing_wheel)
                         wheel_id = existing_wheel['id']
                         database.update_wheel_import(conn, wheel_id, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
                         updated_count += 1
@@ -1617,15 +1594,11 @@ def manage_users():
         flash('คุณไม่มีสิทธิ์เข้าถึงหน้าจัดการผู้ใช้', 'danger')
         return redirect(url_for('index'))
     conn = get_db()
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
     cursor.execute("SELECT id, username, role FROM users")
-    users_data = cursor.fetchall()
-    
-    # Convert to dict explicitly for sqlite3.Row for consistent access
-    processed_users = []
-    for user in users_data:
-        processed_users.append(dict(user) if isinstance(user, sqlite3.Row) else user)
-    return render_template('manage_users.html', users=processed_users)
+    users = cursor.fetchall()
+    return render_template('manage_users.html', users=users)
 
 @app.route('/add_user', methods=['GET', 'POST'])
 @login_required
@@ -1670,11 +1643,9 @@ def edit_user_role(user_id):
         return redirect(url_for('manage_users'))
 
     conn = get_db()
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
-    if "psycopg2" in str(type(conn)):
-        cursor.execute("UPDATE users SET role = %s WHERE id = %s", (new_role, user_id))
-    else:
-        cursor.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET role = %s WHERE id = %s" if "psycopg2" in str(type(conn)) else "UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
     conn.commit()
     flash(f'แก้ไขบทบาทผู้ใช้ ID {user_id} เป็น "{new_role}" สำเร็จ!', 'success')
     return redirect(url_for('manage_users'))
@@ -1691,7 +1662,8 @@ def delete_user(user_id):
     if str(user_id) == current_user.get_id():
         flash('ไม่สามารถลบผู้ใช้ที่กำลังเข้าสู่ระบบอยู่ได้', 'danger')
     else:
-        cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+        # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+        cursor = conn.cursor()
         cursor.execute("DELETE FROM users WHERE id = %s" if "psycopg2" in str(type(conn)) else "DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()
         flash('ลบผู้ใช้สำเร็จ!', 'success')
