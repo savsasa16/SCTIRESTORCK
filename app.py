@@ -79,9 +79,9 @@ def setup_database():
                 database.add_user(conn, admin_username, admin_password, role='admin')
                 print(f"Initial admin user '{admin_username}' created with password '{admin_password}' and role 'admin'. PLEASE CHANGE THIS!")
         except Exception as e:
-            print(f"Error during initial user setup: {e}")
-            # อาจเป็นเพราะตารางยังไม่ถูกสร้างสมบูรณ์ หรือสิทธิ์ไม่พอ
-            # ให้ลองรันอีกครั้งหลังจาก Deploy ครั้งแรกสำเร็จ
+            # Log ข้อผิดพลาด แต่ไม่ raise เพื่อให้แอปทำงานต่อได้ในครั้งแรกที่ตารางยังไม่ถูกสร้าง
+            # ตารางจะถูกสร้างโดย init_db แต่ถ้า app.py รันก่อน init_db ทันทีอาจจะ fail
+            print(f"Warning: Error during initial user setup (table might not exist yet): {e}")
             pass # ไม่ต้อง raise error เพื่อให้แอปทำงานได้
 
         # close_db() # ไม่ต้องเรียก close_db ตรงนี้ เพราะ @app.teardown_appcontext จะจัดการให้
@@ -102,6 +102,13 @@ login_manager.login_view = 'login'
 @login_manager.user_loader
 def load_user(user_id):
     conn = get_db()
+    
+    # **แก้ไขตรงนี้**: เรียก database.init_db(conn) อีกครั้ง
+    # เพื่อให้แน่ใจว่าตารางถูกสร้างก่อนที่ User.get จะถูกเรียก
+    # นี่คือ workaround สำหรับ Render ที่อาจจะไม่ได้รัน setup_database
+    # ก่อน flask_login จะโหลด user ทันที
+    database.init_db(conn) 
+
     return database.User.get(conn, user_id)
 
 # --- Login/Logout Routes ---
@@ -733,12 +740,16 @@ def stock_movement():
 
     # --- Fetch movements for BOTH tabs, regardless of active_tab ---
     # ดึงประวัติยาง 50 รายการล่าสุดเสมอ
-    cursor_tire_movements = conn.execute("SELECT tm.*, t.brand, t.model, t.size FROM tire_movements tm JOIN tires t ON tm.tire_id = t.id ORDER BY tm.timestamp DESC LIMIT 50")
-    tire_movements_history = cursor_tire_movements.fetchall()
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
+    cursor.execute("SELECT tm.*, t.brand, t.model, t.size FROM tire_movements tm JOIN tires t ON tm.tire_id = t.id ORDER BY tm.timestamp DESC LIMIT 50")
+    tire_movements_history = cursor.fetchall()
 
     # ดึงประวัติแม็ก 50 รายการล่าสุดเสมอ
-    cursor_wheel_movements = conn.execute("SELECT wm.*, w.brand, w.model, w.diameter FROM wheel_movements wm JOIN wheels w ON wm.wheel_id = w.id ORDER BY wm.timestamp DESC LIMIT 50")
-    wheel_movements_history = cursor_wheel_movements.fetchall()
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
+    cursor.execute("SELECT wm.*, w.brand, w.model, w.diameter FROM wheel_movements wm JOIN wheels w ON wm.wheel_id = w.id ORDER BY wm.timestamp DESC LIMIT 50")
+    wheel_movements_history = cursor.fetchall()
 
     # **แก้ไขเพิ่มเติม:** แปลง timestamp strings ให้เป็น datetime objects สำหรับ tire_movements_history
     processed_tire_movements_history = []
@@ -1086,7 +1097,10 @@ def daily_stock_report():
 
     sorted_detailed_tire_report = []
     detailed_tire_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0})
-    current_tire_quantities = conn.execute("SELECT id, quantity FROM tires").fetchall()
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, quantity FROM tires")
+    current_tire_quantities = cursor.fetchall()
     tire_current_qty_map = {t['id']: t['quantity'] for t in current_tire_quantities}
 
     for movement in tire_movements_raw: # ใช้ tire_movements_raw
@@ -1178,7 +1192,10 @@ def daily_stock_report():
 
     sorted_detailed_wheel_report = []
     detailed_wheel_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0})
-    current_wheel_quantities = conn.execute("SELECT id, quantity FROM wheels").fetchall()
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, quantity FROM wheels")
+    current_wheel_quantities = cursor.fetchall()
     wheel_current_qty_map = {w['id']: w['quantity'] for w in current_wheel_quantities}
 
     for movement in wheel_movements_raw: # ใช้ wheel_movements_raw
@@ -1275,6 +1292,7 @@ def export_import():
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการนำเข้า/ส่งออกข้อมูล', 'danger')
         return redirect(url_for('index'))
+    conn = get_db() # **แก้ไข:** ต้องเรียก get_db() เพื่อให้ init_db ได้ทำงานก่อน
     active_tab = request.args.get('tab', 'tires_excel')
     return render_template('export_import.html', active_tab=active_tab)
 
