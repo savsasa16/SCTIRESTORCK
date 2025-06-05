@@ -1,3 +1,4 @@
+# app.py
 from flask import Flask, render_template, request, redirect, url_for, flash, g, send_file, current_app
 import database
 import pandas as pd
@@ -10,7 +11,6 @@ import pytz
 from collections import defaultdict
 import re
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # *** เพิ่ม Cloudinary imports ***
@@ -59,18 +59,32 @@ def close_db(e=None):
     if db is not None:
         db.close()
 
+# **แก้ไข:** ปรับปรุง setup_database ให้มีการเชื่อมต่อและ init_db อย่างถูกต้อง
+# และเพิ่มการตรวจสอบว่า database มีการสร้างตาราง users หรือยัง
 def setup_database():
     with app.app_context():
-        conn = get_db()
-        database.init_db(conn)
-        user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        if user_count == 0:
-            admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-            admin_password = os.environ.get('ADMIN_PASSWORD', 'adminpassword')
-            database.add_user(conn, admin_username, admin_password, role='admin')
-            print(f"Initial admin user '{admin_username}' created with password '{admin_password}' and role 'admin'. PLEASE CHANGE THIS!")
+        conn = get_db() # เรียก get_db เพื่อให้แน่ใจว่าเชื่อมต่อแล้ว
+        database.init_db(conn) # เรียก init_db เพื่อสร้างตารางถ้ายังไม่มี
         
-        close_db()
+        # ตรวจสอบและสร้าง admin user เฉพาะถ้าตาราง users ยังไม่มีข้อมูล
+        try:
+            # ต้องสร้าง cursor เพื่อ execute query
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM users")
+            user_count = cursor.fetchone()[0] # ดึงผลลัพธ์จาก cursor
+            
+            if user_count == 0:
+                admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
+                admin_password = os.environ.get('ADMIN_PASSWORD', 'adminpassword')
+                database.add_user(conn, admin_username, admin_password, role='admin')
+                print(f"Initial admin user '{admin_username}' created with password '{admin_password}' and role 'admin'. PLEASE CHANGE THIS!")
+        except Exception as e:
+            print(f"Error during initial user setup: {e}")
+            # อาจเป็นเพราะตารางยังไม่ถูกสร้างสมบูรณ์ หรือสิทธิ์ไม่พอ
+            # ให้ลองรันอีกครั้งหลังจาก Deploy ครั้งแรกสำเร็จ
+            pass # ไม่ต้อง raise error เพื่อให้แอปทำงานได้
+
+        # close_db() # ไม่ต้องเรียก close_db ตรงนี้ เพราะ @app.teardown_appcontext จะจัดการให้
 
 def get_bkk_time():
     bkk_tz = pytz.timezone('Asia/Bangkok')
@@ -188,7 +202,7 @@ def add_promotion():
         is_active = request.form.get('is_active') == '1'
 
         if not name or not promo_type or not value1:
-            flash('กรุณากรอกข้อมูลโปรโมชันให้ครบถ้วน', 'danger')
+            flash('กรุณากรอกข้อมูลโปรโมชันให้ครบถ้วนในช่องที่มีเครื่องหมาย *', 'danger')
         else:
             try:
                 value1 = float(value1)
@@ -236,7 +250,7 @@ def edit_promotion(promo_id):
         is_active = request.form.get('is_active') == '1'
 
         if not name or not promo_type or not value1:
-            flash('กรุณากรอกข้อมูลโปรโมชันให้ครบถ้วน', 'danger')
+            flash('กรุณากรอกข้อมูลโปรโมชันให้ครบถ้วนในช่องที่มีเครื่องหมาย *', 'danger')
         else:
             try:
                 value1 = float(value1)
@@ -726,6 +740,32 @@ def stock_movement():
     cursor_wheel_movements = conn.execute("SELECT wm.*, w.brand, w.model, w.diameter FROM wheel_movements wm JOIN wheels w ON wm.wheel_id = w.id ORDER BY wm.timestamp DESC LIMIT 50")
     wheel_movements_history = cursor_wheel_movements.fetchall()
 
+    # **แก้ไขเพิ่มเติม:** แปลง timestamp strings ให้เป็น datetime objects สำหรับ tire_movements_history
+    processed_tire_movements_history = []
+    for movement in tire_movements_history:
+        m_dict = dict(movement) # Convert to dict to make it mutable
+        if isinstance(m_dict['timestamp'], str):
+            try:
+                m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
+            except ValueError:
+                print(f"Warning: Could not parse timestamp string '{m_dict['timestamp']}' for tire movement ID {m_dict['id']}")
+                m_dict['timestamp'] = None
+        processed_tire_movements_history.append(m_dict)
+    tire_movements_history = processed_tire_movements_history
+
+    # **แก้ไขเพิ่มเติม:** แปลง timestamp strings ให้เป็น datetime objects สำหรับ wheel_movements_history
+    processed_wheel_movements_history = []
+    for movement in wheel_movements_history:
+        m_dict = dict(movement) # Convert to dict to make it mutable
+        if isinstance(m_dict['timestamp'], str):
+            try:
+                m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
+            except ValueError:
+                print(f"Warning: Could not parse timestamp string '{m_dict['timestamp']}' for wheel movement ID {m_dict['id']}")
+                m_dict['timestamp'] = None
+        processed_wheel_movements_history.append(m_dict)
+    wheel_movements_history = processed_wheel_movements_history
+
     if request.method == 'POST':
         submit_type = request.form.get('submit_type')
         # Determine the active tab to redirect to after processing, useful for error cases
@@ -1017,7 +1057,10 @@ def daily_stock_report():
         ORDER BY t.brand, t.model, t.size, tm.timestamp DESC
     """
     if "psycopg2" in str(type(conn)):
-        tire_movements_raw = conn.execute(tire_movements_query, (sql_date_filter,)).fetchall()
+        # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+        cursor = conn.cursor()
+        cursor.execute(tire_movements_query, (sql_date_filter,))
+        tire_movements_raw = cursor.fetchall()
     else: # SQLite
         tire_movements_raw = conn.execute(tire_movements_query.replace('%s', '?'), (sql_date_filter,)).fetchall()
 
@@ -1029,10 +1072,12 @@ def daily_stock_report():
         if isinstance(m_dict['timestamp'], str):
             try:
                 # Use fromisoformat for robust parsing of ISO 8601 strings
+                # If your isoformat includes milliseconds, use '%Y-%m-%dT%H:%M:%S.%f'
+                # For isoformat generated by get_bkk_time().isoformat(), it's usually 'YYYY-MM-DDTHH:MM:SS.ffffff+HH:MM'
+                # datetime.fromisoformat can handle optional timezone info
                 m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
             except ValueError:
                 # Fallback if the string format is not ISO 8601 or invalid
-                # You might need to adjust this based on your exact timestamp string format
                 print(f"Warning: Could not parse timestamp string '{m_dict['timestamp']}' for tire movement ID {m_dict['id']}")
                 m_dict['timestamp'] = None # Or keep as string and handle in template with a filter
         processed_tire_movements_raw.append(m_dict)
@@ -1109,7 +1154,10 @@ def daily_stock_report():
         ORDER BY w.brand, w.model, w.diameter, wm.timestamp DESC
     """
     if "psycopg2" in str(type(conn)):
-        wheel_movements_raw = conn.execute(wheel_movements_query, (sql_date_filter,)).fetchall()
+        # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+        cursor = conn.cursor()
+        cursor.execute(wheel_movements_query, (sql_date_filter,))
+        wheel_movements_raw = cursor.fetchall()
     else: # SQLite
         wheel_movements_raw = conn.execute(wheel_movements_query.replace('%s', '?'), (sql_date_filter,)).fetchall()
 
@@ -1189,11 +1237,15 @@ def daily_stock_report():
 
     tire_total_in = sum(item['IN'] for item in sorted_detailed_tire_report if not item['is_summary'])
     tire_total_out = sum(item['OUT'] for item in sorted_detailed_tire_report if not item['is_summary'])
-    all_tires_in_stock = conn.execute("SELECT SUM(quantity) AS total_qty FROM tires").fetchone()[0] or 0
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
+    cursor.execute("SELECT SUM(quantity) AS total_qty FROM tires")
+    all_tires_in_stock = cursor.fetchone()[0] or 0
 
-    wheel_total_in = sum(item['IN'] for item in sorted_detailed_wheel_report if not item['is_summary'])
-    wheel_total_out = sum(item['OUT'] for item in sorted_detailed_wheel_report if not item['is_summary'])
-    all_wheels_in_stock = conn.execute("SELECT SUM(quantity) AS total_qty FROM wheels").fetchone()[0] or 0
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
+    cursor.execute("SELECT SUM(quantity) AS total_qty FROM wheels")
+    all_wheels_in_stock = cursor.fetchone()[0] or 0
 
     yesterday_date = report_date - timedelta(days=1)
     
@@ -1330,7 +1382,10 @@ def import_tires_action():
                     
                     year_of_manufacture = str(row['ปีผลิต']).strip() if pd.notna(row['ปีผลิต']) else None
                     
-                    existing_tire = conn.execute("SELECT id, quantity FROM tires WHERE brand = ? AND model = ? AND size = ?", (brand, model, size)).fetchone()
+                    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT id, quantity FROM tires WHERE brand = %s AND model = %s AND size = %s", (brand, model, size))
+                    existing_tire = cursor.fetchone()
 
                     if existing_tire:
                         tire_id = existing_tire['id']
@@ -1471,8 +1526,11 @@ def import_wheels_action():
                     wholesale_price1 = float(row['ราคาขายส่ง 1']) if pd.notna(row['ราคาขายส่ง 1']) else None
                     wholesale_price2 = float(row['ราคาขายส่ง 2']) if pd.notna(row['ราคาขายส่ง 2']) else None
                     
-                    existing_wheel = conn.execute("SELECT id, quantity FROM wheels WHERE brand = ? AND model = ? AND diameter = ? AND pcd = ? AND width = ? AND (et IS ? OR et = ?) AND (color IS ? OR color = ?)", 
-                                                 (brand, model, diameter, pcd, width, et, et, color, color)).fetchone()
+                    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT id, quantity FROM wheels WHERE brand = %s AND model = %s AND diameter = %s AND pcd = %s AND width = %s AND (et IS %s OR et = %s) AND (color IS %s OR color = %s)", 
+                                                 (brand, model, diameter, pcd, width, et, et, color, color))
+                    existing_wheel = cursor.fetchone()
 
                     if existing_wheel:
                         wheel_id = existing_wheel['id']
@@ -1520,7 +1578,10 @@ def manage_users():
         flash('คุณไม่มีสิทธิ์เข้าถึงหน้าจัดการผู้ใช้', 'danger')
         return redirect(url_for('index'))
     conn = get_db()
-    users = conn.execute("SELECT id, username, role FROM users").fetchall()
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, role FROM users")
+    users = cursor.fetchall()
     return render_template('manage_users.html', users=users)
 
 @app.route('/add_user', methods=['GET', 'POST'])
@@ -1566,7 +1627,10 @@ def edit_user_role(user_id):
         return redirect(url_for('manage_users'))
 
     conn = get_db()
-    database.update_user_role(conn, user_id, new_role)
+    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET role = %s WHERE id = %s" if "psycopg2" in str(type(conn)) else "UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+    conn.commit()
     flash(f'แก้ไขบทบาทผู้ใช้ ID {user_id} เป็น "{new_role}" สำเร็จ!', 'success')
     return redirect(url_for('manage_users'))
 
@@ -1582,7 +1646,9 @@ def delete_user(user_id):
     if str(user_id) == current_user.get_id():
         flash('ไม่สามารถลบผู้ใช้ที่กำลังเข้าสู่ระบบอยู่ได้', 'danger')
     else:
-        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE id = %s" if "psycopg2" in str(type(conn)) else "DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()
         flash('ลบผู้ใช้สำเร็จ!', 'success')
     return redirect(url_for('manage_users'))
