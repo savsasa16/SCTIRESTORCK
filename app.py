@@ -61,6 +61,8 @@ def close_db(e=None):
 
 # **ถูกลบออกแล้ว:** ปรับปรุง setup_database ให้มีการเชื่อมต่อและ init_db อย่างถูกต้อง
 # และเพิ่มการตรวจสอบว่า database มีการสร้างตาราง users หรือยัง
+# The setup_database function is commented out as requested in the initial problem.
+# The init_db.py script should handle initial database setup.
 # def setup_database():
 #     with app.app_context():
 #         conn = get_db() # เรียก get_db เพื่อให้แน่ใจว่าเชื่อมต่อแล้ว
@@ -1400,7 +1402,11 @@ def import_tires_action():
                     
                     # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
                     cursor = conn.cursor()
-                    cursor.execute("SELECT id, quantity FROM tires WHERE brand = %s AND model = %s AND size = %s", (brand, model, size))
+                    # Using parameter placeholders based on DB type
+                    if "psycopg2" in str(type(conn)):
+                        cursor.execute("SELECT id, quantity FROM tires WHERE brand = %s AND model = %s AND size = %s", (brand, model, size))
+                    else:
+                        cursor.execute("SELECT id, quantity FROM tires WHERE brand = ? AND model = ? AND size = ?", (brand, model, size))
                     existing_tire = cursor.fetchone()
 
                     if existing_tire:
@@ -1544,7 +1550,12 @@ def import_wheels_action():
                     
                     # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
                     cursor = conn.cursor()
-                    cursor.execute("SELECT id, quantity FROM wheels WHERE brand = %s AND model = %s AND diameter = %s AND pcd = %s AND width = %s AND (et IS %s OR et = %s) AND (color IS %s OR color = %s)", 
+                    # Using parameter placeholders based on DB type
+                    if "psycopg2" in str(type(conn)):
+                        cursor.execute("SELECT id, quantity FROM wheels WHERE brand = %s AND model = %s AND diameter = %s AND pcd = %s AND width = %s AND (et IS %s OR et = %s) AND (color IS %s OR color = %s)", 
+                                                 (brand, model, diameter, pcd, width, et, et, color, color))
+                    else:
+                        cursor.execute("SELECT id, quantity FROM wheels WHERE brand = ? AND model = ? AND diameter = ? AND pcd = ? AND width = ? AND (et IS ? OR et = ?) AND (color IS ? OR color = ?)", 
                                                  (brand, model, diameter, pcd, width, et, et, color, color))
                     existing_wheel = cursor.fetchone()
 
@@ -1671,5 +1682,5 @@ def delete_user(user_id):
 
 # --- Main entry point ---
 if __name__ == '__main__':
-    setup_database()
+    # setup_database() # Commented out as per instruction to remove init_db.py execution from app.
     app.run(host='0.0.0.0', port=5000, debug=True)
