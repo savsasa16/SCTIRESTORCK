@@ -11,6 +11,12 @@
     --border-color: #e0e0e0;
     --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.08);
     --shadow-medium: 0 5px 15px rgba(0, 0, 0, 0.1);
+    /* เพิ่ม --border-radius และ --shadow สำหรับ Select2 */
+    --border-radius: 8px; /* ค่าเริ่มต้น หรือตามที่คุณต้องการ */
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --text-color: var(--text-dark); /* ใช้สีข้อความหลัก */
+    --card-bg-light: #fdfdfd; /* สีพื้นหลังการ์ด/กลุ่มข้อมูล */
+    --border-color-light: #f0f0f0; /* สีเส้นขอบอ่อนๆ */
 }
 
 body {
@@ -334,6 +340,7 @@ table {
     width: 100%;
     border-collapse: separate; /* เพื่อให้ border-radius ของ table ทำงานได้ */
     border-spacing: 0; /* เพื่อลบช่องว่างระหว่างเซลล์ */
+    min-width: 800px; /* เพิ่ม min-width ที่นี่เพื่อให้ตารางไม่บีบตัวเกินไป */
 }
 
 th, td {
@@ -351,6 +358,7 @@ th {
     position: sticky; /* ทำให้หัวตารางติดอยู่เมื่อเลื่อน */
     top: 0;
     z-index: 1;
+    white-space: nowrap; /* ADDED: ป้องกันไม่ให้หัวข้อตารางหักคำ */
 }
 
 tr:nth-child(even) {
@@ -467,32 +475,20 @@ p.no-data {
         -webkit-overflow-scrolling: touch;
     }
 
+    /* REMOVED: min-width: 800px from here, moved to general table rule */
     table {
-        min-width: 800px; /* Keep this value, adjust as needed */
         font-size: 0.85em; /* Main table text */
     }
 
-    /* NEW/MODIFIED: Specific header styles for mobile */
+    /* MODIFIED: Specific header styles for mobile */
     th {
-        /* Allow headers to wrap if they are excessively long, but control it */
-        white-space: normal; /* Allow wrapping for headers */
-        word-break: break-word; /* Break long words if necessary */
+        white-space: nowrap; /* MODIFIED: บังคับให้หัวข้อตารางไม่หักคำ */
+        word-break: normal; /* MODIFIED: ป้องกันการหักคำที่ไม่ต้องการ */
         font-size: 0.75em; /* Further reduce header font size for more space */
         line-height: 1.2; /* Tighter line height for wrapped text */
         padding: 8px 10px; /* Further reduce padding for headers */
         text-align: center; /* Center header text if it wraps into multiple lines */
-
         /* Optional: Shorten specific very long headers if they are always a problem */
-        /* You'll need to add unique classes to these specific <th> elements in your HTML
-           if you want to target them individually. */
-        /* Example:
-           th.col-รับเข้า,
-           th.col-จ่ายออก,
-           th.col-คงเหลือ {
-               font-size: 0.7em;
-               padding: 5px 8px;
-           }
-        */
     }
 
     /* Keep td (data cells) from wrapping for horizontal scroll consistency */
@@ -743,83 +739,5 @@ p.no-data {
 
 .spec-item,
 .price-item {
-    font-size: 1.0em; /* ขนาดฟอนต์ */
-    line-height: 1.5; /* ระยะห่างระหว่างบรรทัด */
-    /* เปลี่ยนจาก display: flex เป็นการจัด Label และ Value ด้วย min-width ของ Label และ text-align */
-    /* display: flex;  */ /* ไม่ใช้ flex ที่นี่แล้ว */
-    /* align-items: baseline; */
-    padding: 5px 0; /* เพิ่ม padding ให้แต่ละ item */
-    /* border-bottom: 1px dashed #eee; */ /* อาจเพิ่มเส้นใต้สำหรับแต่ละ item */
-    /* background-color: rgba(255, 255, 255, 0.5); */ /* ถ้าต้องการให้แต่ละช่องมีพื้นหลัง */
-    /* border-radius: 5px; */
-}
-
-.spec-item strong,
-.price-item strong {
-    min-width: 120px; /* เพิ่มความกว้างขั้นต่ำของ Label ให้มากกว่าเดิม (เพื่อให้ข้อความไม่ติดกัน) */
-    display: inline-block; /* ทำให้ Label อยู่บรรทัดเดียวกันกับค่า */
-    margin-right: 10px; /* เพิ่มระยะห่างระหว่าง Label กับ Value */
-    color: var(--text-muted); /* ทำให้ Label ดูแตกต่างเล็กน้อย */
-    font-weight: 600; /* อาจทำให้หนาขึ้นเล็กน้อย */
-    text-align: right; /* จัด Label ให้อยู่ชิดขวาของพื้นที่ Label */
-}
-
-.spec-item span,
-.price-item span {
-    /* flex-grow: 1; */ /* ไม่จำเป็นเมื่อไม่ได้ใช้ display: flex ที่ spec-item */
-    text-align: left; /* จัด Value ให้อยู่ชิดซ้าย */
-}
-
-.price-item.main-price {
-    font-size: 1.3em; /* ทำให้ราคาขายปลีกดูเด่นขึ้น (เพิ่มขนาด) */
-    font-weight: bold;
-    color: var(--primary-color); /* หรือสีที่เด่นกว่า */
-    grid-column: 1 / -1; /* ทำให้กินพื้นที่เต็มความกว้างของ grid */
-    text-align: center; /* จัดกึ่งกลางสำหรับราคาหลัก */
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 2px dashed var(--border-color); /* เปลี่ยนเป็น dashed และหนาขึ้น */
-}
-
-/* ปรับแต่งสำหรับ badge */
-.badge {
-    font-size: 0.9em;
-    padding: 0.3em 0.6em;
-    border-radius: 0.25rem;
-    vertical-align: middle; /* จัดตำแหน่งแนวตั้ง */
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .detail-page {
-        flex-direction: column; /* เรียงจากบนลงล่างบนจอมือถือ */
-        align-items: center; /* จัดกึ่งกลางทั้งหมด */
-        padding: 15px; /* ลด padding บนมือถือ */
-    }
-
-    .detail-image-container,
-    .detail-info-container {
-        max-width: 100%; /* ให้ใช้ความกว้างเต็ม */
-        min-width: unset; /* ลบ min-width เดิมออก */
-    }
-
-    .wheel-specs-grid,
-    .wheel-prices-grid {
-        grid-template-columns: 1fr; /* 1 คอลัมน์บนจอมือถือ */
-        padding: 10px; /* ลด padding ภายใน grid บนมือถือ */
-        gap: 10px;
-    }
-
-    .spec-item strong,
-    .price-item strong {
-        min-width: unset; /* ไม่ต้องกำหนด min-width บนจอมือถือ */
-        text-align: left; /* จัด Label ให้อยู่ชิดซ้ายบนมือถือ */
-        display: block; /* ทำให้ Label ขึ้นบรรทัดใหม่จาก Value */
-        margin-bottom: 3px; /* เพิ่มช่องว่างเล็กน้อย */
-    }
-
-    .spec-item span,
-    .price-item span {
-        display: block; /* ทำให้ Value ขึ้นบรรทัดใหม่จาก Label */
-    }
+    /* ... (CSS ที่คุณยังไม่ได้ให้มา) ... */
 }
