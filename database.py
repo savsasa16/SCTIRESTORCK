@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 try:
     import psycopg2
     # Optional: for fetching rows as dictionaries, similar to sqlite3.Row
-    from psycopg2.extras import DictCursor
+    from psycopg2.extras import DictCursor # <-- ตรวจสอบว่ามี DictCursor import อยู่
 except ImportError:
     psycopg2 = None
     DictCursor = None
@@ -29,23 +29,27 @@ def get_db_connection():
         # Connect to PostgreSQL
         try:
             url = urlparse(DATABASE_URL)
+            # **แก้ไขตรงนี้:** กำหนด cursor_factory เป็น DictCursor เมื่อเชื่อมต่อ
             conn = psycopg2.connect(
                 database=url.path[1:],
                 user=url.username,
                 password=url.password,
                 host=url.hostname,
                 port=url.port,
-                sslmode='require' # For Render, usually requires SSL
+                sslmode='require', # For Render, usually requires SSL
+                cursor_factory=DictCursor # <--- เพิ่มบรรทัดนี้เข้ามา
             )
             print("Connected to PostgreSQL database!")
             
-            def psycopg2_row_factory(cursor):
-                column_names = [desc[0] for desc in cursor.description]
-                def make_row(row):
-                    return {col: val for col, val in zip(column_names, row)}
-                return make_row
+            # **ลบส่วนนี้ออกไปเลย เพราะ DictCursor จัดการให้แล้ว**
+            # def psycopg2_row_factory(cursor):
+            #     column_names = [desc[0] for desc in cursor.description]
+            #     def make_row(row):
+            #         return {col: val for col, val in zip(column_names, row)}
+            #     return make_row
             
-            conn.row_factory = psycopg2_row_factory
+            # **ลบบรรทัดนี้ออกไป**
+            # conn.row_factory = psycopg2_row_factory 
             return conn
         except Exception as e:
             print(f"Error connecting to PostgreSQL: {e}")
@@ -67,7 +71,7 @@ def get_sql_date_format_for_query(column_name):
 def init_db(conn):
     cursor = conn.cursor()
     
-    is_postgres = "psycopg2" in str(type(conn))
+    is_postgres = "psycopg2" in str(type(conn)) # จะคืนค่า True หาก conn เป็น psycopg2 connection
 
     # Promotions Table
     if is_postgres:
