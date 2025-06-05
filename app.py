@@ -16,24 +16,20 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # *** เพิ่ม Cloudinary imports ***
 import cloudinary
 import cloudinary.uploader
-from dotenv import load_dotenv # ถ้าใช้ python-dotenv สำหรับ local
-load_dotenv() # โหลด environment variables จากไฟล์ .env สำหรับ local
+from dotenv import load_dotenv
+load_dotenv()
 
 app = Flask(__name__)
-# **สำคัญมาก: เปลี่ยน 'your_super_secret_key_here_please_change_this_to_a_complex_random_random_string' เป็นคีย์ลับที่ซับซ้อนของคุณเอง!**
-# คุณสามารถสร้างคีย์ลับที่ซับซ้อนได้โดยใช้ Python prompt:
-# import os
-# os.urandom(24).hex()
-app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key_here_please_change_this_to_a_complex_random_string') # CHANGE THIS FOR PRODUCTION
+app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key_here_please_change_this_to_a_complex_random_string')
 
-app.config['UPLOAD_FOLDER'] = 'uploads' # สำหรับเก็บไฟล์ Excel และรูปภาพบิล (ถ้าไม่ใช้ Cloudinary)
+app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # *** ตั้งค่า Cloudinary (ใช้ Environment Variables) ***
 cloudinary.config(
     cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
     api_key=os.environ.get('CLOUDINARY_API_KEY'),
     api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
-    secure=True # ใช้ HTTPS
+    secure=True
 )
 
 ALLOWED_EXCEL_EXTENSIONS = {'xlsx', 'xls'}
@@ -58,27 +54,6 @@ def close_db(e=None):
     db = g.pop('db', None)
     if db is not None:
         db.close()
-
-# The setup_database function is commented out as requested in the initial problem.
-# The init_db.py script should handle initial database setup.
-# def setup_database():
-#     with app.app_context():
-#         conn = get_db()
-#         database.init_db(conn)
-        
-#         try:
-#             cursor = conn.cursor()
-#             cursor.execute("SELECT COUNT(*) FROM users")
-#             user_count = cursor.fetchone()[0]
-            
-#             if user_count == 0:
-#                 admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-#                 admin_password = os.environ.get('ADMIN_PASSWORD', 'adminpassword')
-#                 database.add_user(conn, admin_username, admin_password, role='admin')
-#                 print(f"Initial admin user '{admin_username}' created with password '{admin_password}' and role 'admin'. PLEASE CHANGE THIS!")
-#         except Exception as e:
-#             print(f"Warning: Error during initial user setup (table might not exist yet): {e}")
-#             pass
 
 def get_bkk_time():
     bkk_tz = pytz.timezone('Asia/Bangkok')
@@ -291,7 +266,7 @@ def delete_promotion(promo_id):
     return redirect(url_for('promotions'))
 
 
-# --- Tire Routes ---
+# --- Tire Routes (Main item editing) ---
 @app.route('/add_item', methods=('GET', 'POST'))
 @login_required
 def add_item():
@@ -401,14 +376,13 @@ def add_item():
                 wholesale_price1 = float(wholesale_price1) if wholesale_price1 and wholesale_price1.strip() else None
                 wholesale_price2 = float(wholesale_price2) if wholesale_price2 and wholesale_price2.strip() else None
 
-                image_url = None # จะเก็บ URL ของรูปภาพจาก Cloudinary
+                image_url = None
                 
-                if image_file and image_file.filename != '': # ตรวจสอบว่ามีการเลือกไฟล์
-                    if allowed_image_file(image_file.filename): # ตรวจสอบประเภทไฟล์
+                if image_file and image_file.filename != '':
+                    if allowed_image_file(image_file.filename):
                         try:
-                            # อัปโหลดรูปภาพไป Cloudinary
                             upload_result = cloudinary.uploader.upload(image_file)
-                            image_url = upload_result['secure_url'] # Cloudinary จะคืน URL ของรูปภาพ
+                            image_url = upload_result['secure_url']
                             
                         except Exception as e:
                             flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพไปยัง Cloudinary: {e}', 'danger')
@@ -419,7 +393,6 @@ def add_item():
                         active_tab = 'wheel'
                         return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
                 
-                # ส่ง image_url ไปยัง database.add_wheel
                 database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
                 flash('เพิ่มแม็กใหม่สำเร็จ!', 'success')
                 return redirect(url_for('add_item', tab='wheel'))
@@ -438,7 +411,7 @@ def add_item():
     
     return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
 
-
+# The /edit_tire route should now render the new edit_tire.html (for main item details)
 @app.route('/edit_tire/<int:tire_id>', methods=('GET', 'POST'))
 @login_required
 def edit_tire(tire_id):
@@ -504,6 +477,7 @@ def edit_tire(tire_id):
                 else:
                     flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูลยาง: {e}', 'danger')
 
+    # Corrected: Render the newly created edit_tire.html (for main item details)
     return render_template('edit_tire.html', tire=tire, current_year=current_year, all_promotions=all_promotions)
 
 @app.route('/delete_tire/<int:tire_id>', methods=('POST',))
@@ -529,7 +503,7 @@ def delete_tire(tire_id):
     
     return redirect(url_for('index', tab='tires'))
 
-# --- Wheel Routes ---
+# --- Wheel Routes (Main item editing) ---
 @app.route('/wheel_detail/<int:wheel_id>')
 @login_required
 def wheel_detail(wheel_id):
@@ -545,6 +519,7 @@ def wheel_detail(wheel_id):
     return render_template('wheel_detail.html', wheel=wheel, fitments=fitments, current_year=current_year)
 
 
+# The /edit_wheel route should now render the new edit_wheel.html (for main item details)
 @app.route('/edit_wheel/<int:wheel_id>', methods=('GET', 'POST'))
 @login_required
 def edit_wheel(wheel_id):
@@ -584,20 +559,15 @@ def edit_wheel(wheel_id):
                 wholesale_price2 = float(wholesale_price2) if wholesale_price2 else None
                 cost = float(cost) if cost and cost.strip() else None
 
-                current_image_url = wheel['image_filename'] # ดึง URL รูปภาพปัจจุบันจากฐานข้อมูล
+                current_image_url = wheel['image_filename']
                 
-                if image_file and image_file.filename != '': # ตรวจสอบว่ามีการเลือกไฟล์ใหม่
+                if image_file and image_file.filename != '':
                     if allowed_image_file(image_file.filename):
                         try:
-                            # อัปโหลดรูปภาพใหม่ไป Cloudinary
                             upload_result = cloudinary.uploader.upload(image_file)
                             new_image_url = upload_result['secure_url']
                             
-                            # (ตัวเลือกเสริม: ลบรูปภาพเก่าจาก Cloudinary หากมีและต้องการลบ)
-                            # ต้องใช้ public_id ในการลบ
                             if current_image_url and "res.cloudinary.com" in current_image_url:
-                                # ดึง public_id จาก URL ของ Cloudinary
-                                # รูปแบบ URL มักจะเป็น: .../v<version_num>/<public_id>.<extension>
                                 public_id_match = re.search(r'v\d+/([^/.]+)', current_image_url)
                                 if public_id_match:
                                     public_id = public_id_match.group(1)
@@ -606,7 +576,7 @@ def edit_wheel(wheel_id):
                                     except Exception as e:
                                         print(f"Error deleting old image from Cloudinary: {e}")
                             
-                            current_image_url = new_image_url # อัปเดต URL เป็นรูปใหม่
+                            current_image_url = new_image_url
                         
                         except Exception as e:
                             flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพไปยัง Cloudinary: {e}', 'danger')
@@ -627,6 +597,7 @@ def edit_wheel(wheel_id):
                 else:
                     flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูลแม็ก: {e}', 'danger')
 
+    # Corrected: Render the newly created edit_wheel.html (for main item details)
     return render_template('edit_wheel.html', wheel=wheel, current_year=current_year)
 
 @app.route('/delete_wheel/<int:wheel_id>', methods=('POST',))
@@ -645,16 +616,14 @@ def delete_wheel(wheel_id):
         return redirect(url_for('index', tab='wheels'))
     else:
         try:
-            # ลบรูปภาพจาก Cloudinary (ถ้ามี)
-            if wheel['image_filename'] and "res.cloudinary.com" in wheel['image_filename']: # ตรวจสอบว่าเป็น URL ของ Cloudinary
-                # ดึง public_id จาก URL Cloudinary
+            if wheel['image_filename'] and "res.cloudinary.com" in wheel['image_filename']:
                 public_id_match = re.search(r'v\d+/([^/.]+)', wheel['image_filename'])
                 if public_id_match:
                     public_id = public_id_match.group(1)
                     try:
-                        cloudinary.uploader.destroy(public_id) # ลบรูปภาพจาก Cloudinary
+                        cloudinary.uploader.destroy(public_id)
                     except Exception as e:
-                        print(f"Error deleting image from Cloudinary: {e}") # แค่ Log error ไม่ต้องให้หยุด deletion จาก DB
+                        print(f"Error deleting image from Cloudinary: {e}")
 
             database.delete_wheel(conn, wheel_id)
             flash('ลบแม็กสำเร็จ!', 'success')
@@ -710,7 +679,7 @@ def delete_fitment(fitment_id, wheel_id):
     return redirect(url_for('wheel_detail', wheel_id=wheel_id))
 
 
-# --- Stock Movement Routes ---
+# --- Stock Movement Routes (Movement editing) ---
 @app.route('/stock_movement', methods=('GET', 'POST'))
 @login_required
 def stock_movement():
@@ -722,26 +691,19 @@ def stock_movement():
     tires = database.get_all_tires(conn)
     wheels = database.get_all_wheels(conn)
     
-    # Get active_tab from request args, default to 'tire_movements'
     active_tab = request.args.get('tab', 'tire_movements') 
 
-    # --- Fetch movements for BOTH tabs, regardless of active_tab ---
-    # ดึงประวัติยาง 50 รายการล่าสุดเสมอ
-    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
     cursor = conn.cursor()
     cursor.execute("SELECT tm.*, t.brand, t.model, t.size FROM tire_movements tm JOIN tires t ON tm.tire_id = t.id ORDER BY tm.timestamp DESC LIMIT 50")
     tire_movements_history = cursor.fetchall()
 
-    # ดึงประวัติแม็ก 50 รายการล่าสุดเสมอ
-    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
     cursor = conn.cursor()
     cursor.execute("SELECT wm.*, w.brand, w.model, w.diameter FROM wheel_movements wm JOIN wheels w ON wm.wheel_id = w.id ORDER BY wm.timestamp DESC LIMIT 50")
     wheel_movements_history = cursor.fetchall()
 
-    # **แก้ไขเพิ่มเติม:** แปลง timestamp strings ให้เป็น datetime objects สำหรับ tire_movements_history
     processed_tire_movements_history = []
     for movement in tire_movements_history:
-        m_dict = dict(movement) # Convert to dict to make it mutable
+        m_dict = dict(movement)
         if isinstance(m_dict['timestamp'], str):
             try:
                 m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
@@ -751,10 +713,9 @@ def stock_movement():
         processed_tire_movements_history.append(m_dict)
     tire_movements_history = processed_tire_movements_history
 
-    # **แก้ไขเพิ่มเติม:** แปลง timestamp strings ให้เป็น datetime objects สำหรับ wheel_movements_history
     processed_wheel_movements_history = []
     for movement in wheel_movements_history:
-        m_dict = dict(movement) # Convert to dict to make it mutable
+        m_dict = dict(movement)
         if isinstance(m_dict['timestamp'], str):
             try:
                 m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
@@ -766,10 +727,8 @@ def stock_movement():
 
     if request.method == 'POST':
         submit_type = request.form.get('submit_type')
-        # Determine the active tab to redirect to after processing, useful for error cases
         active_tab_on_error = 'tire_movements' if submit_type == 'tire_movement' else 'wheel_movements'
 
-        # กำหนด item_id_key และ quantity_form_key ตาม submit_type
         item_id_key = ''
         quantity_form_key = ''
         if submit_type == 'tire_movement':
@@ -791,17 +750,15 @@ def stock_movement():
             move_type = request.form['type']
             quantity_change = int(request.form[quantity_form_key])
             notes = request.form.get('notes', '').strip()
-            bill_image_file = request.files.get('bill_image') # รับไฟล์รูปภาพบิล
+            bill_image_file = request.files.get('bill_image')
 
-            bill_image_url_to_db = None # จะเก็บ URL ของรูปภาพจาก Cloudinary
+            bill_image_url_to_db = None
             
-            # *** ส่วนจัดการการอัปโหลดรูปภาพบิล (อัปโหลดขึ้น Cloudinary) ***
             if bill_image_file and bill_image_file.filename != '':
                 if allowed_image_file(bill_image_file.filename):
                     try:
-                        # อัปโหลดรูปภาพไป Cloudinary
                         upload_result = cloudinary.uploader.upload(bill_image_file)
-                        bill_image_url_to_db = upload_result['secure_url'] # Cloudinary จะคืน URL ของรูปภาพ
+                        bill_image_url_to_db = upload_result['secure_url']
                         
                     except Exception as e:
                         flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพบิลไปยัง Cloudinary: {e}', 'danger')
@@ -831,10 +788,8 @@ def stock_movement():
                     new_quantity -= quantity_change
                 
                 database.update_tire_quantity(conn, tire_id, new_quantity)
-                # *** ส่ง bill_image_url_to_db ไปด้วย ***
                 database.add_tire_movement(conn, tire_id, move_type, quantity_change, new_quantity, notes, bill_image_url_to_db)
                 flash(f'บันทึกการเคลื่อนไหวสต็อกยางสำเร็จ! คงเหลือ: {new_quantity} เส้น', 'success')
-                # Redirect to the tire movements tab
                 return redirect(url_for('stock_movement', tab='tire_movements'))
 
             elif submit_type == 'wheel_movement':
@@ -854,10 +809,8 @@ def stock_movement():
                     new_quantity -= quantity_change
                 
                 database.update_wheel_quantity(conn, wheel_id, new_quantity)
-                # *** ส่ง bill_image_url_to_db ไปด้วย ***
                 database.add_wheel_movement(conn, wheel_id, move_type, quantity_change, new_quantity, notes, bill_image_url_to_db)
                 flash(f'บันทึกการเคลื่อนไหวสต็อกแม็กสำเร็จ! คงเหลือ: {new_quantity} วง', 'success')
-                # Redirect to the wheel movements tab
                 return redirect(url_for('stock_movement', tab='wheel_movements'))
 
         except ValueError:
@@ -867,7 +820,6 @@ def stock_movement():
             flash(f'เกิดข้อผิดพลาดในการบันทึกการเคลื่อนไหวสต็อก: {e}', 'danger')
             return redirect(url_for('stock_movement', tab=active_tab_on_error))
     
-    # Render the template with the correct history for the active tab
     return render_template('stock_movement.html', 
                            tires=tires, 
                            wheels=wheels, 
@@ -875,11 +827,10 @@ def stock_movement():
                            tire_movements=tire_movements_history, 
                            wheel_movements=wheel_movements_history)
 
-# --- New Routes for Editing Movements ---
+# --- Routes for Editing Movements (Actual use of edit_tire_movement.html and edit_wheel_movement.html) ---
 @app.route('/edit_tire_movement/<int:movement_id>', methods=['GET', 'POST'])
 @login_required
 def edit_tire_movement(movement_id):
-    # อนุญาตเฉพาะ admin เท่านั้นที่แก้ไขได้
     if not current_user.is_admin():
         flash('คุณไม่มีสิทธิ์ในการแก้ไขข้อมูลการเคลื่อนไหวสต็อกยาง', 'danger')
         return redirect(url_for('daily_stock_report'))
@@ -891,24 +842,21 @@ def edit_tire_movement(movement_id):
         flash('ไม่พบข้อมูลการเคลื่อนไหวที่ระบุ', 'danger')
         return redirect(url_for('daily_stock_report'))
 
-    # Convert timestamp to datetime object if it's a string
     if isinstance(movement['timestamp'], str):
         try:
-            movement = dict(movement) # Make it mutable if it's a Row object
+            movement = dict(movement)
             movement['timestamp'] = datetime.fromisoformat(movement['timestamp'])
         except ValueError:
-            movement['timestamp'] = None # Fallback if parsing fails
-
+            movement['timestamp'] = None
 
     if request.method == 'POST':
         new_notes = request.form.get('notes', '').strip()
         bill_image_file = request.files.get('bill_image')
         delete_existing_image = request.form.get('delete_existing_image') == 'on'
 
-        current_image_url = movement['image_filename'] # ตอนนี้จะเป็น URL ของ Cloudinary
-        bill_image_url_to_db = current_image_url # เริ่มต้นด้วย URL ปัจจุบัน
+        current_image_url = movement['image_filename']
+        bill_image_url_to_db = current_image_url
 
-        # จัดการการลบรูปภาพเก่าจาก Cloudinary
         if delete_existing_image:
             if current_image_url and "res.cloudinary.com" in current_image_url:
                 public_id_match = re.search(r'v\d+/([^/.]+)', current_image_url)
@@ -918,18 +866,14 @@ def edit_tire_movement(movement_id):
                         cloudinary.uploader.destroy(public_id)
                     except Exception as e:
                         print(f"Error deleting old tire movement image from Cloudinary: {e}")
-            bill_image_url_to_db = None # ตั้งค่าเป็น None หลังจากลบ
+            bill_image_url_to_db = None
 
-        # จัดการการอัปโหลดรูปภาพใหม่ไป Cloudinary
         if bill_image_file and bill_image_file.filename != '':
             if allowed_image_file(bill_image_file.filename):
                 try:
                     upload_result = cloudinary.uploader.upload(bill_image_file)
                     new_image_url = upload_result['secure_url']
-                    
-                    # ถ้าอัปโหลดสำเร็จและมีรูปเก่าที่ยังไม่ถูกลบ (และเป็น Cloudinary URL)
-                    # เราได้จัดการการลบไปแล้วในส่วน delete_existing_image
-                    bill_image_url_to_db = new_image_url # อัปเดตเป็น URL ใหม่
+                    bill_image_url_to_db = new_image_url
                 except Exception as e:
                     flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพบิลไปยัง Cloudinary: {e}', 'danger')
                     return render_template('edit_tire_movement.html', movement=movement)
@@ -944,12 +888,11 @@ def edit_tire_movement(movement_id):
         except Exception as e:
             flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูล: {e}', 'danger')
 
-    return render_template('edit_tire_movement.html', movement=movement)
+    return render_template('edit_tire_movement.html', movement=movement) # Renamed template here
 
 @app.route('/edit_wheel_movement/<int:movement_id>', methods=['GET', 'POST'])
 @login_required
 def edit_wheel_movement(movement_id):
-    # อนุญาตเฉพาะ admin เท่านั้นที่แก้ไขได้
     if not current_user.is_admin():
         flash('คุณไม่มีสิทธิ์ในการแก้ไขข้อมูลการเคลื่อนไหวสต็อกแม็ก', 'danger')
         return redirect(url_for('daily_stock_report'))
@@ -961,23 +904,21 @@ def edit_wheel_movement(movement_id):
         flash('ไม่พบข้อมูลการเคลื่อนไหวที่ระบุ', 'danger')
         return redirect(url_for('daily_stock_report'))
 
-    # Convert timestamp to datetime object if it's a string
     if isinstance(movement['timestamp'], str):
         try:
-            movement = dict(movement) # Make it mutable if it's a Row object
+            movement = dict(movement)
             movement['timestamp'] = datetime.fromisoformat(movement['timestamp'])
         except ValueError:
-            movement['timestamp'] = None # Fallback if parsing fails
+            movement['timestamp'] = None
 
     if request.method == 'POST':
         new_notes = request.form.get('notes', '').strip()
         bill_image_file = request.files.get('bill_image')
         delete_existing_image = request.form.get('delete_existing_image') == 'on'
 
-        current_image_url = movement['image_filename'] # ตอนนี้จะเป็น URL ของ Cloudinary
-        bill_image_url_to_db = current_image_url # เริ่มต้นด้วย URL ปัจจุบัน
+        current_image_url = movement['image_filename']
+        bill_image_url_to_db = current_image_url
 
-        # จัดการการลบรูปภาพเก่าจาก Cloudinary
         if delete_existing_image:
             if current_image_url and "res.cloudinary.com" in current_image_url:
                 public_id_match = re.search(r'v\d+/([^/.]+)', current_image_url)
@@ -987,18 +928,14 @@ def edit_wheel_movement(movement_id):
                         cloudinary.uploader.destroy(public_id)
                     except Exception as e:
                         print(f"Error deleting old wheel movement image from Cloudinary: {e}")
-            bill_image_url_to_db = None # ตั้งค่าเป็น None หลังจากลบ
+            bill_image_url_to_db = None
 
-        # จัดการการอัปโหลดรูปภาพใหม่ไป Cloudinary
         if bill_image_file and bill_image_file.filename != '':
             if allowed_image_file(bill_image_file.filename):
                 try:
                     upload_result = cloudinary.uploader.upload(bill_image_file)
                     new_image_url = upload_result['secure_url']
-                    
-                    # ถ้าอัปโหลดสำเร็จและมีรูปเก่าที่ยังไม่ถูกลบ (และเป็น Cloudinary URL)
-                    # เราได้จัดการการลบไปแล้วในส่วน delete_existing_image
-                    bill_image_url_to_db = new_image_url # อัปเดตเป็น URL ใหม่
+                    bill_image_url_to_db = new_image_url
                 except Exception as e:
                     flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพบิลไปยัง Cloudinary: {e}', 'danger')
                     return render_template('edit_wheel_movement.html', movement=movement)
@@ -1013,9 +950,9 @@ def edit_wheel_movement(movement_id):
         except Exception as e:
             flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูล: {e}', 'danger')
 
-    return render_template('edit_wheel_movement.html', movement=movement)
+    return render_template('edit_wheel_movement.html', movement=movement) # Renamed template here
 
-# นี่คือฟังก์ชัน daily_stock_report ที่ถูกต้อง โดยมีข้อมูลการดึงและประมวลผลรายงานทั้งหมด
+# --- daily_stock_report (No functional changes, just ensuring it's complete) ---
 @app.route('/daily_stock_report')
 @login_required
 def daily_stock_report():
@@ -1037,9 +974,7 @@ def daily_stock_report():
 
     sql_date_filter = report_date.strftime('%Y-%m-%d')
 
-
     # --- Tire Report Data ---
-    # แก้ไข Query เพื่อดึง image_filename ด้วย
     tire_movements_query = f"""
         SELECT
             tm.id, tm.timestamp, tm.type, tm.quantity_change, tm.image_filename, tm.notes,
@@ -1050,45 +985,38 @@ def daily_stock_report():
         ORDER BY t.brand, t.model, t.size, tm.timestamp DESC
     """
     if "psycopg2" in str(type(conn)):
-        # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
         cursor = conn.cursor()
         cursor.execute(tire_movements_query, (sql_date_filter,))
         tire_movements_raw = cursor.fetchall()
-    else: # SQLite
+    else:
         tire_movements_raw = conn.execute(tire_movements_query.replace('%s', '?'), (sql_date_filter,)).fetchall()
 
-    # Convert timestamp strings to datetime objects for tire movements
-    # Make sure items are mutable (e.g., dict) if they are sqlite3.Row objects
     processed_tire_movements_raw = []
     for movement in tire_movements_raw:
-        m_dict = dict(movement) # Convert to dict to make it mutable
+        m_dict = dict(movement)
         if isinstance(m_dict['timestamp'], str):
             try:
-                # Use fromisoformat for robust parsing of ISO 8601 strings
                 m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
             except ValueError:
                 print(f"Warning: Could not parse timestamp string '{m_dict['timestamp']}' for tire movement ID {m_dict['id']}")
-                m_dict['timestamp'] = None # Or keep as string and handle in template with a filter
+                m_dict['timestamp'] = None
         processed_tire_movements_raw.append(m_dict)
-    tire_movements_raw = processed_tire_movements_raw # Update the variable
+    tire_movements_raw = processed_tire_movements_raw
 
 
     sorted_detailed_tire_report = []
     detailed_tire_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0})
-    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
     cursor = conn.cursor()
     cursor.execute("SELECT id, quantity FROM tires")
     current_tire_quantities = cursor.fetchall()
     tire_current_qty_map = {t['id']: t['quantity'] for t in current_tire_quantities}
 
-    for movement in tire_movements_raw: # ใช้ tire_movements_raw
+    for movement in tire_movements_raw:
         key = (movement['brand'], movement['model'], movement['size'])
         if movement['type'] == 'IN':
             detailed_tire_report[key]['IN'] += movement['quantity_change']
         elif movement['type'] == 'OUT':
             detailed_tire_report[key]['OUT'] += movement['quantity_change']
-        # คำนวณ remaining_quantity อาจต้องใช้ข้อมูลจากปัจจุบัน หรือจาก movement ล่าสุด
-        # ในที่นี้ใช้ quantity ณ ปัจจุบันของสินค้าแต่ละชิ้น (tire_current_qty_map)
         detailed_tire_report[key]['remaining_quantity'] = tire_current_qty_map.get(
             movement['tire_main_id'], 0
         )
@@ -1135,7 +1063,6 @@ def daily_stock_report():
 
 
     # --- Wheel Report Data ---
-    # แก้ไข Query เพื่อดึง image_filename ด้วย
     wheel_movements_query = f"""
         SELECT
             wm.id, wm.timestamp, wm.type, wm.quantity_change, wm.image_filename, wm.notes,
@@ -1146,44 +1073,38 @@ def daily_stock_report():
         ORDER BY w.brand, w.model, w.diameter, wm.timestamp DESC
     """
     if "psycopg2" in str(type(conn)):
-        # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
         cursor = conn.cursor()
         cursor.execute(wheel_movements_query, (sql_date_filter,))
         wheel_movements_raw = cursor.fetchall()
-    else: # SQLite
+    else:
         wheel_movements_raw = conn.execute(wheel_movements_query.replace('%s', '?'), (sql_date_filter,)).fetchall()
 
-    # Convert timestamp strings to datetime objects for wheel movements
     processed_wheel_movements_raw = []
     for movement in wheel_movements_raw:
-        m_dict = dict(movement) # Convert to dict to make it mutable
+        m_dict = dict(movement)
         if isinstance(m_dict['timestamp'], str):
             try:
-                # Use fromisoformat for robust parsing of ISO 8601 strings
                 m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
             except ValueError:
                 print(f"Warning: Could not parse timestamp string '{m_dict['timestamp']}' for wheel movement ID {m_dict['id']}")
-                m_dict['timestamp'] = None # Or keep as string and handle in template with a filter
+                m_dict['timestamp'] = None
         processed_wheel_movements_raw.append(m_dict)
-    wheel_movements_raw = processed_wheel_movements_raw # Update the variable
+    wheel_movements_raw = processed_wheel_movements_raw
 
 
     sorted_detailed_wheel_report = []
     detailed_wheel_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0})
-    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
     cursor = conn.cursor()
     cursor.execute("SELECT id, quantity FROM wheels")
     current_wheel_quantities = cursor.fetchall()
     wheel_current_qty_map = {w['id']: w['quantity'] for w in current_wheel_quantities}
 
-    for movement in wheel_movements_raw: # ใช้ wheel_movements_raw
+    for movement in wheel_movements_raw:
         key = (movement['brand'], movement['model'], movement['diameter'], movement['pcd'], movement['width'])
         if movement['type'] == 'IN':
             detailed_wheel_report[key]['IN'] += movement['quantity_change']
         elif movement['type'] == 'OUT':
             detailed_wheel_report[key]['OUT'] += movement['quantity_change']
-        # คำนวณ remaining_quantity อาจต้องใช้ข้อมูลจากปัจจุบัน หรือจาก movement ล่าสุด
-        # ในที่นี้ใช้ quantity ณ ปัจจุบันของสินค้าแต่ละชิ้น (wheel_current_qty_map)
         detailed_wheel_report[key]['remaining_quantity'] = wheel_current_qty_map.get(
             movement['wheel_main_id'], 0
         )
@@ -1232,16 +1153,13 @@ def daily_stock_report():
 
     tire_total_in = sum(item['IN'] for item in sorted_detailed_tire_report if not item['is_summary'])
     tire_total_out = sum(item['OUT'] for item in sorted_detailed_tire_report if not item['is_summary'])
-    # Add these lines to calculate wheel_total_in and wheel_total_out
     wheel_total_in = sum(item['IN'] for item in sorted_detailed_wheel_report if not item['is_summary'])
     wheel_total_out = sum(item['OUT'] for item in sorted_detailed_wheel_report if not item['is_summary'])
     
-    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
     cursor = conn.cursor()
     cursor.execute("SELECT SUM(quantity) AS total_qty FROM tires")
     all_tires_in_stock = cursor.fetchone()[0] or 0
 
-    # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
     cursor = conn.cursor()
     cursor.execute("SELECT SUM(quantity) AS total_qty FROM wheels")
     all_wheels_in_stock = cursor.fetchone()[0] or 0
@@ -1258,11 +1176,10 @@ def daily_stock_report():
                            tire_total_in=tire_total_in,
                            tire_total_out=tire_total_out,
                            tire_total_remaining=all_tires_in_stock,
-                           wheel_total_in=wheel_total_in, # This variable is now defined
-                           wheel_total_out=wheel_total_out, # This variable is now defined
+                           wheel_total_in=wheel_total_in,
+                           wheel_total_out=wheel_total_out,
                            wheel_total_remaining=all_wheels_in_stock,
                            
-                           # เพิ่มข้อมูล movement raw เพื่อใช้ในการแสดงผลและแก้ไข
                            tire_movements_raw=tire_movements_raw,
                            wheel_movements_raw=wheel_movements_raw
                           )
