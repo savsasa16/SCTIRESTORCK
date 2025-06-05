@@ -492,7 +492,7 @@ def add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_onli
     return tire_id
 
 def get_tire(conn, tire_id):
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    cursor = conn.cursor()
     if "psycopg2" in str(type(conn)):
         cursor.execute("""
             SELECT t.*, 
@@ -520,7 +520,8 @@ def get_tire(conn, tire_id):
     tire = cursor.fetchone()
     
     if tire:
-        tire_dict = dict(tire) if not isinstance(tire, dict) else tire
+        # ** FIX: Ensure tire_dict is always a mutable dict before adding new keys **
+        tire_dict = dict(tire) 
         
         tire_dict['display_promo_price_per_item'] = None
         tire_dict['display_price_for_4'] = tire_dict['price_per_item'] * 4 if tire_dict['price_per_item'] is not None else None
@@ -697,7 +698,7 @@ def calculate_tire_promo_prices(price_per_item, promo_type, promo_value1, promo_
 
 
 def get_all_tires(conn, query=None, brand_filter='all'):
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    cursor = conn.cursor()
     sql_query = """
         SELECT t.*,
                p.name AS promo_name,
@@ -734,7 +735,8 @@ def get_all_tires(conn, query=None, brand_filter='all'):
 
     processed_tires = []
     for tire in tires:
-        tire_dict = dict(tire) if isinstance(tire, sqlite3.Row) else tire # Convert to dict explicitly for sqlite3.Row
+        # ** FIX: Ensure tire_dict is always a mutable dict before adding new keys **
+        tire_dict = dict(tire) 
 
         promo_calc_result = {
             'price_per_item_promo': None,
@@ -779,7 +781,7 @@ def get_all_tires(conn, query=None, brand_filter='all'):
     return sorted_processed_tires
 
 def get_tire_movement(conn, movement_id):
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
     if "psycopg2" in str(type(conn)):
         cursor.execute("""
             SELECT tm.*, t.brand, t.model, t.size
@@ -800,7 +802,7 @@ def get_tire_movement(conn, movement_id):
     return movement_data
 
 def get_wheel_movement(conn, movement_id):
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
     if "psycopg2" in str(type(conn)):
         cursor.execute("""
             SELECT wm.*, w.brand, w.model, w.diameter
@@ -853,7 +855,7 @@ def update_tire_movement(conn, movement_id, new_notes, new_image_filename=None):
     conn.commit()
 
 def update_tire_quantity(conn, tire_id, new_quantity):
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
     if "psycopg2" in str(type(conn)):
         cursor.execute("UPDATE tires SET quantity = %s WHERE id = %s", (new_quantity, tire_id))
     else:
