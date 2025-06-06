@@ -823,8 +823,8 @@ def stock_movement():
     
     active_tab = request.args.get('tab', 'tire_movements') 
 
-    # --- Tire Movements History Query (MODIFIED: Added LEFT JOIN users to get username) ---
     cursor = conn.cursor()
+    # MODIFIED: Added LEFT JOIN users to get username
     cursor.execute("""
         SELECT tm.*, t.brand, t.model, t.size, u.username
         FROM tire_movements tm
@@ -834,8 +834,8 @@ def stock_movement():
     """)
     tire_movements_history = cursor.fetchall()
 
-    # --- Wheel Movements History Query (MODIFIED: Added LEFT JOIN users) ---
     cursor = conn.cursor()
+    # MODIFIED: Added LEFT JOIN users to get username
     cursor.execute("""
         SELECT wm.*, w.brand, w.model, w.diameter, u.username
         FROM wheel_movements wm
@@ -1208,7 +1208,7 @@ def daily_stock_report():
         JOIN wheels w ON wm.wheel_id = w.id
         LEFT JOIN users u ON wm.user_id = u.id -- ADDED: Join users table
         WHERE {database.get_sql_date_format_for_query('wm.timestamp')} = %s
-        ORDER BY wm.timestamp DESC {# MODIFIED: Order only by timestamp DESC #}
+        ORDER BY wm.timestamp DESC
     """
     if "psycopg2" in str(type(conn)):
         cursor = conn.cursor()
@@ -1322,7 +1322,7 @@ def daily_stock_report():
 @app.route('/export_import', methods=('GET', 'POST'))
 @login_required
 def export_import():
-    if not current_user.can_admin():
+    if not current_user.can_admin(): # Changed to can_admin as per recent common practice
         flash('คุณไม่มีสิทธิ์ในการนำเข้า/ส่งออกข้อมูล', 'danger')
         return redirect(url_for('index'))
     conn = get_db()
