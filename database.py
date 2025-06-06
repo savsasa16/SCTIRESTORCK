@@ -862,19 +862,19 @@ def update_tire_quantity(conn, tire_id, new_quantity):
         cursor.execute("UPDATE tires SET quantity = ? WHERE id = ?", (new_quantity, tire_id))
     conn.commit()
 
-def add_tire_movement(conn, tire_id, move_type, quantity_change, remaining_quantity, notes, image_filename=None): # เพิ่ม image_filename
+def add_tire_movement(conn, tire_id, move_type, quantity_change, remaining_quantity, notes, image_filename=None, user_id=None): # ADDED user_id
     timestamp = get_bkk_time().isoformat()
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    cursor = conn.cursor()
     if "psycopg2" in str(type(conn)):
         cursor.execute("""
-            INSERT INTO tire_movements (tire_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (tire_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename))
+            INSERT INTO tire_movements (tire_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename, user_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (tire_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename, user_id)) # ADDED user_id
     else:
         cursor.execute("""
-            INSERT INTO tire_movements (tire_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (tire_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename))
+            INSERT INTO tire_movements (tire_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (tire_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename, user_id)) # ADDED user_id
     conn.commit()
 
 def delete_tire(conn, tire_id):
@@ -1014,19 +1014,19 @@ def update_wheel(conn, wheel_id, brand, model, diameter, pcd, width, et, color, 
     conn.commit()
 
 # เพิ่ม image_filename เป็นพารามิเตอร์
-def add_wheel_movement(conn, wheel_id, move_type, quantity_change, remaining_quantity, notes, image_filename=None):
+def add_wheel_movement(conn, wheel_id, move_type, quantity_change, remaining_quantity, notes, image_filename=None, user_id=None): # ADDED user_id
     timestamp = get_bkk_time().isoformat()
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor
+    cursor = conn.cursor()
     if "psycopg2" in str(type(conn)):
         cursor.execute("""
-            INSERT INTO wheel_movements (wheel_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (wheel_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename))
+            INSERT INTO wheel_movements (wheel_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename, user_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (wheel_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename, user_id)) # ADDED user_id
     else:
         cursor.execute("""
-            INSERT INTO wheel_movements (wheel_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (wheel_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename))
+            INSERT INTO wheel_movements (wheel_id, timestamp, type, quantity_change, remaining_quantity, notes, image_filename, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (wheel_id, timestamp, move_type, quantity_change, remaining_quantity, notes, image_filename, user_id)) # ADDED user_id
     conn.commit()
 
 # แก้ไขพารามิเตอร์: image_filename -> image_url
