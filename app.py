@@ -246,11 +246,10 @@ def index():
     tire_query = request.args.get('tire_query', '').strip()
     tire_selected_brand = request.args.get('tire_brand_filter', 'all').strip()
 
-    # --- เพิ่ม print statement ตรงนี้ ---
+    # --- DEBUG PRINTS (KEEP FOR NOW) ---
     print(f"DEBUG: tire_query = '{tire_query}', tire_selected_brand = '{tire_selected_brand}'")
 
     all_tires = database.get_all_tires(conn, query=tire_query, brand_filter=tire_selected_brand)
-    # --- เพิ่ม print statement ตรงนี้ ---
     print(f"DEBUG: Data from database.get_all_tires: {all_tires}")
     print(f"DEBUG: Number of raw tires: {len(all_tires) if all_tires else 0}")
     
@@ -258,7 +257,6 @@ def index():
 
     # Process tire data for display (with summaries)
     processed_tires_for_display = process_tire_report_data(all_tires)
-    # --- เพิ่ม print statement ตรงนี้ ---
     print(f"DEBUG: Processed tire data for display: {processed_tires_for_display}")
     print(f"DEBUG: Number of processed tires for display: {len(processed_tires_for_display)}")
 
@@ -266,13 +264,14 @@ def index():
     wheel_selected_brand = request.args.get('wheel_brand_filter', 'all').strip()
 
     all_wheels = database.get_all_wheels(conn, query=wheel_query, brand_filter=wheel_selected_brand)
-    # --- เพิ่ม print statement ตรงนี้ ---
     print(f"DEBUG: Data from database.get_all_wheels: {all_wheels}")
     print(f"DEBUG: Number of raw wheels: {len(all_wheels) if all_wheels else 0}")
 
+    # --- FIXED: Added the missing line to define available_wheel_brands ---
+    available_wheel_brands = database.get_all_wheel_brands(conn) 
+
     # Process wheel data for display (with summaries)
     processed_wheels_for_display = process_wheel_report_data(all_wheels)
-    # --- เพิ่ม print statement ตรงนี้ ---
     print(f"DEBUG: Processed wheel data for display: {processed_wheels_for_display}")
     print(f"DEBUG: Number of processed wheels for display: {len(processed_wheels_for_display)}")
 
@@ -280,9 +279,11 @@ def index():
     active_tab = request.args.get('tab', 'tires')
 
     return render_template('index.html',
+                           # Change to use processed data for tables
                            tires_for_display=processed_tires_for_display,
                            wheels_for_display=processed_wheels_for_display,
                            
+                           # Keep original filtering variables for the form
                            tire_query=tire_query,
                            available_tire_brands=available_tire_brands,
                            tire_selected_brand=tire_selected_brand,
