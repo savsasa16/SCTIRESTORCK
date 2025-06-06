@@ -781,19 +781,21 @@ def get_all_tires(conn, query=None, brand_filter='all'):
     return sorted_processed_tires
 
 def get_tire_movement(conn, movement_id):
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
     if "psycopg2" in str(type(conn)):
         cursor.execute("""
-            SELECT tm.*, t.brand, t.model, t.size
+            SELECT tm.*, t.brand, t.model, t.size, u.username
             FROM tire_movements tm
             JOIN tires t ON tm.tire_id = t.id
+            LEFT JOIN users u ON tm.user_id = u.id -- ADDED JOIN
             WHERE tm.id = %s
         """, (movement_id,))
     else:
         cursor.execute("""
-            SELECT tm.*, t.brand, t.model, t.size
+            SELECT tm.*, t.brand, t.model, t.size, u.username
             FROM tire_movements tm
             JOIN tires t ON tm.tire_id = t.id
+            LEFT JOIN users u ON tm.user_id = u.id -- ADDED JOIN
             WHERE tm.id = ?
         """, (movement_id,))
     movement_data = cursor.fetchone()
@@ -802,19 +804,21 @@ def get_tire_movement(conn, movement_id):
     return movement_data
 
 def get_wheel_movement(conn, movement_id):
-    cursor = conn.cursor() # **แก้ไข:** ต้องสร้าง cursor ก่อน execute
+    cursor = conn.cursor()
     if "psycopg2" in str(type(conn)):
         cursor.execute("""
-            SELECT wm.*, w.brand, w.model, w.diameter
+            SELECT wm.*, w.brand, w.model, w.diameter, u.username
             FROM wheel_movements wm
             JOIN wheels w ON wm.wheel_id = w.id
+            LEFT JOIN users u ON wm.user_id = u.id -- ADDED JOIN
             WHERE wm.id = %s
         """, (movement_id,))
     else:
         cursor.execute("""
-            SELECT wm.*, w.brand, w.model, w.diameter
+            SELECT wm.*, w.brand, w.model, w.diameter, u.username
             FROM wheel_movements wm
             JOIN wheels w ON wm.wheel_id = w.id
+            LEFT JOIN users u ON wm.user_id = u.id -- ADDED JOIN
             WHERE wm.id = ?
         """, (movement_id,))
     movement_data = cursor.fetchone()
