@@ -1079,16 +1079,13 @@ def daily_stock_report():
     if report_date_str:
         try:
             report_date = datetime.strptime(report_date_str, '%Y-%m-%d').date()
-            # MODIFIED: Change display_date_str format here to 'DD Mon YYYY'
             display_date_str = report_date.strftime('%d %b %Y') # e.g., 06 Jun 2025
         except ValueError:
             flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้YYYY-MM-DD", "danger")
             report_date = get_bkk_time().date()
-            # MODIFIED: Change display_date_str format here for fallback
             display_date_str = report_date.strftime('%d %b %Y')
     else:
         report_date = get_bkk_time().date()
-        # MODIFIED: Change display_date_str format here for default
         display_date_str = report_date.strftime('%d %b %Y')
 
     sql_date_filter = report_date.strftime('%Y-%m-%d')
@@ -1101,7 +1098,7 @@ def daily_stock_report():
         FROM tire_movements tm
         JOIN tires t ON tm.tire_id = t.id
         WHERE {database.get_sql_date_format_for_query('tm.timestamp')} = %s
-        ORDER BY t.brand, t.model, t.size, tm.timestamp DESC
+        ORDER BY tm.timestamp DESC {# MODIFIED: Order only by timestamp DESC #}
     """
     if "psycopg2" in str(type(conn)):
         cursor = conn.cursor()
@@ -1184,7 +1181,7 @@ def daily_stock_report():
         FROM wheel_movements wm
         JOIN wheels w ON wm.wheel_id = w.id
         WHERE {database.get_sql_date_format_for_query('wm.timestamp')} = %s
-        ORDER BY w.brand, w.model, w.diameter, wm.timestamp DESC
+        ORDER BY wm.timestamp DESC {# MODIFIED: Order only by timestamp DESC #}
     """
     if "psycopg2" in str(type(conn)):
         cursor = conn.cursor()
@@ -1276,12 +1273,10 @@ def daily_stock_report():
     yesterday_date = report_date - timedelta(days=1)
     
     return render_template('daily_stock_report.html',
-                           display_date_str=display_date_str, # This will now be 'DD Mon YYYY'
-                           report_date_obj=report_date, # Pass the date object for template formatting
-                           report_date_param=report_date.strftime('%Y-%m-%d'), # For Flatpickr default date
+                           display_date_str=display_date_str,
+                           report_date_obj=report_date,
+                           report_date_param=report_date.strftime('%Y-%m-%d'),
                            yesterday_date_param=yesterday_date.strftime('%Y-%m-%d'),
-                           # You might want to calculate tomorrow_date_param here too if you add a 'next day' button
-                           # tomorrow_date_param = (report_date + timedelta(days=1)).strftime('%Y-%m-%d'),
                            
                            tire_report=sorted_detailed_tire_report,
                            wheel_report=sorted_detailed_wheel_report,
@@ -1300,7 +1295,7 @@ def daily_stock_report():
 @app.route('/export_import', methods=('GET', 'POST'))
 @login_required
 def export_import():
-    if not current_user.can_edit():
+    if not current_user.can_admin(): # Changed to can_admin as per recent common practice
         flash('คุณไม่มีสิทธิ์ในการนำเข้า/ส่งออกข้อมูล', 'danger')
         return redirect(url_for('index'))
     conn = get_db()
