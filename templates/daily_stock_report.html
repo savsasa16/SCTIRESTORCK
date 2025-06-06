@@ -6,15 +6,15 @@
 <h2>รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d-%m-%Y') }}</h2> {# MODIFIED: เปลี่ยนรูปแบบวันที่ #}
 
 <div class="date-navigation">
-    {# ปุ่ม "วันที่แล้ว" - ใช้ yesterday_date_param ที่มาจาก Flask #}
+    {# ปุ่ม "เมื่อวาน" - ใช้ yesterday_date_param ที่มาจาก Flask #}
     <a href="{{ url_for('daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary date-nav-button">
-        <i class="fas fa-chevron-left"></i> เมื่อวาน
+        <i class="fas fa-chevron-left"></i> เมื่อวาน {# MODIFIED: เปลี่ยนข้อความเป็น "เมื่อวาน" #}
     </a>
     {# Flatpickr input - value ยังคงเป็นYYYY-MM-DD เพื่อให้ Flatpickr ทำงานได้ถูกต้อง #}
     <input type="text" id="reportDateInput" value="{{ report_date_param }}" placeholder="เลือกวันที่">
     {# เพิ่มปุ่ม "วันที่ถัดไป" - ต้องคำนวณ tomorrow_date_param มาจาก Flask #}
-    {% if report_date_obj < get_bkk_time().date() %} {# FIXED: Removed .date() from report_date_obj #}
-        <a href="{{ url_for('daily_stock_report', date=(report_date_obj + timedelta(days=1)).strftime('%Y-%m-%d')) }}" class="btn btn-outline-secondary date-nav-button">
+    {% if report_date_obj < get_bkk_time().date() %} {# ตรวจสอบวันที่ปัจจุบัน #}
+        <a href="{{ url_for('daily_stock_report', date=tomorrow_date_param) }}" class="btn btn-outline-secondary date-nav-button"> {# MODIFIED: ใช้ tomorrow_date_param ที่ส่งมาจาก app.py #}
             วันที่ถัดไป <i class="fas fa-chevron-right"></i>
         </a>
     {% endif %}
@@ -414,7 +414,6 @@
 
 <div class="back-link">
     <a href="{{ url_for('stock_movement') }}" class="btn btn-secondary" style="margin-top: 20px;">กลับไปหน้าจัดการสต็อก</a>
-    {# เปลี่ยนจาก back to index เป็น back to stock_movement ตามโค้ดแรก #}
 </div>
 
 {% endblock %}
