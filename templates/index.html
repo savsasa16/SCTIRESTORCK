@@ -34,68 +34,88 @@
         </form>
     </div>
 
-    {% if tires_by_brand %}
-        {% for brand in sorted_tire_brands %}
-            <h4>{{ brand }}</h4>
-            <div class="table-responsive">
-                <table id="tires-table"> 
-                    <thead>
-                        <tr>
-                            {# <th>ID</th> #} {# REMOVED: ไม่แสดง ID #}
-                            <th>รุ่น</th>
-                            <th>เบอร์ยาง</th>
-                            <th>สต็อก</th>
-                            <th>ราคาต่อเส้น</th> 
-                            <th>โปรโมชัน</th> 
-                            <th>ราคา 4 เส้น</th>
-                            <th>ปีผลิต</th>
-                            <th>การดำเนินการ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for tire in tires_by_brand[brand] %}
+    {# MODIFIED: ตารางยางให้แสดงผลแบบ Report (มีสรุปยอดรวมยี่ห้อ) #}
+    {% if tires_for_display %} {# เปลี่ยนจาก tires_by_brand เป็น tires_for_display #}
+        <div class="table-responsive">
+            <table id="tires-table"> 
+                <thead>
+                    <tr>
+                        <th>ยี่ห้อยาง</th> {# เปลี่ยนเป็น ยี่ห้อยาง เพื่อให้รวมแถวได้ #}
+                        <th>รุ่นยาง</th>
+                        <th>เบอร์ยาง</th>
+                        <th>สต็อก</th>
+                        <th>ราคาต่อเส้น</th> 
+                        <th>โปรโมชัน</th> 
+                        <th>ราคา 4 เส้น</th>
+                        <th>ปีผลิต</th>
+                        <th>การดำเนินการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set last_brand_display_tire = "" %} {# ตัวแปรสำหรับเช็คว่ายี่ห้อเปลี่ยนหรือไม่ #}
+                    {% for item in tires_for_display %} {# Loop over processed_tires_for_display #}
+                        {% if item.is_summary %}
+                            <tr class="summary-row">
+                                <td colspan="3"><b>ยอดรวม {{ item.brand }}</b></td>
+                                <td><b>{{ item.quantity }}</b></td> {# สต็อกรวม #}
+                                <td colspan="4"></td> {# เว้นว่างสำหรับคอลัมน์ที่เหลือ #}
+                            </tr>
+                        {% else %}
                             <tr>
-                                {# <td>{{ tire.id }}</td> #} {# REMOVED: ไม่แสดง ID #}
-                                <td>{{ tire.model }}</td>
-                                <td>{{ tire.size }}</td>
-                                <td><span class="{% if tire.quantity <= 5 %}text-danger{% elif tire.quantity <= 10 %}text-warning{% endif %}">{{ tire.quantity }}</span></td>
-                                <td>{{ "{:,.2f}".format(tire.price_per_item) }}</td> 
                                 <td>
-                                    {% if tire.promotion_id and tire.promo_is_active == 1 %} 
-                                        <span class="promo-badge" title="{{ tire.promo_name }}: {{ tire.display_promo_description_text }}">{{ tire.promo_name }}</span>
+                                    {# แสดงยี่ห้อเฉพาะเมื่อเปลี่ยนยี่ห้อ #}
+                                    {% if item.brand != last_brand_display_tire %}
+                                        {{ item.brand }}
+                                        {% set last_brand_display_tire = item.brand %}
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.model }}</td>
+                                <td>{{ item.size }}</td>
+                                <td><span class="{% if item.quantity <= 5 %}text-danger{% elif item.quantity <= 10 %}text-warning{% endif %}">{{ item.quantity }}</span></td>
+                                <td>
+                                    {% if item.display_promo_price_per_item is not none and item.display_promo_price_per_item != item.price_per_item %}
+                                        <del>{{ "{:,.2f}".format(item.price_per_item) }}</del><br>
+                                        <strong>{{ "{:,.2f}".format(item.display_promo_price_per_item) }}</strong>
+                                    {% else %}
+                                        {{ "{:,.2f}".format(item.price_per_item) }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.promotion_id and item.promo_is_active == 1 %} 
+                                        <span class="promo-badge" title="{{ item.promo_name }}: {{ item.display_promo_description_text }}">{{ item.promo_name }}</span>
                                     {% else %}
                                         -
                                     {% endif %}
                                 </td>
                                 <td>
                                     {# Logic for displaying price for 4 items with color #}
-                                    {% if tire.display_price_for_4 is not none %}
-                                        {% if tire.display_promo_price_per_item is not none and tire.display_promo_price_per_item != tire.price_per_item %}
-                                            <span class="price-for-4 promo-price">{{ "{:,.2f}".format(tire.display_price_for_4) }}</span>
-                                        {% else %}
-                                            <span class="price-for-4">{{ "{:,.2f}".format(tire.display_price_for_4) }}</span>
-                                        {% endif %}
+                                    {% if item.display_price_for_4 is not none %}
+                                        <span class="price-for-4">{{ "{:,.2f}".format(item.display_price_for_4) }}</span>
                                     {% else %}
                                         -
                                     {% endif %}
                                 </td>
-                                <td>{{ tire.year_of_manufacture if tire.year_of_manufacture else '-' }}</td>
+                                <td>{{ item.year_of_manufacture if item.year_of_manufacture else '-' }}</td>
                                 <td class="action-buttons">
-                                    <a href="{{ url_for('edit_tire', tire_id=tire.id) }}" class="btn btn-primary btn-sm" title="แก้ไข"><i class="fas fa-edit"></i></a>
-                                    <form class="delete-form" action="{{ url_for('delete_tire', tire_id=tire.id) }}" method="post" style="display:inline;">
-                                        <button type="submit" class="btn btn-danger btn-sm" title="ลบ" data-quantity="{{ tire.quantity }}"><i class="fas fa-trash-alt"></i></button>
+                                    <a href="{{ url_for('edit_tire', tire_id=item.id) }}" class="btn btn-primary btn-sm" title="แก้ไข"><i class="fas fa-edit"></i></a>
+                                    <form class="delete-form" action="{{ url_for('delete_tire', tire_id=item.id) }}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-danger btn-sm" title="ลบ" data-quantity="{{ item.quantity }}"><i class="fas fa-trash-alt"></i></button>
                                     </form>
                                 </td>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     {% else %}
         <p class="no-data">ไม่พบข้อมูลยาง</p>
     {% endif %}
+    <div class="add-item-button">
+        <a href="{{ url_for('add_item', tab='tire') }}" class="btn btn-success"><i class="fas fa-plus"></i> เพิ่มยางใหม่</a>
+    </div>
 </div>
+
 
 <div id="wheels" class="tab-content {{ 'active' if active_tab == 'wheels' }}">
     <h3>สต็อกแม็กปัจจุบัน</h3>
@@ -121,59 +141,75 @@
         </form>
     </div>
 
-    {% if wheels_by_brand %}
-        {% for brand in sorted_wheel_brands %}
-            <h4>{{ brand }}</h4>
-            <div class="table-responsive">
-                <table id="wheels-table"> 
-                    <thead>
-                        <tr>
-                            {# <th>ID</th> #} {# REMOVED: ไม่แสดง ID #}
-                            <th>ลาย</th>
-                            <th>ขนาด (ขอบ x กว้าง)</th>
-                            <th>รู ET</th>
-                            <th>สี</th>
-                            <th>สต็อก</th>
-                            <th>ทุน</th>
-                            <th>ราคาปลีก</th>
-                            <th>รูปภาพ</th>
-                            <th>การดำเนินการ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for wheel in wheels_by_brand[brand] %}
+    {# MODIFIED: ตารางแม็กให้แสดงผลแบบ Report (มีสรุปยอดรวมยี่ห้อ) #}
+    {% if wheels_for_display %} {# เปลี่ยนจาก wheels_by_brand เป็น wheels_for_display #}
+        <div class="table-responsive">
+            <table id="wheels-table"> 
+                <thead>
+                    <tr>
+                        <th>ยี่ห้อแม็ก</th> {# เปลี่ยนเป็น ยี่ห้อแม็ก เพื่อให้รวมแถวได้ #}
+                        <th>ลาย</th>
+                        <th>ขนาด (ขอบ x กว้าง)</th>
+                        <th>รู ET</th>
+                        <th>สี</th>
+                        <th>สต็อก</th>
+                        <th>ทุน</th>
+                        <th>ราคาปลีก</th>
+                        <th>รูปภาพ</th>
+                        <th>การดำเนินการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set last_brand_display_wheel = "" %} {# ตัวแปรสำหรับเช็คว่ายี่ห้อเปลี่ยนหรือไม่ #}
+                    {% for item in wheels_for_display %} {# Loop over processed_wheels_for_display #}
+                        {% if item.is_summary %}
+                            <tr class="summary-row">
+                                <td colspan="5"><b>ยอดรวม {{ item.brand }}</b></td> {# colspan เพิ่มขึ้นตามคอลัมน์ที่แสดง #}
+                                <td><b>{{ item.quantity }}</b></td> {# สต็อกรวม #}
+                                <td colspan="3"></td> {# เว้นว่างสำหรับคอลัมน์ที่เหลือ #}
+                            </tr>
+                        {% else %}
                             <tr>
-                                {# <td>{{ wheel.id }}</td> #} {# REMOVED: ไม่แสดง ID #}
-                                <td>{{ wheel.model }}</td>
-                                <td>{{ "%.1f"|format(wheel.diameter) }}x{{ "%.1f"|format(wheel.width) }}</td>
-                                <td>{{ wheel.pcd }} {{ wheel.et if wheel.et else '-' }}</td>
-                                <td>{{ wheel.color if wheel.color else '-' }}</td>
-                                <td><span class="{% if wheel.quantity <= 2 %}text-danger{% elif wheel.quantity <= 4 %}text-warning{% endif %}">{{ wheel.quantity }}</span></td>
-                                <td>{{ "%.2f"|format(wheel.cost) if wheel.cost is not none else '-' }}</td> 
-                                <td>{{ "%.2f"|format(wheel.retail_price) }}</td>
                                 <td>
-                                {% if wheel.image_filename %}
-                                    <img src="{{ wheel.image_filename }}" alt="{{ wheel.brand }} {{ wheel.model }}" class="img-fluid" style="max-width: 100px;">
-                                {% else %}
-                                <img src="{{ url_for('static', filename='images/placeholder.png') }}" alt="No Image" class="img-fluid" style="max-width: 100px;">
+                                    {# แสดงยี่ห้อเฉพาะเมื่อเปลี่ยนยี่ห้อ #}
+                                    {% if item.brand != last_brand_display_wheel %}
+                                        {{ item.brand }}
+                                        {% set last_brand_display_wheel = item.brand %}
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.model }}</td>
+                                <td>{{ "%.1f"|format(item.diameter) }}x{{ "%.1f"|format(item.width) }}</td>
+                                <td>{{ item.pcd }} {{ item.et if item.et else '-' }}</td>
+                                <td>{{ item.color if item.color else '-' }}</td>
+                                <td><span class="{% if item.quantity <= 2 %}text-danger{% elif item.quantity <= 4 %}text-warning{% endif %}">{{ item.quantity }}</span></td>
+                                <td>{{ "%.2f"|format(item.cost) if item.cost is not none else '-' }}</td> 
+                                <td>{{ "%.2f"|format(item.retail_price) }}</td>
+                                <td>
+                                    {% if item.image_filename %}
+                                        <img src="{{ item.image_filename }}" alt="{{ item.brand }} {{ item.model }}" class="img-fluid" style="max-width: 100px;">
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename='images/placeholder.png') }}" alt="No Image" class="img-fluid" style="max-width: 100px;">
                                     {% endif %}
                                 </td>
                                 <td class="action-buttons">
-                                    <a href="{{ url_for('wheel_detail', wheel_id=wheel.id) }}" class="btn btn-success btn-sm" title="ดูรายละเอียด"><i class="fas fa-info-circle"></i></a>
-                                    <a href="{{ url_for('edit_wheel', wheel_id=wheel.id) }}" class="btn btn-primary btn-sm" title="แก้ไข"><i class="fas fa-edit"></i></a>
-                                    <form class="delete-form" action="{{ url_for('delete_wheel', wheel_id=wheel.id) }}" method="post" style="display:inline;">
-                                        <button type="submit" class="btn btn-danger btn-sm" title="ลบ" data-quantity="{{ wheel.quantity }}"><i class="fas fa-trash-alt"></i></button>
+                                    <a href="{{ url_for('wheel_detail', wheel_id=item.id) }}" class="btn btn-success btn-sm" title="ดูรายละเอียด"><i class="fas fa-info-circle"></i></a>
+                                    <a href="{{ url_for('edit_wheel', wheel_id=item.id) }}" class="btn btn-primary btn-sm" title="แก้ไข"><i class="fas fa-edit"></i></a>
+                                    <form class="delete-form" action="{{ url_for('delete_wheel', wheel_id=item.id) }}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-danger btn-sm" title="ลบ" data-quantity="{{ item.quantity }}"><i class="fas fa-trash-alt"></i></button>
                                     </form>
                                 </td>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     {% else %}
         <p class="no-data">ไม่พบข้อมูลแม็ก</p>
     {% endif %}
+    <div class="add-item-button">
+        <a href="{{ url_for('add_item', tab='wheel') }}" class="btn btn-success"><i class="fas fa-plus"></i> เพิ่มแม็กใหม่</a>
+    </div>
 </div>
 
 <script>
