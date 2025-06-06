@@ -3,12 +3,12 @@
 {% block title %}รายงานสต็อกประจำวัน{% endblock %}
 
 {% block content %}
-<h2>รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d %b %Y') }}</h2>
+<h2>รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d-%m-%Y') }}</h2> {# MODIFIED: เปลี่ยนรูปแบบวันที่ #}
 
 <div class="date-navigation">
     {# ปุ่ม "วันที่แล้ว" - ใช้ yesterday_date_param ที่มาจาก Flask #}
     <a href="{{ url_for('daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary date-nav-button">
-        <i class="fas fa-chevron-left"></i> วันที่แล้ว
+        <i class="fas fa-chevron-left"></i> เมื่อวาน
     </a>
     {# Flatpickr input - value ยังคงเป็นYYYY-MM-DD เพื่อให้ Flatpickr ทำงานได้ถูกต้อง #}
     <input type="text" id="reportDateInput" value="{{ report_date_param }}" placeholder="เลือกวันที่">
@@ -26,12 +26,14 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         flatpickr("#reportDateInput", {
-            dateFormat: "Y-m-d", // รูปแบบวันที่YYYY-MM-DD
+            dateFormat: "Y-m-d", // รูปแบบวันที่ที่ Flatpickr จะส่งค่าไปที่ Flask (เช่น 2025-06-06)
+            altInput: true, // MODIFIED: เปิดใช้งานช่อง input ทางเลือกสำหรับการแสดงผล
+            altFormat: "d-m-Y", // MODIFIED: รูปแบบวันที่ที่แสดงผลในช่อง input (เช่น 06-06-2025)
             locale: "th", // ใช้ภาษาไทย (ต้องโหลด th.min.js)
             defaultDate: "{{ report_date_param }}", // กำหนดวันที่เริ่มต้น
             maxDate: "today", // ห้ามเลือกวันที่ในอนาคต
             onChange: function(selectedDates, dateStr, instance) {
-                // เมื่อเลือกวันที่ เปลี่ยน URL ทันที
+                // เมื่อเลือกวันที่ เปลี่ยน URL ทันที โดยใช้ dateStr ซึ่งเป็นYYYY-MM-DD
                 window.location.href = "{{ url_for('daily_stock_report') }}?date=" + dateStr;
             }
         });
@@ -292,7 +294,7 @@
 ---
 
 <div class="report-section">
-    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# MODIFIED HERE #}
+    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d-%m-%Y') }}</h3> {# MODIFIED: เปลี่ยนรูปแบบวันที่ #}
     {% if tire_movements_raw %}
         <div class="table-responsive">
             <table>
@@ -351,7 +353,7 @@
 </div>
 
 <div class="report-section" style="margin-top: 30px;">
-    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# MODIFIED HERE #}
+    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d-%m-%Y') }}</h3> {# MODIFIED HERE #}
     {% if wheel_movements_raw %}
         <div class="table-responsive">
             <table>
