@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 import os
 import sqlite3
 from datetime import datetime, timedelta
-import pytz
+import pytz # Import pytz for timezone handling
 from collections import defaultdict
 import re
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -35,6 +35,9 @@ cloudinary.config(
 ALLOWED_EXCEL_EXTENSIONS = {'xlsx', 'xls'}
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
+# Define Bangkok timezone
+BKK_TZ = pytz.timezone('Asia/Bangkok')
+
 # --- Helper Functions ---
 def allowed_excel_file(filename):
     return '.' in filename and \
@@ -56,8 +59,33 @@ def close_db(e=None):
         db.close()
 
 def get_bkk_time():
-    bkk_tz = pytz.timezone('Asia/Bangkok')
-    return datetime.now(bkk_tz)
+    return datetime.now(BKK_TZ) # Use BKK_TZ directly here
+
+# Helper to convert a timestamp to BKK timezone
+def convert_to_bkk_time(timestamp_obj):
+    if timestamp_obj is None:
+        return None
+    
+    # If the timestamp is a string, parse it first
+    if isinstance(timestamp_obj, str):
+        try:
+            # datetime.fromisoformat can handle timezone info if present
+            dt_obj = datetime.fromisoformat(timestamp_obj)
+        except ValueError:
+            # Fallback for non-isoformat strings, if necessary, or return None
+            # For this context, assuming isoformat or datetime object
+            return None
+    elif isinstance(timestamp_obj, datetime):
+        dt_obj = timestamp_obj
+    else:
+        return None # Not a datetime object or string
+
+    # If datetime object is naive (no timezone info), assume it's UTC and localize
+    if dt_obj.tzinfo is None:
+        dt_obj = pytz.utc.localize(dt_obj)
+    
+    # Convert to BKK timezone
+    return dt_obj.astimezone(BKK_TZ)
 
 @app.context_processor
 def inject_global_data():
@@ -101,7 +129,115 @@ def logout():
     flash('ออกจากระบบสำเร็จ!', 'success')
     return redirect(url_for('login'))
 
-# --- Protected Routes with @login_required ---
+# --- Helper function for processing report tables in app.py (for index and daily_stock_report) ---
+def process_tire_report_data(all_tires):
+    processed_report = []
+    brand_summaries = defaultdict(lambda: {'quantity_sum': 0}) # Only sum quantity for index page
+    
+    # Sort tires by brand first, then model/size for consistent grouping
+    sorted_tires = sorted(all_tires, key=lambda x: (x['brand'], x['model'], x['size']))
+    
+    last_brand = None
+    for tire in sorted_tires:
+        current_brand = tire['brand']
+        
+        # Add summary row for previous brand if brand changes
+        if last_brand is not None and current_brand != last_brand:
+            summary_data = brand_summaries[last_brand]
+            processed_report.append({
+                'is_summary': True,
+                'brand': last_brand,
+                'quantity': summary_data['quantity_sum'] # Only quantity sum for summary
+            })
+        
+        # Add actual tire item data
+        processed_report.append({
+            'is_summary': False,
+            'brand': tire['brand'],
+            'model': tire['model'],
+            'size': tire['size'],
+            'quantity': tire['quantity'],
+            'price_per_item': tire['price_per_item'],
+            'promotion_id': tire['promotion_id'],
+            'promo_is_active': tire['promo_is_active'],
+            'promo_name': tire['promo_name'],
+            'display_promo_description_text': tire['display_promo_description_text'],
+            'display_promo_price_per_item': tire['display_promo_price_per_item'],
+            'display_price_for_4': tire['display_price_for_4'],
+            'year_of_manufacture': tire['year_of_manufacture'],
+            'id': tire['id'] # Include ID for action buttons
+        })
+        
+        # Accumulate sums for brand summary
+        brand_summaries[current_brand]['quantity_sum'] += tire['quantity']
+        
+        last_brand = current_brand
+        
+    # Add summary for the very last brand
+    if last_brand is not None:
+        summary_data = brand_summaries[last_brand]
+        processed_report.append({
+            'is_summary': True,
+            'brand': last_brand,
+            'quantity': summary_data['quantity_sum']
+        })
+        
+    return processed_report
+
+def process_wheel_report_data(all_wheels):
+    processed_report = []
+    brand_summaries = defaultdict(lambda: {'quantity_sum': 0}) # Only sum quantity for index page
+
+    # Sort wheels by brand first, then model/diameter/width/pcd for consistent grouping
+    sorted_wheels = sorted(all_wheels, key=lambda x: (x['brand'], x['model'], x['diameter'], x['width'], x['pcd']))
+
+    last_brand = None
+    for wheel in sorted_wheels:
+        current_brand = wheel['brand']
+
+        # Add summary row for previous brand if brand changes
+        if last_brand is not None and current_brand != last_brand:
+            summary_data = brand_summaries[last_brand]
+            processed_report.append({
+                'is_summary': True,
+                'brand': last_brand,
+                'quantity': summary_data['quantity_sum']
+            })
+
+        # Add actual wheel item data
+        processed_report.append({
+            'is_summary': False,
+            'brand': wheel['brand'],
+            'model': wheel['model'],
+            'diameter': wheel['diameter'],
+            'pcd': wheel['pcd'],
+            'width': wheel['width'],
+            'et': wheel['et'],
+            'color': wheel['color'],
+            'quantity': wheel['quantity'],
+            'cost': wheel['cost'],
+            'retail_price': wheel['retail_price'],
+            'image_filename': wheel['image_filename'],
+            'id': wheel['id'] # Include ID for action buttons
+        })
+
+        # Accumulate sums for brand summary
+        brand_summaries[current_brand]['quantity_sum'] += wheel['quantity']
+
+        last_brand = current_brand
+
+    # Add summary for the very last brand
+    if last_brand is not None:
+        summary_data = brand_summaries[last_brand]
+        processed_report.append({
+            'is_summary': True,
+            'brand': last_brand,
+            'quantity': summary_data['quantity_sum']
+        })
+    
+    return processed_report
+
+
 @app.route('/')
 @login_required
 def index():
@@ -113,11 +249,8 @@ def index():
     all_tires = database.get_all_tires(conn, query=tire_query, brand_filter=tire_selected_brand)
     available_tire_brands = database.get_all_tire_brands(conn)
 
-    tires_by_brand = defaultdict(list)
-    for tire in all_tires:
-        tires_by_brand[tire['brand']].append(tire)
-
-    sorted_tire_brands = sorted(tires_by_brand.keys())
+    # Process tire data for display (with summaries)
+    processed_tires_for_display = process_tire_report_data(all_tires)
 
     wheel_query = request.args.get('wheel_query', '').strip()
     wheel_selected_brand = request.args.get('wheel_brand_filter', 'all').strip()
@@ -125,24 +258,21 @@ def index():
     all_wheels = database.get_all_wheels(conn, query=wheel_query, brand_filter=wheel_selected_brand)
     available_wheel_brands = database.get_all_wheel_brands(conn)
 
-    wheels_by_brand = defaultdict(list)
-    for wheel in all_wheels:
-        wheels_by_brand[wheel['brand']].append(wheel)
+    # Process wheel data for display (with summaries)
+    processed_wheels_for_display = process_wheel_report_data(all_wheels)
 
-    sorted_wheel_brands = sorted(wheels_by_brand.keys())
 
     active_tab = request.args.get('tab', 'tires')
 
     return render_template('index.html',
-                           tires=all_tires,
-                           tires_by_brand=tires_by_brand,
-                           sorted_tire_brands=sorted_tire_brands,
+                           # Change to use processed data for tables
+                           tires_for_display=processed_tires_for_display,
+                           wheels_for_display=processed_wheels_for_display,
+                           
+                           # Keep original filtering variables for the form
                            tire_query=tire_query,
                            available_tire_brands=available_tire_brands,
                            tire_selected_brand=tire_selected_brand,
-
-                           wheels_by_brand=wheels_by_brand,
-                           sorted_wheel_brands=sorted_wheel_brands,
                            wheel_query=wheel_query,
                            available_wheel_brands=available_wheel_brands,
                            wheel_selected_brand=wheel_selected_brand,
@@ -701,27 +831,19 @@ def stock_movement():
     cursor.execute("SELECT wm.*, w.brand, w.model, w.diameter FROM wheel_movements wm JOIN wheels w ON wm.wheel_id = w.id ORDER BY wm.timestamp DESC LIMIT 50")
     wheel_movements_history = cursor.fetchall()
 
+    # Process timestamps for tire movements history
     processed_tire_movements_history = []
     for movement in tire_movements_history:
         m_dict = dict(movement)
-        if isinstance(m_dict['timestamp'], str):
-            try:
-                m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
-            except ValueError:
-                print(f"Warning: Could not parse timestamp string '{m_dict['timestamp']}' for tire movement ID {m_dict['id']}")
-                m_dict['timestamp'] = None
+        m_dict['timestamp'] = convert_to_bkk_time(m_dict['timestamp']) # Convert to BKK time
         processed_tire_movements_history.append(m_dict)
     tire_movements_history = processed_tire_movements_history
 
+    # Process timestamps for wheel movements history
     processed_wheel_movements_history = []
     for movement in wheel_movements_history:
         m_dict = dict(movement)
-        if isinstance(m_dict['timestamp'], str):
-            try:
-                m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
-            except ValueError:
-                print(f"Warning: Could not parse timestamp string '{m_dict['timestamp']}' for wheel movement ID {m_dict['id']}")
-                m_dict['timestamp'] = None
+        m_dict['timestamp'] = convert_to_bkk_time(m_dict['timestamp']) # Convert to BKK time
         processed_wheel_movements_history.append(m_dict)
     wheel_movements_history = processed_wheel_movements_history
 
@@ -842,12 +964,9 @@ def edit_tire_movement(movement_id):
         flash('ไม่พบข้อมูลการเคลื่อนไหวที่ระบุ', 'danger')
         return redirect(url_for('daily_stock_report'))
 
-    if isinstance(movement['timestamp'], str):
-        try:
-            movement = dict(movement)
-            movement['timestamp'] = datetime.fromisoformat(movement['timestamp'])
-        except ValueError:
-            movement['timestamp'] = None
+    # Process timestamp for editing form
+    movement = dict(movement) # Ensure it's mutable
+    movement['timestamp'] = convert_to_bkk_time(movement['timestamp'])
 
     if request.method == 'POST':
         new_notes = request.form.get('notes', '').strip()
@@ -904,12 +1023,9 @@ def edit_wheel_movement(movement_id):
         flash('ไม่พบข้อมูลการเคลื่อนไหวที่ระบุ', 'danger')
         return redirect(url_for('daily_stock_report'))
 
-    if isinstance(movement['timestamp'], str):
-        try:
-            movement = dict(movement)
-            movement['timestamp'] = datetime.fromisoformat(movement['timestamp'])
-        except ValueError:
-            movement['timestamp'] = None
+    # Process timestamp for editing form
+    movement = dict(movement) # Ensure it's mutable
+    movement['timestamp'] = convert_to_bkk_time(movement['timestamp'])
 
     if request.method == 'POST':
         new_notes = request.form.get('notes', '').strip()
@@ -997,12 +1113,7 @@ def daily_stock_report():
     processed_tire_movements_raw = []
     for movement in tire_movements_raw:
         m_dict = dict(movement)
-        if isinstance(m_dict['timestamp'], str):
-            try:
-                m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
-            except ValueError:
-                print(f"Warning: Could not parse timestamp string '{m_dict['timestamp']}' for tire movement ID {m_dict['id']}")
-                m_dict['timestamp'] = None
+        m_dict['timestamp'] = convert_to_bkk_time(m_dict['timestamp']) # Convert to BKK time
         processed_tire_movements_raw.append(m_dict)
     tire_movements_raw = processed_tire_movements_raw
 
@@ -1085,12 +1196,7 @@ def daily_stock_report():
     processed_wheel_movements_raw = []
     for movement in wheel_movements_raw:
         m_dict = dict(movement)
-        if isinstance(m_dict['timestamp'], str):
-            try:
-                m_dict['timestamp'] = datetime.fromisoformat(m_dict['timestamp'])
-            except ValueError:
-                print(f"Warning: Could not parse timestamp string '{m_dict['timestamp']}' for wheel movement ID {m_dict['id']}")
-                m_dict['timestamp'] = None
+        m_dict['timestamp'] = convert_to_bkk_time(m_dict['timestamp']) # Convert to BKK time
         processed_wheel_movements_raw.append(m_dict)
     wheel_movements_raw = processed_wheel_movements_raw
 
