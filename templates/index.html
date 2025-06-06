@@ -34,13 +34,12 @@
         </form>
     </div>
 
-    {# MODIFIED: ตารางยางให้แสดงผลแบบ Report (มีสรุปยอดรวมยี่ห้อ) #}
-    {% if tires_for_display %} {# เปลี่ยนจาก tires_by_brand เป็น tires_for_display #}
+    {% if tires_for_display %}
         <div class="table-responsive">
             <table id="tires-table"> 
                 <thead>
                     <tr>
-                        <th>ยี่ห้อยาง</th> {# เปลี่ยนเป็น ยี่ห้อยาง เพื่อให้รวมแถวได้ #}
+                        <th>ยี่ห้อยาง</th>
                         <th>รุ่นยาง</th>
                         <th>เบอร์ยาง</th>
                         <th>สต็อก</th>
@@ -52,18 +51,17 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% set last_brand_display_tire = "" %} {# ตัวแปรสำหรับเช็คว่ายี่ห้อเปลี่ยนหรือไม่ #}
-                    {% for item in tires_for_display %} {# Loop over processed_tires_for_display #}
+                    {% set last_brand_display_tire = "" %}
+                    {% for item in tires_for_display %}
                         {% if item.is_summary %}
                             <tr class="summary-row">
                                 <td colspan="3"><b>ยอดรวม {{ item.brand }}</b></td>
-                                <td><b>{{ item.quantity }}</b></td> {# สต็อกรวม #}
-                                <td colspan="4"></td> {# เว้นว่างสำหรับคอลัมน์ที่เหลือ #}
+                                <td><b>{{ item.quantity }}</b></td>
+                                <td colspan="4"></td>
                             </tr>
                         {% else %}
                             <tr>
                                 <td>
-                                    {# แสดงยี่ห้อเฉพาะเมื่อเปลี่ยนยี่ห้อ #}
                                     {% if item.brand != last_brand_display_tire %}
                                         {{ item.brand }}
                                         {% set last_brand_display_tire = item.brand %}
@@ -73,9 +71,10 @@
                                 <td>{{ item.size }}</td>
                                 <td><span class="{% if item.quantity <= 5 %}text-danger{% elif item.quantity <= 10 %}text-warning{% endif %}">{{ item.quantity }}</span></td>
                                 <td>
-                                    {% if item.display_promo_price_per_item is not none and item.display_promo_price_per_item != item.price_per_item %}
-                                        <del>{{ "{:,.2f}".format(item.price_per_item) }}</del><br>
-                                        <strong>{{ "{:,.2f}".format(item.display_promo_price_per_item) }}</strong>
+                                    {# MODIFIED: ไม่มีขีดฆ่า และราคาโปรโมชันเป็นสีเขียว #}
+                                    {% if item.display_promo_price_per_item is not none and item.promotion_id and item.promo_is_active == 1 %}
+                                        {{ "{:,.2f}".format(item.price_per_item) }}<br> {# แสดงราคาปกติ ไม่มีขีดฆ่า #}
+                                        <strong class="promo-price-text">{{ "{:,.2f}".format(item.display_promo_price_per_item) }}</strong> {# ราคาโปรโมชันสีเขียว #}
                                     {% else %}
                                         {{ "{:,.2f}".format(item.price_per_item) }}
                                     {% endif %}
@@ -88,7 +87,6 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {# Logic for displaying price for 4 items with color #}
                                     {% if item.display_price_for_4 is not none %}
                                         <span class="price-for-4">{{ "{:,.2f}".format(item.display_price_for_4) }}</span>
                                     {% else %}
@@ -141,13 +139,12 @@
         </form>
     </div>
 
-    {# MODIFIED: ตารางแม็กให้แสดงผลแบบ Report (มีสรุปยอดรวมยี่ห้อ) #}
-    {% if wheels_for_display %} {# เปลี่ยนจาก wheels_by_brand เป็น wheels_for_display #}
+    {% if wheels_for_display %}
         <div class="table-responsive">
             <table id="wheels-table"> 
                 <thead>
                     <tr>
-                        <th>ยี่ห้อแม็ก</th> {# เปลี่ยนเป็น ยี่ห้อแม็ก เพื่อให้รวมแถวได้ #}
+                        <th>ยี่ห้อแม็ก</th>
                         <th>ลาย</th>
                         <th>ขนาด (ขอบ x กว้าง)</th>
                         <th>รู ET</th>
@@ -160,18 +157,17 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% set last_brand_display_wheel = "" %} {# ตัวแปรสำหรับเช็คว่ายี่ห้อเปลี่ยนหรือไม่ #}
-                    {% for item in wheels_for_display %} {# Loop over processed_wheels_for_display #}
+                    {% set last_brand_display_wheel = "" %}
+                    {% for item in wheels_for_display %}
                         {% if item.is_summary %}
                             <tr class="summary-row">
-                                <td colspan="5"><b>ยอดรวม {{ item.brand }}</b></td> {# colspan เพิ่มขึ้นตามคอลัมน์ที่แสดง #}
-                                <td><b>{{ item.quantity }}</b></td> {# สต็อกรวม #}
-                                <td colspan="3"></td> {# เว้นว่างสำหรับคอลัมน์ที่เหลือ #}
+                                <td colspan="5"><b>ยอดรวม {{ item.brand }}</b></td>
+                                <td><b>{{ item.quantity }}</b></td>
+                                <td colspan="3"></td>
                             </tr>
                         {% else %}
                             <tr>
                                 <td>
-                                    {# แสดงยี่ห้อเฉพาะเมื่อเปลี่ยนยี่ห้อ #}
                                     {% if item.brand != last_brand_display_wheel %}
                                         {{ item.brand }}
                                         {% set last_brand_display_wheel = item.brand %}
@@ -270,4 +266,156 @@
         }
     });
 </script>
+
+<style>
+    /* เพิ่ม CSS สำหรับราคาโปรโมชันสีเขียว */
+    .promo-price-text {
+        color: green; /* สามารถเปลี่ยนเป็นสีที่คุณต้องการ หรือใช้ตัวแปร CSS เช่น var(--success-color) ได้ */
+        font-weight: bold; /* เพื่อเน้น */
+    }
+
+    /* CSS ที่เหลือของคุณ (จาก style.css หรือส่วนอื่นใน index.html) */
+    /* อย่าลืมรวม CSS ส่วนที่เกี่ยวข้องกับตารางและปุ่มต่างๆ ด้วย */
+
+    .summary-row {
+        background-color: var(--primary-color) !important;
+        color: var(--text-white) !important;
+        font-weight: bold;
+        border-top: 2px solid var(--primary-dark);
+        border-bottom: 2px solid var(--primary-dark);
+    }
+    .summary-row td {
+        padding: 12px 10px;
+    }
+    .table-responsive {
+        overflow-x: auto;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    th, td {
+        border: 1px solid var(--border-color);
+        padding: 10px;
+        text-align: left;
+    }
+    th {
+        background-color: #f8f8f8;
+        color: var(--text-dark);
+    }
+    tbody tr:nth-child(even) {
+        background-color: var(--bg-stripe);
+    }
+    .text-danger {
+        color: var(--danger-color);
+    }
+    .text-warning {
+        color: var(--warning-color);
+    }
+    .promo-badge {
+        display: inline-block;
+        background-color: var(--primary-color);
+        color: white;
+        padding: 3px 6px;
+        border-radius: var(--border-radius-sm);
+        font-size: 0.75em;
+        font-weight: bold;
+        margin-left: 5px;
+    }
+    .action-buttons .btn {
+        margin-right: 5px;
+    }
+    .no-data {
+        text-align: center;
+        padding: 20px;
+        color: var(--text-light);
+    }
+    .add-item-button {
+        margin-top: 20px;
+        text-align: right; /* หรือ center หากต้องการ */
+    }
+    .add-item-button .btn {
+        padding: 10px 20px;
+        font-size: 1.1em;
+    }
+    /* อื่นๆ */
+    .tabs {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+    .tab-button {
+        padding: 10px 20px;
+        border: 1px solid var(--border-color);
+        background-color: var(--bg-light);
+        cursor: pointer;
+        font-size: 1.1em;
+        transition: background-color 0.3s, border-color 0.3s;
+    }
+    .tab-button:first-child {
+        border-top-left-radius: var(--border-radius);
+        border-bottom-left-radius: var(--border-radius);
+    }
+    .tab-button:last-child {
+        border-top-right-radius: var(--border-radius);
+        border-bottom-right-radius: var(--border-radius);
+    }
+    .tab-button.active {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+    .tab-button:hover:not(.active) {
+        background-color: var(--bg-hover-light);
+    }
+    .tab-content {
+        display: none;
+    }
+    .tab-content.active {
+        display: block;
+    }
+    .filter-section {
+        background-color: var(--bg-white);
+        padding: 15px;
+        border-radius: var(--border-radius-md);
+        box-shadow: var(--shadow-light);
+        margin-bottom: 20px;
+    }
+    .form-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: flex-end;
+    }
+    .form-group {
+        flex: 1;
+        min-width: 150px;
+    }
+    .form-group.half-width {
+        flex-basis: calc(50% - 15px);
+    }
+    .form-group.quarter-width {
+        flex-basis: calc(25% - 15px);
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    .form-group input[type="text"],
+    .form-group select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        box-sizing: border-box;
+    }
+    .form-group button {
+        width: auto;
+        padding: 10px 15px;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+    }
+</style>
 {% endblock %}
