@@ -823,12 +823,26 @@ def stock_movement():
     
     active_tab = request.args.get('tab', 'tire_movements') 
 
+    # --- Tire Movements History Query (MODIFIED: Added LEFT JOIN users to get username) ---
     cursor = conn.cursor()
-    cursor.execute("SELECT tm.*, t.brand, t.model, t.size FROM tire_movements tm JOIN tires t ON tm.tire_id = t.id ORDER BY tm.timestamp DESC LIMIT 50")
+    cursor.execute("""
+        SELECT tm.*, t.brand, t.model, t.size, u.username
+        FROM tire_movements tm
+        JOIN tires t ON tm.tire_id = t.id
+        LEFT JOIN users u ON tm.user_id = u.id -- ADDED JOIN to get username
+        ORDER BY tm.timestamp DESC LIMIT 50
+    """)
     tire_movements_history = cursor.fetchall()
 
+    # --- Wheel Movements History Query (MODIFIED: Added LEFT JOIN users) ---
     cursor = conn.cursor()
-    cursor.execute("SELECT wm.*, w.brand, w.model, w.diameter FROM wheel_movements wm JOIN wheels w ON wm.wheel_id = w.id ORDER BY wm.timestamp DESC LIMIT 50")
+    cursor.execute("""
+        SELECT wm.*, w.brand, w.model, w.diameter, u.username
+        FROM wheel_movements wm
+        JOIN wheels w ON wm.wheel_id = w.id
+        LEFT JOIN users u ON wm.user_id = u.id -- ADDED JOIN to get username
+        ORDER BY wm.timestamp DESC LIMIT 50
+    """)
     wheel_movements_history = cursor.fetchall()
 
     # Process timestamps for tire movements history
@@ -893,6 +907,9 @@ def stock_movement():
                 flash('จำนวนที่เปลี่ยนแปลงต้องมากกว่า 0', 'danger')
                 return redirect(url_for('stock_movement', tab=active_tab_on_error))
             
+            # --- Get current_user.id for adding movement (ADDED) ---
+            current_user_id = current_user.id if current_user.is_authenticated else None
+
             if submit_type == 'tire_movement':
                 tire_id = int(item_id)
                 current_tire = database.get_tire(conn, tire_id)
@@ -910,7 +927,8 @@ def stock_movement():
                     new_quantity -= quantity_change
                 
                 database.update_tire_quantity(conn, tire_id, new_quantity)
-                database.add_tire_movement(conn, tire_id, move_type, quantity_change, new_quantity, notes, bill_image_url_to_db)
+                # MODIFIED: Pass current_user_id
+                database.add_tire_movement(conn, tire_id, move_type, quantity_change, new_quantity, notes, bill_image_url_to_db, user_id=current_user_id)
                 flash(f'บันทึกการเคลื่อนไหวสต็อกยางสำเร็จ! คงเหลือ: {new_quantity} เส้น', 'success')
                 return redirect(url_for('stock_movement', tab='tire_movements'))
 
@@ -931,7 +949,8 @@ def stock_movement():
                     new_quantity -= quantity_change
                 
                 database.update_wheel_quantity(conn, wheel_id, new_quantity)
-                database.add_wheel_movement(conn, wheel_id, move_type, quantity_change, new_quantity, notes, bill_image_url_to_db)
+                # MODIFIED: Pass current_user_id
+                database.add_wheel_movement(conn, wheel_id, move_type, quantity_change, new_quantity, notes, bill_image_url_to_db, user_id=current_user_id)
                 flash(f'บันทึกการเคลื่อนไหวสต็อกแม็กสำเร็จ! คงเหลือ: {new_quantity} วง', 'success')
                 return redirect(url_for('stock_movement', tab='wheel_movements'))
 
@@ -958,7 +977,7 @@ def edit_tire_movement(movement_id):
         return redirect(url_for('daily_stock_report'))
 
     conn = get_db()
-    movement = database.get_tire_movement(conn, movement_id)
+    movement = database.get_tire_movement(conn, movement_id) # database.get_tire_movement now returns username
 
     if movement is None:
         flash('ไม่พบข้อมูลการเคลื่อนไหวที่ระบุ', 'danger')
@@ -1001,13 +1020,14 @@ def edit_tire_movement(movement_id):
                 return render_template('edit_tire_movement.html', movement=movement)
 
         try:
+            # Here, you might also want to update who edited it and when (e.g., edited_by_user_id, last_modified_at)
             database.update_tire_movement(conn, movement_id, new_notes, bill_image_url_to_db)
             flash('แก้ไขข้อมูลการเคลื่อนไหวสต็อกยางสำเร็จ!', 'success')
             return redirect(url_for('daily_stock_report'))
         except Exception as e:
             flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูล: {e}', 'danger')
 
-    return render_template('edit_tire_movement.html', movement=movement) # Renamed template here
+    return render_template('edit_tire_movement.html', movement=movement)
 
 @app.route('/edit_wheel_movement/<int:movement_id>', methods=['GET', 'POST'])
 @login_required
@@ -1017,7 +1037,7 @@ def edit_wheel_movement(movement_id):
         return redirect(url_for('daily_stock_report'))
 
     conn = get_db()
-    movement = database.get_wheel_movement(conn, movement_id)
+    movement = database.get_wheel_movement(conn, movement_id) # database.get_wheel_movement now returns username
 
     if movement is None:
         flash('ไม่พบข้อมูลการเคลื่อนไหวที่ระบุ', 'danger')
@@ -1060,15 +1080,16 @@ def edit_wheel_movement(movement_id):
                 return render_template('edit_wheel_movement.html', movement=movement)
 
         try:
+            # Here, you might also want to update who edited it and when
             database.update_wheel_movement(conn, movement_id, new_notes, bill_image_url_to_db)
             flash('แก้ไขข้อมูลการเคลื่อนไหวสต็อกแม็กสำเร็จ!', 'success')
             return redirect(url_for('daily_stock_report'))
         except Exception as e:
             flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูล: {e}', 'danger')
 
-    return render_template('edit_wheel_movement.html', movement=movement) # Renamed template here
+    return render_template('edit_wheel_movement.html', movement=movement)
 
-# --- daily_stock_report (No functional changes, just ensuring it's complete) ---
+# --- daily_stock_report ---
 @app.route('/daily_stock_report')
 @login_required
 def daily_stock_report():
@@ -1079,7 +1100,7 @@ def daily_stock_report():
     if report_date_str:
         try:
             report_date = datetime.strptime(report_date_str, '%Y-%m-%d').date()
-            display_date_str = report_date.strftime('%d %b %Y') # e.g., 06 Jun 2025
+            display_date_str = report_date.strftime('%d %b %Y')
         except ValueError:
             flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้YYYY-MM-DD", "danger")
             report_date = get_bkk_time().date()
@@ -1091,14 +1112,17 @@ def daily_stock_report():
     sql_date_filter = report_date.strftime('%Y-%m-%d')
 
     # --- Tire Report Data ---
+    # MODIFIED: Added LEFT JOIN users and u.username to the SELECT clause
     tire_movements_query = f"""
         SELECT
             tm.id, tm.timestamp, tm.type, tm.quantity_change, tm.image_filename, tm.notes,
-            t.id AS tire_main_id, t.brand, t.model, t.size
+            t.id AS tire_main_id, t.brand, t.model, t.size,
+            u.username AS user_username -- ADDED: Get username
         FROM tire_movements tm
         JOIN tires t ON tm.tire_id = t.id
+        LEFT JOIN users u ON tm.user_id = u.id -- ADDED: Join users table
         WHERE {database.get_sql_date_format_for_query('tm.timestamp')} = %s
-        ORDER BY tm.timestamp DESC {# MODIFIED: Order only by timestamp DESC #}
+        ORDER BY tm.timestamp DESC
     """
     if "psycopg2" in str(type(conn)):
         cursor = conn.cursor()
@@ -1174,12 +1198,15 @@ def daily_stock_report():
 
 
     # --- Wheel Report Data ---
+    # MODIFIED: Added LEFT JOIN users and u.username to the SELECT clause
     wheel_movements_query = f"""
         SELECT
             wm.id, wm.timestamp, wm.type, wm.quantity_change, wm.image_filename, wm.notes,
-            w.id AS wheel_main_id, w.brand, w.model, w.diameter, w.pcd, w.width
+            w.id AS wheel_main_id, w.brand, w.model, w.diameter, w.pcd, w.width,
+            u.username AS user_username -- ADDED: Get username
         FROM wheel_movements wm
         JOIN wheels w ON wm.wheel_id = w.id
+        LEFT JOIN users u ON wm.user_id = u.id -- ADDED: Join users table
         WHERE {database.get_sql_date_format_for_query('wm.timestamp')} = %s
         ORDER BY wm.timestamp DESC {# MODIFIED: Order only by timestamp DESC #}
     """
@@ -1295,7 +1322,7 @@ def daily_stock_report():
 @app.route('/export_import', methods=('GET', 'POST'))
 @login_required
 def export_import():
-    if not current_user.can_admin(): # Changed to can_admin as per recent common practice
+    if not current_user.can_admin():
         flash('คุณไม่มีสิทธิ์ในการนำเข้า/ส่งออกข้อมูล', 'danger')
         return redirect(url_for('index'))
     conn = get_db()
