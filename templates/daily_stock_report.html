@@ -292,13 +292,14 @@
 ---
 
 <div class="report-section">
-    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# Using report_date_obj for consistent formatting #}
+    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# MODIFIED HERE #}
     {% if tire_movements_raw %}
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th>เวลา</th>
+                        <th>พนักงาน</th> {# ADDED: New column header for user #}
                         <th>ประเภท</th>
                         <th>จำนวน</th>
                         <th>คงเหลือ</th>
@@ -316,6 +317,7 @@
                     {% for movement in tire_movements_raw %}
                         <tr>
                             <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td> {# Check if timestamp exists before formatting #}
+                            <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# ADDED: Display username #}
                             <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                             <td>{{ movement.quantity_change }}</td>
                             <td>{{ movement.remaining_quantity }}</td>
@@ -325,6 +327,7 @@
                             <td>{{ movement.notes if movement.notes else '-' }}</td>
                             <td>
                                 {% if movement.image_filename %}
+                                    {# ตรวจสอบว่า image_filename เป็น URL ที่สมบูรณ์หรือเป็น path #}
                                     <a href="{{ movement.image_filename }}" target="_blank">
                                         <i class="fas fa-image"></i> ดูบิล
                                     </a>
@@ -348,13 +351,14 @@
 </div>
 
 <div class="report-section" style="margin-top: 30px;">
-    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# Using report_date_obj for consistent formatting #}
+    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# MODIFIED HERE #}
     {% if wheel_movements_raw %}
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th>เวลา</th>
+                        <th>พนักงาน</th> {# ADDED: New column header for user #}
                         <th>ประเภท</th>
                         <th>จำนวน</th>
                         <th>คงเหลือ</th>
@@ -373,6 +377,7 @@
                     {% for movement in wheel_movements_raw %}
                         <tr>
                             <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td> {# Check if timestamp exists before formatting #}
+                            <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# ADDED: Display username #}
                             <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                             <td>{{ movement.quantity_change }}</td>
                             <td>{{ movement.remaining_quantity }}</td>
@@ -407,6 +412,7 @@
 
 <div class="back-link">
     <a href="{{ url_for('stock_movement') }}" class="btn btn-secondary" style="margin-top: 20px;">กลับไปหน้าจัดการสต็อก</a>
+    {# เปลี่ยนจาก back to index เป็น back to stock_movement ตามโค้ดแรก #}
 </div>
 
 {% endblock %}
