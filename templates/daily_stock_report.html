@@ -3,23 +3,24 @@
 {% block title %}รายงานสต็อกประจำวัน{% endblock %}
 
 {% block content %}
-{# แก้ไขหัวข้อรายงานให้ใช้ report_date_obj ที่เป็น datetime object #}
-<h2>รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d %b %Y') }}</h2> 
+<h2>รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d %b %Y') }}</h2> {# ใช้ report_date_obj #}
 
 <div class="date-navigation">
     {# ปุ่ม "วันที่แล้ว" - ใช้ yesterday_date_param ที่มาจาก Flask #}
     <a href="{{ url_for('daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary date-nav-button">
-        <i class="fas fa-chevron-left"></i> วันที่แล้ว
+        <i class="fas fa-chevron-left"></i> เมื่อวาน
     </a>
     {# Flatpickr input - value ยังคงเป็น YYYY-MM-DD เพื่อให้ Flatpickr ทำงานได้ถูกต้อง #}
     <input type="text" id="reportDateInput" value="{{ report_date_param }}" placeholder="เลือกวันที่">
     {# เพิ่มปุ่ม "วันที่ถัดไป" - ต้องคำนวณ tomorrow_date_param มาจาก Flask #}
-    {# <a href="{{ url_for('daily_stock_report', date=tomorrow_date_param) }}" class="btn btn-outline-secondary date-nav-button">
-        วันที่ถัดไป <i class="fas fa-chevron-right"></i>
-    </a> #}
+    {# ถ้าต้องการปุ่มถัดไป ต้องคำนวณ tomorrow_date_param ใน app.py ด้วย #}
+    {% if report_date_obj.date() < get_bkk_time().date() %} {# แสดงปุ่ม "วันที่ถัดไป" ถ้าไม่ใช่วันที่ปัจจุบัน #}
+        <a href="{{ url_for('daily_stock_report', date=report_date_obj.strftime('%Y-%m-%d') | next_day_str_filter) }}" class="btn btn-outline-secondary date-nav-button">
+            วันที่ถัดไป <i class="fas fa-chevron-right"></i>
+        </a>
+    {% endif %}
 </div>
 
-{# ส่วนของ script และ CSS ที่คุณให้มา (ยังคงเดิม) #}
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -61,11 +62,18 @@
         padding: 8px 12px;
         font-size: 1em;
         text-decoration: none;
+        border: 1px solid var(--border-color); /* Added border to match input */
         border-radius: var(--border-radius);
         display: flex;
         align-items: center;
         gap: 5px;
+        color: var(--text-light); /* Inherit default text color */
     }
+    .date-nav-button:hover {
+        background-color: var(--bg-hover-light);
+        text-decoration: none; /* Remove underline on hover */
+    }
+
 
     /* CSS สำหรับ summary-card-container และ summary-card (จากโค้ดที่ 2) */
     .summary-card-container {
@@ -75,10 +83,10 @@
         margin-bottom: 30px;
     }
     .summary-card {
-        background-color: var(--card-bg-color);
+        background-color: var(--bg-white); /* Used var from global styles */
         padding: 20px;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
+        border-radius: var(--border-radius-md); /* Used var from global styles */
+        box-shadow: var(--shadow-light); /* Used var from global styles */
         flex: 1;
         text-align: center;
     }
@@ -91,25 +99,25 @@
     .summary-card p {
         margin: 5px 0;
         font-size: 1.1em;
-        color: var(--text-color);
+        color: var(--text-dark); /* Used var from global styles */
     }
     .summary-card strong {
-        color: var(--dark-text-color);
+        color: var(--text-dark); /* Used var from global styles */
         font-size: 1.2em;
     }
 
     /* CSS สำหรับ report-section และตาราง (จากโค้ดที่ 2) */
     .report-section {
-        background-color: var(--card-bg-color);
+        background-color: var(--bg-white); /* Used var from global styles */
         padding: 20px;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
+        border-radius: var(--border-radius-md); /* Used var from global styles */
+        box-shadow: var(--shadow-light); /* Used var from global styles */
         margin-bottom: 30px;
     }
     .report-section h3 {
-        color: var(--primary-color);
+        color: var(--text-dark); /* Used var from global styles */
         margin-bottom: 15px;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color); /* Used var from global styles */
         padding-bottom: 10px;
         font-weight: 600;
     }
@@ -119,24 +127,24 @@
         margin-top: 15px;
     }
     .report-section th, .report-section td {
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--border-color); /* Used var from global styles */
         padding: 10px;
         text-align: left;
     }
     .report-section th {
-        background-color: var(--header-bg-color);
-        color: var(--text-color);
+        background-color: #f8f8f8; /* Used var from global styles */
+        color: var(--text-dark); /* Used var from global styles */
     }
     .report-section tbody tr:nth-child(even) {
-        background-color: var(--secondary-bg-color);
+        background-color: var(--bg-stripe); /* Used var from global styles */
     }
     /* Style for summary rows WITHIN the table (ยอดรวมยี่ห้อ) */
     .summary-row {
-        background-color: var(--primary-color-light) !important;
-        color: var(--primary-color-dark);
+        background-color: var(--primary-color) !important; /* Used var from global styles */
+        color: var(--text-white) !important; /* Used var from global styles */
         font-weight: bold;
-        border-top: 2px solid var(--primary-color);
-        border-bottom: 2px solid var(--primary-color);
+        border-top: 2px solid var(--primary-dark); /* Used var from global styles */
+        border-bottom: 2px solid var(--primary-dark); /* Used var from global styles */
     }
     .summary-row td {
         padding: 12px 10px;
@@ -147,14 +155,22 @@
         padding: 5px 10px;
         font-size: 0.85em;
     }
+    /* Updated button styles to match global theme vars */
     .btn-warning {
-        background-color: #ffc107;
-        color: #212529;
-        border: 1px solid #ffc107;
+        background-color: var(--accent-color);
+        color: var(--text-dark); /* Text should be dark on warning */
+        border: 1px solid var(--accent-color);
     }
     .btn-warning:hover {
-        background-color: #e0a800;
-        border-color: #d39e00;
+        background-color: #e09200; /* Darker orange */
+        border-color: #e09200;
+    }
+    .btn-secondary { /* Added style for the back button */
+        background-color: #6c757d;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background-color: #5a6268;
     }
 </style>
 
@@ -277,7 +293,8 @@
 ---
 
 <div class="report-section">
-    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# MODIFIED HERE #}
+    {# ใช้ report_date_obj เพื่อฟอร์แมตวันที่ #}
+    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> 
     {% if tire_movements_raw %}
         <div class="table-responsive">
             <table>
@@ -334,7 +351,8 @@
 </div>
 
 <div class="report-section" style="margin-top: 30px;">
-    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# MODIFIED HERE #}
+    {# ใช้ report_date_obj เพื่อฟอร์แมตวันที่ #}
+    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> 
     {% if wheel_movements_raw %}
         <div class="table-responsive">
             <table>
