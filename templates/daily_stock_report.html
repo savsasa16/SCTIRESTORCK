@@ -3,19 +3,18 @@
 {% block title %}รายงานสต็อกประจำวัน{% endblock %}
 
 {% block content %}
-<h2>รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d %b %Y') }}</h2> {# ใช้ report_date_obj #}
+<h2>รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d %b %Y') }}</h2>
 
 <div class="date-navigation">
     {# ปุ่ม "วันที่แล้ว" - ใช้ yesterday_date_param ที่มาจาก Flask #}
     <a href="{{ url_for('daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary date-nav-button">
-        <i class="fas fa-chevron-left"></i> เมื่อวาน
+        <i class="fas fa-chevron-left"></i> วันที่แล้ว
     </a>
-    {# Flatpickr input - value ยังคงเป็น YYYY-MM-DD เพื่อให้ Flatpickr ทำงานได้ถูกต้อง #}
+    {# Flatpickr input - value ยังคงเป็นYYYY-MM-DD เพื่อให้ Flatpickr ทำงานได้ถูกต้อง #}
     <input type="text" id="reportDateInput" value="{{ report_date_param }}" placeholder="เลือกวันที่">
     {# เพิ่มปุ่ม "วันที่ถัดไป" - ต้องคำนวณ tomorrow_date_param มาจาก Flask #}
-    {# ถ้าต้องการปุ่มถัดไป ต้องคำนวณ tomorrow_date_param ใน app.py ด้วย #}
-    {% if report_date_obj.date() < get_bkk_time().date() %} {# แสดงปุ่ม "วันที่ถัดไป" ถ้าไม่ใช่วันที่ปัจจุบัน #}
-        <a href="{{ url_for('daily_stock_report', date=report_date_obj.strftime('%Y-%m-%d') | next_day_str_filter) }}" class="btn btn-outline-secondary date-nav-button">
+    {% if report_date_obj < get_bkk_time().date() %} {# FIXED: Removed .date() from report_date_obj #}
+        <a href="{{ url_for('daily_stock_report', date=(report_date_obj + timedelta(days=1)).strftime('%Y-%m-%d')) }}" class="btn btn-outline-secondary date-nav-button">
             วันที่ถัดไป <i class="fas fa-chevron-right"></i>
         </a>
     {% endif %}
@@ -27,7 +26,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         flatpickr("#reportDateInput", {
-            dateFormat: "Y-m-d", // รูปแบบวันที่ YYYY-MM-DD
+            dateFormat: "Y-m-d", // รูปแบบวันที่YYYY-MM-DD
             locale: "th", // ใช้ภาษาไทย (ต้องโหลด th.min.js)
             defaultDate: "{{ report_date_param }}", // กำหนดวันที่เริ่มต้น
             maxDate: "today", // ห้ามเลือกวันที่ในอนาคต
@@ -293,8 +292,7 @@
 ---
 
 <div class="report-section">
-    {# ใช้ report_date_obj เพื่อฟอร์แมตวันที่ #}
-    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> 
+    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# Using report_date_obj for consistent formatting #}
     {% if tire_movements_raw %}
         <div class="table-responsive">
             <table>
@@ -317,7 +315,7 @@
                 <tbody>
                     {% for movement in tire_movements_raw %}
                         <tr>
-                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td> {# ตรวจสอบ movement.timestamp ว่ามีค่าก่อน .strftime #}
+                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td> {# Check if timestamp exists before formatting #}
                             <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                             <td>{{ movement.quantity_change }}</td>
                             <td>{{ movement.remaining_quantity }}</td>
@@ -327,7 +325,6 @@
                             <td>{{ movement.notes if movement.notes else '-' }}</td>
                             <td>
                                 {% if movement.image_filename %}
-                                    {# ตรวจสอบว่า image_filename เป็น URL ที่สมบูรณ์หรือเป็น path #}
                                     <a href="{{ movement.image_filename }}" target="_blank">
                                         <i class="fas fa-image"></i> ดูบิล
                                     </a>
@@ -351,8 +348,7 @@
 </div>
 
 <div class="report-section" style="margin-top: 30px;">
-    {# ใช้ report_date_obj เพื่อฟอร์แมตวันที่ #}
-    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> 
+    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# Using report_date_obj for consistent formatting #}
     {% if wheel_movements_raw %}
         <div class="table-responsive">
             <table>
@@ -365,7 +361,7 @@
                         <th>ยี่ห้อ</th>
                         <th>ลาย</th>
                         <th>ขอบ</th>
-                        <th>รู</th> {# เพิ่มรูเข้ามาในตาราง #}
+                        <th>รู</th> {# Added 'รู' to the table #}
                         <th>หมายเหตุ</th>
                         <th>หลักฐาน</th>
                         {% if current_user.is_admin() %}
@@ -376,14 +372,14 @@
                 <tbody>
                     {% for movement in wheel_movements_raw %}
                         <tr>
-                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td> {# ตรวจสอบ movement.timestamp ว่ามีค่าก่อน .strftime #}
+                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td> {# Check if timestamp exists before formatting #}
                             <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                             <td>{{ movement.quantity_change }}</td>
                             <td>{{ movement.remaining_quantity }}</td>
                             <td>{{ movement.brand }}</td>
                             <td>{{ movement.model }}</td>
                             <td>{{ "%.1f"|format(movement.diameter) }}</td>
-                            <td>{{ movement.pcd if movement.pcd else '-' }}</td> {# เพิ่ม pcd เข้ามาและจัดการกรณีเป็น None #}
+                            <td>{{ movement.pcd if movement.pcd else '-' }}</td> {# Added pcd and handle None #}
                             <td>{{ movement.notes if movement.notes else '-' }}</td>
                             <td>
                                 {% if movement.image_filename %}
@@ -411,7 +407,6 @@
 
 <div class="back-link">
     <a href="{{ url_for('stock_movement') }}" class="btn btn-secondary" style="margin-top: 20px;">กลับไปหน้าจัดการสต็อก</a>
-    {# เปลี่ยนจาก back to index เป็น back to stock_movement ตามโค้ดแรก #}
 </div>
 
 {% endblock %}
