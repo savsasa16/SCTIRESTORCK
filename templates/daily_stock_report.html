@@ -3,17 +3,23 @@
 {% block title %}รายงานสต็อกประจำวัน{% endblock %}
 
 {% block content %}
-<h2>รายงานสต็อกประจำวัน: {{ display_date_str }}</h2>
+{# แก้ไขหัวข้อรายงานให้ใช้ report_date_obj ที่เป็น datetime object #}
+<h2>รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d %b %Y') }}</h2> 
 
 <div class="date-navigation">
-    {# ใช้ Flatpickr สำหรับการเลือกวันที่ #}
-    <input type="text" id="reportDateInput" value="{{ report_date_param }}" placeholder="เลือกวันที่">
-    {# เพิ่มปุ่ม "วันที่แล้ว" กลับมาเผื่อกรณีที่ Flatpickr ไม่มีปุ่มนี้โดยตรงหรือผู้ใช้ต้องการปุ่มชัดเจน #}
+    {# ปุ่ม "วันที่แล้ว" - ใช้ yesterday_date_param ที่มาจาก Flask #}
     <a href="{{ url_for('daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary date-nav-button">
         <i class="fas fa-chevron-left"></i> วันที่แล้ว
     </a>
+    {# Flatpickr input - value ยังคงเป็น YYYY-MM-DD เพื่อให้ Flatpickr ทำงานได้ถูกต้อง #}
+    <input type="text" id="reportDateInput" value="{{ report_date_param }}" placeholder="เลือกวันที่">
+    {# เพิ่มปุ่ม "วันที่ถัดไป" - ต้องคำนวณ tomorrow_date_param มาจาก Flask #}
+    {# <a href="{{ url_for('daily_stock_report', date=tomorrow_date_param) }}" class="btn btn-outline-secondary date-nav-button">
+        วันที่ถัดไป <i class="fas fa-chevron-right"></i>
+    </a> #}
 </div>
 
+{# ส่วนของ script และ CSS ที่คุณให้มา (ยังคงเดิม) #}
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -271,7 +277,7 @@
 ---
 
 <div class="report-section">
-    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ display_date_str }}</h3>
+    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# MODIFIED HERE #}
     {% if tire_movements_raw %}
         <div class="table-responsive">
             <table>
@@ -328,7 +334,7 @@
 </div>
 
 <div class="report-section" style="margin-top: 30px;">
-    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ display_date_str }}</h3>
+    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d %b %Y') }}</h3> {# MODIFIED HERE #}
     {% if wheel_movements_raw %}
         <div class="table-responsive">
             <table>
