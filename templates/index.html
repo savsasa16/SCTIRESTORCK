@@ -71,13 +71,8 @@
                                 <td>{{ item.size }}</td>
                                 <td><span class="{% if item.quantity <= 5 %}text-danger{% elif item.quantity <= 10 %}text-warning{% endif %}">{{ item.quantity }}</span></td>
                                 <td>
-                                    {# MODIFIED: ไม่มีขีดฆ่า และราคาโปรโมชันเป็นสีเขียว #}
-                                    {% if item.display_promo_price_per_item is not none and item.promotion_id and item.promo_is_active == 1 %}
-                                        {{ "{:,.2f}".format(item.price_per_item) }}<br> {# แสดงราคาปกติ ไม่มีขีดฆ่า #}
-                                        <strong class="promo-price-text">{{ "{:,.2f}".format(item.display_promo_price_per_item) }}</strong> {# ราคาโปรโมชันสีเขียว #}
-                                    {% else %}
-                                        {{ "{:,.2f}".format(item.price_per_item) }}
-                                    {% endif %}
+                                    {# MODIFIED: แสดงราคาปกติเสมอ ไม่ว่าจะมีโปรโมชันหรือไม่ #}
+                                    {{ "{:,.2f}".format(item.price_per_item) }}
                                 </td>
                                 <td>
                                     {% if item.promotion_id and item.promo_is_active == 1 %} 
@@ -87,8 +82,9 @@
                                     {% endif %}
                                 </td>
                                 <td>
+                                    {# MODIFIED: ราคา 4 เส้นเป็นสีเขียวถ้ามีโปรโมชัน #}
                                     {% if item.display_price_for_4 is not none %}
-                                        <span class="price-for-4">{{ "{:,.2f}".format(item.display_price_for_4) }}</span>
+                                        <span class="{% if item.promotion_id and item.promo_is_active == 1 %}promo-price-text{% endif %}">{{ "{:,.2f}".format(item.display_price_for_4) }}</span>
                                     {% else %}
                                         -
                                     {% endif %}
