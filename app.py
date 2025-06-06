@@ -6,8 +6,8 @@ from io import BytesIO
 from werkzeug.utils import secure_filename
 import os
 import sqlite3
-from datetime import datetime, timedelta
-import pytz # Import pytz for timezone handling
+from datetime import datetime, timedelta # ตรวจสอบให้แน่ใจว่าได้ import timedelta แล้ว
+import pytz
 from collections import defaultdict
 import re
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -267,7 +267,7 @@ def index():
     print(f"DEBUG: Data from database.get_all_wheels: {all_wheels}")
     print(f"DEBUG: Number of raw wheels: {len(all_wheels) if all_wheels else 0}")
 
-    # --- FIXED: Added the missing line to define available_wheel_brands ---
+    # --- ADDED: Missing line to define available_wheel_brands ---
     available_wheel_brands = database.get_all_wheel_brands(conn) 
 
     # Process wheel data for display (with summaries)
@@ -280,8 +280,8 @@ def index():
 
     return render_template('index.html',
                            # Change to use processed data for tables
-                           tires_for_display=processed_tires_for_display,
-                           wheels_for_display=processed_wheels_for_display,
+                           tires_for_display=processed_tires_for_display, # เปลี่ยนเป็นตัวแปรใหม่
+                           wheels_for_display=processed_wheels_for_display, # เปลี่ยนเป็นตัวแปรใหม่
                            
                            # Keep original filtering variables for the form
                            tire_query=tire_query,
@@ -1111,18 +1111,27 @@ def daily_stock_report():
     
     report_date_str = request.args.get('date')
     
+    # Initialize report_datetime_obj as a datetime object for calculations
+    report_datetime_obj = None
+
     if report_date_str:
         try:
-            report_date = datetime.strptime(report_date_str, '%Y-%m-%d').date()
-            display_date_str = report_date.strftime('%d %b %Y')
+            # Parse the date string into a datetime object (at midnight UTC for consistency or BKK timezone)
+            # Assuming report_date_str is YYYY-MM-DD
+            report_datetime_obj = BKK_TZ.localize(datetime.strptime(report_date_str, '%Y-%m-%d'))
+            display_date_str = report_datetime_obj.strftime('%d %b %Y')
         except ValueError:
             flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้YYYY-MM-DD", "danger")
-            report_date = get_bkk_time().date()
-            display_date_str = report_date.strftime('%d %b %Y')
+            # Fallback to current BKK time if parsing fails
+            report_datetime_obj = get_bkk_time()
+            display_date_str = report_datetime_obj.strftime('%d %b %Y')
     else:
-        report_date = get_bkk_time().date()
-        display_date_str = report_date.strftime('%d %b %Y')
+        # Default to current BKK time if no date is provided
+        report_datetime_obj = get_bkk_time()
+        display_date_str = report_datetime_obj.strftime('%d %b %Y')
 
+    # Now use report_datetime_obj.date() for SQL filtering, and report_datetime_obj for timedelta arithmetic
+    report_date = report_datetime_obj.date() # Get just the date part for comparisons and display
     sql_date_filter = report_date.strftime('%Y-%m-%d')
 
     # --- Tire Report Data ---
@@ -1311,13 +1320,16 @@ def daily_stock_report():
     cursor.execute("SELECT SUM(quantity) AS total_qty FROM wheels")
     all_wheels_in_stock = cursor.fetchone()[0] or 0
 
-    yesterday_date = report_date - timedelta(days=1)
+    # Calculate yesterday and tomorrow dates using the datetime object
+    yesterday_date_calc = report_datetime_obj - timedelta(days=1)
+    tomorrow_date_calc = report_datetime_obj + timedelta(days=1) # Calculate tomorrow's date here
     
     return render_template('daily_stock_report.html',
                            display_date_str=display_date_str,
-                           report_date_obj=report_date,
-                           report_date_param=report_date.strftime('%Y-%m-%d'),
-                           yesterday_date_param=yesterday_date.strftime('%Y-%m-%d'),
+                           report_date_obj=report_date, # This is the date object for display/comparison in template
+                           report_date_param=report_date.strftime('%Y-%m-%d'), # For Flatpickr default value
+                           yesterday_date_param=yesterday_date_calc.strftime('%Y-%m-%d'),
+                           tomorrow_date_param=tomorrow_date_calc.strftime('%Y-%m-%d'), # Pass tomorrow's date param
                            
                            tire_report=sorted_detailed_tire_report,
                            wheel_report=sorted_detailed_wheel_report,
@@ -1437,11 +1449,11 @@ def import_tires_action():
                     quantity = int(row['สต็อก']) if pd.notna(row['สต็อก']) else 0
                     price_per_item = float(row['ราคาต่อเส้น']) if pd.notna(row['ราคาต่อเส้น']) else 0.0
 
-                    cost_sc = float(row['ทุน SC']) if pd.notna(row['ทุน SC']) else None
-                    cost_dunlop = float(row['ทุน Dunlop']) if pd.notna(row['ทุน Dunlop']) else None
-                    cost_online = float(row['ทุน Online']) if pd.notna(row['ทุน Online']) else None
-                    wholesale_price1 = float(row['ราคาขายส่ง 1']) if pd.notna(row['ราคาขายส่ง 1']) else None
-                    wholesale_price2 = float(row['ราคาขายส่ง 2']) if pd.notna(row['ราคาขายส่ง 2']) else None
+                    cost_sc = float(cost_sc) if cost_sc and cost_sc.strip() else None
+                    cost_dunlop = float(cost_dunlop) if cost_dunlop and cost_dunlop.strip() else None
+                    cost_online = float(cost_online) if cost_online and cost_online.strip() else None
+                    wholesale_price1 = float(wholesale_price1) if wholesale_price1 and wholesale_price1.strip() else None
+                    wholesale_price2 = float(wholesale_price2) if wholesale_price2 and wholesale_price2.strip() else None
                     
                     promotion_id = int(row.get('ID โปรโมชัน')) if pd.notna(row.get('ID โปรโมชัน')) else None
                     
@@ -1526,15 +1538,15 @@ def export_wheels_action():
             'ราคาขายปลีก': wheel['retail_price'],
             'ไฟล์รูปภาพ': wheel['image_filename']
         })
-    
+
     df = pd.DataFrame(data)
-    
+
     output = BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
     df.to_excel(writer, index=False, sheet_name='Wheels Stock')
     writer.close()
     output.seek(0)
-    
+
     return send_file(output, download_name='wheel_stock.xlsx', as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @app.route('/import_wheels_action', methods=('POST',))
