@@ -963,14 +963,17 @@ def daily_stock_report():
     if report_date_str:
         try:
             report_date = datetime.strptime(report_date_str, '%Y-%m-%d').date()
-            display_date_str = report_date.strftime('%Y-%m-%d')
+            # MODIFIED: Change display_date_str format here to 'DD Mon YYYY'
+            display_date_str = report_date.strftime('%d %b %Y') # e.g., 06 Jun 2025
         except ValueError:
             flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้YYYY-MM-DD", "danger")
             report_date = get_bkk_time().date()
-            display_date_str = report_date.strftime('%Y-%m-%d')
+            # MODIFIED: Change display_date_str format here for fallback
+            display_date_str = report_date.strftime('%d %b %Y')
     else:
         report_date = get_bkk_time().date()
-        display_date_str = report_date.strftime('%Y-%m-%d')
+        # MODIFIED: Change display_date_str format here for default
+        display_date_str = report_date.strftime('%d %b %Y')
 
     sql_date_filter = report_date.strftime('%Y-%m-%d')
 
@@ -1167,9 +1170,12 @@ def daily_stock_report():
     yesterday_date = report_date - timedelta(days=1)
     
     return render_template('daily_stock_report.html',
-                           display_date_str=display_date_str,
-                           report_date_param=report_date.strftime('%Y-%m-%d'),
+                           display_date_str=display_date_str, # This will now be 'DD Mon YYYY'
+                           report_date_obj=report_date, # Pass the date object for template formatting
+                           report_date_param=report_date.strftime('%Y-%m-%d'), # For Flatpickr default date
                            yesterday_date_param=yesterday_date.strftime('%Y-%m-%d'),
+                           # You might want to calculate tomorrow_date_param here too if you add a 'next day' button
+                           # tomorrow_date_param = (report_date + timedelta(days=1)).strftime('%Y-%m-%d'),
                            
                            tire_report=sorted_detailed_tire_report,
                            wheel_report=sorted_detailed_wheel_report,
