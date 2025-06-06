@@ -6,7 +6,7 @@ from io import BytesIO
 from werkzeug.utils import secure_filename
 import os
 import sqlite3
-from datetime import datetime, timedelta # ตรวจสอบให้แน่ใจว่าได้ import timedelta แล้ว
+from datetime import datetime, timedelta
 import pytz
 from collections import defaultdict
 import re
@@ -59,7 +59,7 @@ def close_db(e=None):
         db.close()
 
 def get_bkk_time():
-    return datetime.now(BKK_TZ) # Use BKK_TZ directly here
+    return datetime.now(BKK_TZ)
 
 # Helper to convert a timestamp to BKK timezone
 def convert_to_bkk_time(timestamp_obj):
@@ -280,8 +280,8 @@ def index():
 
     return render_template('index.html',
                            # Change to use processed data for tables
-                           tires_for_display=processed_tires_for_display, # เปลี่ยนเป็นตัวแปรใหม่
-                           wheels_for_display=processed_wheels_for_display, # เปลี่ยนเป็นตัวแปรใหม่
+                           tires_for_display=processed_tires_for_display,
+                           wheels_for_display=processed_wheels_for_display,
                            
                            # Keep original filtering variables for the form
                            tire_query=tire_query,
@@ -1117,7 +1117,7 @@ def daily_stock_report():
     if report_date_str:
         try:
             # Parse the date string into a datetime object (at midnight UTC for consistency or BKK timezone)
-            # Assuming report_date_str is YYYY-MM-DD
+            # Assuming report_date_str isYYYY-MM-DD
             report_datetime_obj = BKK_TZ.localize(datetime.strptime(report_date_str, '%Y-%m-%d'))
             display_date_str = report_datetime_obj.strftime('%d %b %Y')
         except ValueError:
@@ -1322,14 +1322,14 @@ def daily_stock_report():
 
     # Calculate yesterday and tomorrow dates using the datetime object
     yesterday_date_calc = report_datetime_obj - timedelta(days=1)
-    tomorrow_date_calc = report_datetime_obj + timedelta(days=1) # Calculate tomorrow's date here
+    tomorrow_date_calc = report_datetime_obj + timedelta(days=1)
     
     return render_template('daily_stock_report.html',
                            display_date_str=display_date_str,
-                           report_date_obj=report_date, # This is the date object for display/comparison in template
-                           report_date_param=report_date.strftime('%Y-%m-%d'), # For Flatpickr default value
+                           report_date_obj=report_date,
+                           report_date_param=report_date.strftime('%Y-%m-%d'),
                            yesterday_date_param=yesterday_date_calc.strftime('%Y-%m-%d'),
-                           tomorrow_date_param=tomorrow_date_calc.strftime('%Y-%m-%d'), # Pass tomorrow's date param
+                           tomorrow_date_param=tomorrow_date_calc.strftime('%Y-%m-%d'),
                            
                            tire_report=sorted_detailed_tire_report,
                            wheel_report=sorted_detailed_wheel_report,
@@ -1348,7 +1348,7 @@ def daily_stock_report():
 @app.route('/export_import', methods=('GET', 'POST'))
 @login_required
 def export_import():
-    if not current_user.can_admin(): # Changed to can_admin as per recent common practice
+    if not current_user.is_admin(): # MODIFIED: ใช้ is_admin() แทน can_admin()
         flash('คุณไม่มีสิทธิ์ในการนำเข้า/ส่งออกข้อมูล', 'danger')
         return redirect(url_for('index'))
     conn = get_db()
