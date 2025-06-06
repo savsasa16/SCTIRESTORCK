@@ -68,6 +68,7 @@
                  <thead>
                 <tr>
                     <th>เวลา</th>
+                    <th>พนักงาน</th> {# ADDED: New column header for user #}
                     <th>ข้อมูลยาง</th> {# Changed from ID ยาง #}
                     <th>ประเภท</th>
                     <th>จำนวน</th>
@@ -79,7 +80,8 @@
                 <tbody>
                     {% for movement in tire_movements %}
                     <tr>
-                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td> {# Original date/time format retained #}
+                        <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# ADDED: Display username #}
                         <td>{{ movement.brand }} {{ movement.model }} {{ movement.size }}</td> {# Removed ID #}
                         <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                         <td>{{ movement.quantity_change }}</td>
@@ -156,6 +158,7 @@
                 <thead>
                 <tr>
                     <th>เวลา</th>
+                    <th>พนักงาน</th> {# ADDED: New column header for user #}
                     <th>ข้อมูลแม็ก</th> {# Changed from ID แม็ก #}
                     <th>ประเภท</th>
                     <th>จำนวน</th>
@@ -167,7 +170,8 @@
                 <tbody>
                      {% for movement in wheel_movements %}
                     <tr>
-                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td> {# Original date/time format retained #}
+                        <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# ADDED: Display username #}
                         <td>{{ movement.brand }} {{ movement.model }} {{ "%.1f"|format(movement.diameter) }} นิ้ว</td> {# Removed ID #}
                         <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                         <td>{{ movement.quantity_change }}</td>
