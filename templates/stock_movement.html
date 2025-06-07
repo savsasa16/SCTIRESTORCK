@@ -68,21 +68,20 @@
                  <thead>
                 <tr>
                     <th>เวลา</th>
-                    <th>พนักงาน</th> {# ADDED: New column header for user #}
                     <th>ข้อมูลยาง</th> {# Changed from ID ยาง #}
                     <th>ประเภท</th>
                     <th>จำนวน</th>
                     <th>คงเหลือ</th>
                     <th>หมายเหตุ</th>
+                    <th>พนักงาน</th> {# MODIFIED: เพิ่มและย้าย "พนักงาน" #}
                     <th>หลักฐาน</th>
                 </tr>
             </thead>
                 <tbody>
                     {% for movement in tire_movements %}
                     <tr>
-                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td> {# Original date/time format retained #}
-                        <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# ADDED: Display username #}
-                        <td>{{ movement.brand }} {{ movement.model }} {{ movement.size }}</td> {# Removed ID #}
+                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        <td>{{ movement.brand }} {{ movement.model }} {{ movement.size }}</td>
                         <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                         <td>{{ movement.quantity_change }}</td>
                         <td>{{ movement.remaining_quantity }}</td>
@@ -93,6 +92,7 @@
                                 -
                             {% endif %}
                         </td>
+                        <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# MODIFIED: แสดง user_username #}
                         <td>
                             {% if movement.image_filename %}
                                 <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a>
@@ -158,20 +158,19 @@
                 <thead>
                 <tr>
                     <th>เวลา</th>
-                    <th>พนักงาน</th> {# ADDED: New column header for user #}
                     <th>ข้อมูลแม็ก</th> {# Changed from ID แม็ก #}
                     <th>ประเภท</th>
                     <th>จำนวน</th>
                     <th>คงเหลือ</th>
                     <th>หมายเหตุ</th>
+                    <th>พนักงาน</th> {# MODIFIED: เพิ่มและย้าย "พนักงาน" #}
                     <th>หลักฐาน</th>
                 </tr>
             </thead>
                 <tbody>
                      {% for movement in wheel_movements %}
                     <tr>
-                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td> {# Original date/time format retained #}
-                        <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# ADDED: Display username #}
+                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
                         <td>{{ movement.brand }} {{ movement.model }} {{ "%.1f"|format(movement.diameter) }} นิ้ว</td> {# Removed ID #}
                         <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                         <td>{{ movement.quantity_change }}</td>
@@ -183,6 +182,7 @@
                                 -
                             {% endif %}
                         </td>
+                        <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# MODIFIED: แสดง user_username #}
                         <td>
                             {% if movement.image_filename %}
                                 <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a>
