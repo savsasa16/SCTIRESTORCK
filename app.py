@@ -1,5 +1,3 @@
-# app.py
-from flask import Flask, render_template, request, redirect, url_for, flash, g, send_file, current_app
 import database
 import pandas as pd
 from io import BytesIO
@@ -10,6 +8,7 @@ from datetime import datetime, timedelta
 import pytz
 from collections import defaultdict
 import re
+from flask import Flask, render_template, request, redirect, url_for, flash, g, send_file, current_app
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -312,7 +311,7 @@ def add_promotion():
                     raise ValueError("สำหรับ 'ซื้อ X แถม Y' โปรดระบุ X และ Y ที่มากกว่า 0")
                 elif promo_type == 'percentage_discount' and (value1 <= 0 or value1 > 100):
                     raise ValueError("ส่วนลดเปอร์เซ็นต์ต้องอยู่ระหว่าง 0-100")
-                elif promo_type == 'fixed_price_per_item' and value1 <= 0:
+                elif promo_type == 'fixed_price_per_n' and value1 <= 0: # Corrected type
                     raise ValueError("ราคาพิเศษต้องมากกว่า 0")
 
                 conn = get_db()
@@ -360,7 +359,7 @@ def edit_promotion(promo_id):
                     raise ValueError("สำหรับ 'ซื้อ X แถม Y' โปรดระบุ X และ Y ที่มากกว่า 0")
                 elif promo_type == 'percentage_discount' and (value1 <= 0 or value1 > 100):
                     raise ValueError("ส่วนลดเปอร์เซ็นต์ต้องอยู่ระหว่าง 0-100")
-                elif promo_type == 'fixed_price_per_item' and value1 <= 0:
+                elif promo_type == 'fixed_price_per_n' and value1 <= 0: # Corrected type
                     raise ValueError("ราคาพิเศษต้องมากกว่า 0")
 
                 conn = get_db()
@@ -1136,52 +1135,100 @@ def daily_stock_report():
     # Now use report_datetime_obj.date() for SQL filtering, and report_datetime_obj for timedelta arithmetic
     report_date = report_datetime_obj.date() # Get just the date part for comparisons and display
     sql_date_filter = report_date.strftime('%Y-%m-%d')
+    sql_date_filter_end_of_day = report_date_obj.replace(hour=23, minute=59, second=59).isoformat()
 
     # --- Tire Report Data ---
-    # MODIFIED: Added LEFT JOIN users and u.username to the SELECT clause
-    tire_movements_query = f"""
+    # Get all tire movements for the selected report date
+    tire_movements_query_today = f"""
         SELECT
             tm.id, tm.timestamp, tm.type, tm.quantity_change, tm.image_filename, tm.notes,
             t.id AS tire_main_id, t.brand, t.model, t.size,
-            u.username AS user_username -- ADDED: Get username
+            u.username AS user_username
         FROM tire_movements tm
         JOIN tires t ON tm.tire_id = t.id
-        LEFT JOIN users u ON tm.user_id = u.id -- ADDED: Join users table
+        LEFT JOIN users u ON tm.user_id = u.id
         WHERE {database.get_sql_date_format_for_query('tm.timestamp')} = %s
-        ORDER BY tm.timestamp DESC
+        ORDER BY tm.timestamp ASC
     """
     if "psycopg2" in str(type(conn)):
         cursor = conn.cursor()
-        cursor.execute(tire_movements_query, (sql_date_filter,))
-        tire_movements_raw = cursor.fetchall()
+        cursor.execute(tire_movements_query_today, (sql_date_filter,))
+        tire_movements_raw_today = cursor.fetchall()
     else:
-        tire_movements_raw = conn.execute(tire_movements_query.replace('%s', '?'), (sql_date_filter,)).fetchall()
+        tire_movements_raw_today = conn.execute(tire_movements_query_today.replace('%s', '?'), (sql_date_filter,)).fetchall()
 
-    processed_tire_movements_raw = []
+    processed_tire_movements_raw_today = []
+    for movement in tire_movements_raw_today:
+        movement_data = dict(movement) # Convert to dict if not already
+        movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
+        processed_tire_movements_raw_today.append(movement_data)
+    tire_movements_raw = processed_tire_movements_raw_today # Use this for detailed movements table
+
+
+    # Calculate remaining quantity for each tire for the selected report date
+    # Step 1: Get quantities before the report date
+    tire_quantities_before_report = defaultdict(int)
+    tire_ids_involved = set()
     for movement in tire_movements_raw:
-        movement_data = movement # ไม่ต้องใช้ dict(movement)
-        movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp']) # Convert to BKK time
-        processed_tire_movements_raw.append(movement_data)
-    tire_movements_raw = processed_tire_movements_raw
+        tire_ids_involved.add(movement['tire_main_id'])
 
+    # Get all distinct tire_ids for movements before or on report date
+    distinct_tire_ids_query = f"""
+        SELECT DISTINCT tire_id
+        FROM tire_movements
+        WHERE timestamp <= %s
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(distinct_tire_ids_query, (sql_date_filter_end_of_day,))
+    else:
+        cursor.execute(distinct_tire_ids_query.replace('%s', '?'), (sql_date_filter_end_of_day,))
+    
+    for row in cursor.fetchall():
+        tire_ids_involved.add(row['tire_id'])
+
+    for tire_id in tire_ids_involved:
+        history_query = f"""
+            SELECT type, quantity_change
+            FROM tire_movements
+            WHERE tire_id = %s AND timestamp <= %s
+            ORDER BY timestamp ASC
+        """
+        if "psycopg2" in str(type(conn)):
+            cursor.execute(history_query, (tire_id, sql_date_filter_end_of_day))
+        else:
+            cursor.execute(history_query.replace('%s', '?'), (tire_id, sql_date_filter_end_of_day,))
+        
+        calculated_qty = 0
+        for move in cursor.fetchall():
+            if move['type'] == 'IN':
+                calculated_qty += move['quantity_change']
+            elif move['type'] == 'OUT':
+                calculated_qty -= move['quantity_change']
+        tire_quantities_before_report[tire_id] = calculated_qty
 
     sorted_detailed_tire_report = []
-    detailed_tire_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0})
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, quantity FROM tires")
-    current_tire_quantities = cursor.fetchall()
-    tire_current_qty_map = {t['id']: t['quantity'] for t in current_tire_quantities}
+    detailed_tire_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0, 'tire_main_id': None, 'brand': '', 'model': '', 'size': ''})
 
+    # Accumulate IN/OUT for the current report date and get initial quantity
     for movement in tire_movements_raw:
         key = (movement['brand'], movement['model'], movement['size'])
+        tire_id = movement['tire_main_id']
+
+        if detailed_tire_report[key]['tire_main_id'] is None:
+            detailed_tire_report[key]['tire_main_id'] = tire_id
+            detailed_tire_report[key]['brand'] = movement['brand']
+            detailed_tire_report[key]['model'] = movement['model']
+            detailed_tire_report[key]['size'] = movement['size']
+            
+            # The remaining quantity as of the end of the report date
+            detailed_tire_report[key]['remaining_quantity'] = tire_quantities_before_report[tire_id]
+
         if movement['type'] == 'IN':
             detailed_tire_report[key]['IN'] += movement['quantity_change']
         elif movement['type'] == 'OUT':
             detailed_tire_report[key]['OUT'] += movement['quantity_change']
-        detailed_tire_report[key]['remaining_quantity'] = tire_current_qty_map.get(
-            movement['tire_main_id'], 0
-        )
     
+    # Sort and prepare for display
     tire_brand_summaries = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'current_quantity_sum': 0})
     sorted_unique_tire_items = sorted(detailed_tire_report.items(), key=lambda x: x[0])
 
@@ -1204,7 +1251,7 @@ def daily_stock_report():
             'size': size,
             'IN': data['IN'],
             'OUT': data['OUT'],
-            'remaining_quantity': data['remaining_quantity']
+            'remaining_quantity': data['remaining_quantity'] # This is the calculated quantity for the end of day
         })
 
         tire_brand_summaries[brand]['IN'] += data['IN']
@@ -1224,50 +1271,100 @@ def daily_stock_report():
 
 
     # --- Wheel Report Data ---
-    # MODIFIED: Added LEFT JOIN users and u.username to the SELECT clause
-    wheel_movements_query = f"""
+    # Get all wheel movements for the selected report date
+    wheel_movements_query_today = f"""
         SELECT
             wm.id, wm.timestamp, wm.type, wm.quantity_change, wm.image_filename, wm.notes,
             w.id AS wheel_main_id, w.brand, w.model, w.diameter, w.pcd, w.width,
-            u.username AS user_username -- ADDED: Get username
+            u.username AS user_username
         FROM wheel_movements wm
         JOIN wheels w ON wm.wheel_id = w.id
-        LEFT JOIN users u ON wm.user_id = u.id -- ADDED: Join users table
+        LEFT JOIN users u ON wm.user_id = u.id
         WHERE {database.get_sql_date_format_for_query('wm.timestamp')} = %s
-        ORDER BY wm.timestamp DESC
+        ORDER BY wm.timestamp ASC
     """
     if "psycopg2" in str(type(conn)):
         cursor = conn.cursor()
-        cursor.execute(wheel_movements_query, (sql_date_filter,))
-        wheel_movements_raw = cursor.fetchall()
+        cursor.execute(wheel_movements_query_today, (sql_date_filter,))
+        wheel_movements_raw_today = cursor.fetchall()
     else:
-        wheel_movements_raw = conn.execute(wheel_movements_query.replace('%s', '?'), (sql_date_filter,)).fetchall()
+        wheel_movements_raw_today = conn.execute(wheel_movements_query_today.replace('%s', '?'), (sql_date_filter,)).fetchall()
 
-    processed_wheel_movements_raw = []
+    processed_wheel_movements_raw_today = []
+    for movement in wheel_movements_raw_today:
+        movement_data = dict(movement) # Convert to dict if not already
+        movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
+        processed_wheel_movements_raw_today.append(movement_data)
+    wheel_movements_raw = processed_wheel_movements_raw_today # Use this for detailed movements table
+
+
+    # Calculate remaining quantity for each wheel for the selected report date
+    # Step 1: Get quantities before the report date
+    wheel_quantities_before_report = defaultdict(int)
+    wheel_ids_involved = set()
     for movement in wheel_movements_raw:
-        movement_data = movement # ไม่ต้องใช้ dict(movement)
-        movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp']) # Convert to BKK time
-        processed_wheel_movements_raw.append(movement_data)
-    wheel_movements_raw = processed_wheel_movements_raw
+        wheel_ids_involved.add(movement['wheel_main_id'])
+
+    # Get all distinct wheel_ids for movements before or on report date
+    distinct_wheel_ids_query = f"""
+        SELECT DISTINCT wheel_id
+        FROM wheel_movements
+        WHERE timestamp <= %s
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(distinct_wheel_ids_query, (sql_date_filter_end_of_day,))
+    else:
+        cursor.execute(distinct_wheel_ids_query.replace('%s', '?'), (sql_date_filter_end_of_day,))
+    
+    for row in cursor.fetchall():
+        wheel_ids_involved.add(row['wheel_id'])
+
+    for wheel_id in wheel_ids_involved:
+        history_query = f"""
+            SELECT type, quantity_change
+            FROM wheel_movements
+            WHERE wheel_id = %s AND timestamp <= %s
+            ORDER BY timestamp ASC
+        """
+        if "psycopg2" in str(type(conn)):
+            cursor.execute(history_query, (wheel_id, sql_date_filter_end_of_day))
+        else:
+            cursor.execute(history_query.replace('%s', '?'), (wheel_id, sql_date_filter_end_of_day,))
+        
+        calculated_qty = 0
+        for move in cursor.fetchall():
+            if move['type'] == 'IN':
+                calculated_qty += move['quantity_change']
+            elif move['type'] == 'OUT':
+                calculated_qty -= move['quantity_change']
+        wheel_quantities_before_report[wheel_id] = calculated_qty
 
 
     sorted_detailed_wheel_report = []
-    detailed_wheel_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0})
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, quantity FROM wheels")
-    current_wheel_quantities = cursor.fetchall()
-    wheel_current_qty_map = {w['id']: w['quantity'] for w in current_wheel_quantities}
+    detailed_wheel_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0, 'wheel_main_id': None, 'brand': '', 'model': '', 'diameter': None, 'pcd': '', 'width': None})
 
+    # Accumulate IN/OUT for the current report date and get initial quantity
     for movement in wheel_movements_raw:
         key = (movement['brand'], movement['model'], movement['diameter'], movement['pcd'], movement['width'])
+        wheel_id = movement['wheel_main_id']
+
+        if detailed_wheel_report[key]['wheel_main_id'] is None:
+            detailed_wheel_report[key]['wheel_main_id'] = wheel_id
+            detailed_wheel_report[key]['brand'] = movement['brand']
+            detailed_wheel_report[key]['model'] = movement['model']
+            detailed_wheel_report[key]['diameter'] = movement['diameter']
+            detailed_wheel_report[key]['pcd'] = movement['pcd']
+            detailed_wheel_report[key]['width'] = movement['width']
+            
+            # The remaining quantity as of the end of the report date
+            detailed_wheel_report[key]['remaining_quantity'] = wheel_quantities_before_report[wheel_id]
+
         if movement['type'] == 'IN':
             detailed_wheel_report[key]['IN'] += movement['quantity_change']
         elif movement['type'] == 'OUT':
             detailed_wheel_report[key]['OUT'] += movement['quantity_change']
-        detailed_wheel_report[key]['remaining_quantity'] = wheel_current_qty_map.get(
-            movement['wheel_main_id'], 0
-        )
     
+    # Sort and prepare for display
     wheel_brand_summaries = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'current_quantity_sum': 0})
     sorted_unique_wheel_items = sorted(detailed_wheel_report.items(), key=lambda x: x[0])
 
@@ -1292,7 +1389,7 @@ def daily_stock_report():
             'width': width,
             'IN': data['IN'],
             'OUT': data['OUT'],
-            'remaining_quantity': data['remaining_quantity']
+            'remaining_quantity': data['remaining_quantity'] # This is the calculated quantity for the end of day
         })
 
         wheel_brand_summaries[brand]['IN'] += data['IN']
@@ -1315,13 +1412,15 @@ def daily_stock_report():
     wheel_total_in = sum(item['IN'] for item in sorted_detailed_wheel_report if not item['is_summary'])
     wheel_total_out = sum(item['OUT'] for item in sorted_detailed_wheel_report if not item['is_summary'])
     
+    # The total remaining quantities for the whole inventory should still be current total
     cursor = conn.cursor()
-    cursor.execute("SELECT SUM(quantity) AS total_qty FROM tires")
+    cursor.execute("SELECT SUM(quantity) AS total_qty FROM tires WHERE is_deleted = FALSE")
     all_tires_in_stock = cursor.fetchone()[0] or 0
 
     cursor = conn.cursor()
-    cursor.execute("SELECT SUM(quantity) AS total_qty FROM wheels")
+    cursor.execute("SELECT SUM(quantity) AS total_qty FROM wheels WHERE is_deleted = FALSE")
     all_wheels_in_stock = cursor.fetchone()[0] or 0
+
 
     # Calculate yesterday and tomorrow dates using the datetime object
     yesterday_date_calc = report_datetime_obj - timedelta(days=1)
@@ -1338,10 +1437,10 @@ def daily_stock_report():
                            wheel_report=sorted_detailed_wheel_report,
                            tire_total_in=tire_total_in,
                            tire_total_out=tire_total_out,
-                           tire_total_remaining=all_tires_in_stock,
+                           tire_total_remaining=all_tires_in_stock, # Still show overall current stock
                            wheel_total_in=wheel_total_in,
                            wheel_total_out=wheel_total_out,
-                           wheel_total_remaining=all_wheels_in_stock,
+                           wheel_total_remaining=all_wheels_in_stock, # Still show overall current stock
                            
                            tire_movements_raw=tire_movements_raw,
                            wheel_movements_raw=wheel_movements_raw
