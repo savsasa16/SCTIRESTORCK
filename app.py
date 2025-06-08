@@ -246,7 +246,7 @@ def index():
     tire_query = request.args.get('tire_query', '').strip()
     tire_selected_brand = request.args.get('tire_brand_filter', 'all').strip()
 
-    all_tires = database.get_all_tires(conn, query=tire_query, brand_filter=tire_selected_brand)
+    all_tires = database.get_all_tires(conn, query=tire_query, brand_filter=tire_selected_brand, include_deleted=False) # Always false for index
     
     available_tire_brands = database.get_all_tire_brands(conn)
 
@@ -256,7 +256,7 @@ def index():
     wheel_query = request.args.get('wheel_query', '').strip()
     wheel_selected_brand = request.args.get('wheel_brand_filter', 'all').strip()
 
-    all_wheels = database.get_all_wheels(conn, query=wheel_query, brand_filter=wheel_selected_brand)
+    all_wheels = database.get_all_wheels(conn, query=wheel_query, brand_filter=wheel_selected_brand, include_deleted=False) # Always false for index
 
     available_wheel_brands = database.get_all_wheel_brands(conn) 
 
@@ -363,6 +363,7 @@ def edit_promotion(promo_id):
                 elif promo_type == 'fixed_price_per_item' and value1 <= 0:
                     raise ValueError("ราคาพิเศษต้องมากกว่า 0")
 
+                conn = get_db()
                 database.update_promotion(conn, promo_id, name, promo_type, value1, value2, is_active)
                 flash('แก้ไขโปรโมชันสำเร็จ!', 'success')
                 return redirect(url_for('promotions'))
@@ -628,20 +629,20 @@ def delete_tire(tire_id):
 
     if tire is None:
         flash('ไม่พบยางที่ระบุ', 'danger')
-    elif tire['quantity'] > 0:
+    elif tire['quantity'] > 0: # ยังคงตรวจสอบสต็อก
         flash('ไม่สามารถลบยางได้เนื่องจากยังมีสต็อกเหลืออยู่. กรุณาปรับสต็อกให้เป็น 0 ก่อน.', 'danger')
         return redirect(url_for('index', tab='tires'))
     else:
         try:
             database.delete_tire(conn, tire_id)
-            flash('ลบยางสำเร็จ!', 'success')
+            flash('ทำเครื่องหมายยางว่าถูกลบสำเร็จ!', 'success')
         except Exception as e:
-            flash(f'เกิดข้อผิดพลาดในการลบยาง: {e}', 'danger')
+            flash(f'เกิดข้อผิดพลาดในการทำเครื่องหมายยางว่าถูกลบ: {e}', 'danger')
     
     return redirect(url_for('index', tab='tires'))
 
 # --- Wheel Routes (Main item editing) ---
-@app.route('/wheel_detail/<int:wheel_id>') # แก้ไขตรงนี้: ลบเลข 24 ออก
+@app.route('/wheel_detail/<int:wheel_id>')
 @login_required
 def wheel_detail(wheel_id):
     conn = get_db()
@@ -748,20 +749,11 @@ def delete_wheel(wheel_id):
 
     if wheel is None:
         flash('ไม่พบแม็กที่ระบุ', 'danger')
-    elif wheel['quantity'] > 0:
+    elif wheel['quantity'] > 0: # ยังคงตรวจสอบสต็อก
         flash('ไม่สามารถลบแม็กได้เนื่องจากยังมีสต็อกเหลืออยู่. กรุณาปรับสต็อกให้เป็น 0 ก่อน.', 'danger')
         return redirect(url_for('index', tab='wheels'))
     else:
         try:
-            if wheel['image_filename'] and "res.cloudinary.com" in wheel['image_filename']:
-                public_id_match = re.search(r'v\d+/([^/.]+)', wheel['image_filename'])
-                if public_id_match:
-                    public_id = public_id_match.group(1)
-                    try:
-                        cloudinary.uploader.destroy(public_id)
-                    except Exception as e:
-                        print(f"Error deleting image from Cloudinary: {e}")
-
             database.delete_wheel(conn, wheel_id)
             flash('ลบแม็กสำเร็จ!', 'success')
         except Exception as e:
@@ -855,6 +847,7 @@ def stock_movement():
         # ลบบรรทัดนี้ออก: movement_data['user_username'] = movement_data.get('username')
         processed_tire_movements_history.append(movement_data)
     tire_movements_history = processed_tire_movements_history
+
 
     # --- สำหรับ Wheel Movements History ---
     # แก้ไข: เพิ่ม AS user_username ใน SQL query
@@ -1745,6 +1738,62 @@ def delete_user(user_id):
         conn.commit()
         flash('ลบผู้ใช้สำเร็จ!', 'success')
     return redirect(url_for('manage_users'))
+
+# --- Admin Dashboard routes ---
+@app.route('/admin_dashboard')
+@login_required
+def admin_dashboard():
+    if not current_user.is_admin():
+        flash('คุณไม่มีสิทธิ์เข้าถึง Admin Dashboard', 'danger')
+        return redirect(url_for('index'))
+    return render_template('admin_dashboard.html')
+
+@app.route('/admin_deleted_items')
+@login_required
+def admin_deleted_items():
+    if not current_user.is_admin():
+        flash('คุณไม่มีสิทธิ์เข้าถึงหน้ารายการสินค้าที่ถูกลบ', 'danger')
+        return redirect(url_for('index'))
+    
+    conn = get_db()
+    deleted_tires = database.get_deleted_tires(conn)
+    deleted_wheels = database.get_deleted_wheels(conn)
+    
+    active_tab = request.args.get('tab', 'deleted_tires')
+
+    return render_template('admin_deleted_items.html', 
+                           deleted_tires=deleted_tires, 
+                           deleted_wheels=deleted_wheels,
+                           active_tab=active_tab)
+
+@app.route('/restore_tire/<int:tire_id>', methods=['POST'])
+@login_required
+def restore_tire_action(tire_id):
+    if not current_user.is_admin():
+        flash('คุณไม่มีสิทธิ์ในการกู้คืนยาง', 'danger')
+        return redirect(url_for('index'))
+    conn = get_db()
+    try:
+        database.restore_tire(conn, tire_id)
+        flash(f'กู้คืนยาง ID {tire_id} สำเร็จ!', 'success')
+    except Exception as e:
+        flash(f'เกิดข้อผิดพลาดในการกู้คืนยาง: {e}', 'danger')
+    return redirect(url_for('admin_deleted_items', tab='deleted_tires'))
+
+@app.route('/restore_wheel/<int:wheel_id>', methods=['POST'])
+@login_required
+def restore_wheel_action(wheel_id):
+    if not current_user.is_admin():
+        flash('คุณไม่มีสิทธิ์ในการกู้คืนแม็ก', 'danger')
+        return redirect(url_for('index'))
+    conn = get_db()
+    try:
+        database.restore_wheel(conn, wheel_id)
+        flash(f'กู้คืนแม็ก ID {wheel_id} สำเร็จ!', 'success')
+    except Exception as e:
+        flash(f'เกิดข้อผิดพลาดในการกู้คืนแม็ก: {e}', 'danger')
+    return redirect(url_for('admin_deleted_items', tab='deleted_wheels'))
+
 
 # --- Main entry point ---
 if __name__ == '__main__':
