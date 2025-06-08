@@ -856,19 +856,6 @@ def stock_movement():
         processed_tire_movements_history.append(movement_data)
     tire_movements_history = processed_tire_movements_history
 
-    # *** เพิ่ม DEBUG PRINT อย่างละเอียดตรงนี้ ***
-    print("\n--- DEBUG: Tire Movements History for STOCK_MOVEMENT Page ---")
-    if not tire_movements_history:
-        print("No tire movements found for stock_movement page.")
-    else:
-        for i, move in enumerate(tire_movements_history):
-            # พิมพ์ทุกคีย์ใน object เพื่อให้แน่ใจว่า 'user_username' มีอยู่และมีค่าอะไร
-            print(f"Item {i} data: {dict(move)}") 
-            # พิมพ์เฉพาะ user_username
-            print(f"  -> User for Item {i}: {move.get('user_username', 'KEY NOT FOUND')}")
-    print("----------------------------------------------------------\n")
-
-
     # --- สำหรับ Wheel Movements History ---
     # แก้ไข: เพิ่ม AS user_username ใน SQL query
     wheel_movements_query = """
@@ -894,16 +881,6 @@ def stock_movement():
         # ลบบรรทัดนี้ออก: movement_data['user_username'] = movement_data.get('username')
         processed_wheel_movements_history.append(movement_data)
     wheel_movements_history = processed_wheel_movements_history
-
-    # *** เพิ่ม DEBUG PRINT อย่างละเอียดตรงนี้สำหรับ Wheel Movements ***
-    print("\n--- DEBUG: Wheel Movements History for STOCK_MOVEMENT Page ---")
-    if not wheel_movements_history:
-        print("No wheel movements found for stock_movement page.")
-    else:
-        for i, move in enumerate(wheel_movements_history):
-            print(f"Item {i} data: {dict(move)}")
-            print(f"  -> User for Item {i}: {move.get('user_username', 'KEY NOT FOUND')}")
-    print("----------------------------------------------------------\n")
 
     if request.method == 'POST':
         submit_type = request.form.get('submit_type')
