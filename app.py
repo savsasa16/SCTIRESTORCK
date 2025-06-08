@@ -851,6 +851,8 @@ def stock_movement():
         # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
         movement_data = movement
         movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
+        # *** ตรงนี้คือการแก้ไข: เปลี่ยนการเข้าถึงคีย์จาก 'user_username' เป็น 'username' ***
+        movement_data['user_username'] = movement_data.get('username') 
         processed_tire_movements_history.append(movement_data)
     tire_movements_history = processed_tire_movements_history
 
@@ -888,6 +890,8 @@ def stock_movement():
         # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
         movement_data = movement
         movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
+        # *** ตรงนี้คือการแก้ไข: เปลี่ยนการเข้าถึงคีย์จาก 'user_username' เป็น 'username' ***
+        movement_data['user_username'] = movement_data.get('username') 
         processed_wheel_movements_history.append(movement_data)
     wheel_movements_history = processed_wheel_movements_history
 
