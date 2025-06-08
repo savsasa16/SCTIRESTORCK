@@ -641,7 +641,7 @@ def delete_tire(tire_id):
     return redirect(url_for('index', tab='tires'))
 
 # --- Wheel Routes (Main item editing) ---
-@app.24 route('/wheel_detail/<int:wheel_id>')
+@app.route('/wheel_detail/<int:wheel_id>')
 @login_required
 def wheel_detail(wheel_id):
     conn = get_db()
