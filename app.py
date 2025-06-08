@@ -837,27 +837,33 @@ def stock_movement():
     
     active_tab = request.args.get('tab', 'tire_movements') 
 
-    cursor = conn.cursor()
-    # MODIFIED: Added LEFT JOIN users to get username
-    cursor.execute("""
-        SELECT tm.*, t.brand, t.model, t.size, u.username
-        FROM tire_movements tm
-        JOIN tires t ON tm.tire_id = t.id
-        LEFT JOIN users u ON tm.user_id = u.id -- ADDED JOIN to get username
-        ORDER BY tm.timestamp DESC LIMIT 50
-    """)
-    tire_movements_history = cursor.fetchall()
+    tire_movements_query = """
+    SELECT tm.*, t.brand, t.model, t.size, u.username
+    FROM tire_movements tm
+    JOIN tires t ON tm.tire_id = t.id
+    LEFT JOIN users u ON tm.user_id = u.id
+    ORDER BY tm.timestamp DESC LIMIT 50
+"""
+if "psycopg2" in str(type(conn)):
+    cursor_tire = conn.cursor()
+    cursor_tire.execute(tire_movements_query)
+    tire_movements_history = cursor_tire.fetchall() # เปลี่ยนชื่อตัวแปรนี้กลับมาเป็น tire_movements_history
+else:
+    tire_movements_history = conn.execute(tire_movements_query).fetchall()
 
-    cursor = conn.cursor()
-    # MODIFIED: Added LEFT JOIN users to get username
-    cursor.execute("""
-        SELECT wm.*, w.brand, w.model, w.diameter, u.username
-        FROM wheel_movements wm
-        JOIN wheels w ON wm.wheel_id = w.id
-        LEFT JOIN users u ON wm.user_id = u.id -- ADDED JOIN to get username
-        ORDER BY wm.timestamp DESC LIMIT 50
-    """)
-    wheel_movements_history = cursor.fetchall()
+    wheel_movements_query = """
+    SELECT wm.*, w.brand, w.model, w.diameter, u.username
+    FROM wheel_movements wm
+    JOIN wheels w ON wm.wheel_id = w.id
+    LEFT JOIN users u ON wm.user_id = u.id
+    ORDER BY wm.timestamp DESC LIMIT 50
+"""
+if "psycopg2" in str(type(conn)):
+    cursor_wheel = conn.cursor()
+    cursor_wheel.execute(wheel_movements_query)
+    wheel_movements_history = cursor_wheel.fetchall() # เปลี่ยนชื่อตัวแปรนี้กลับมาเป็น wheel_movements_history
+else:
+    wheel_movements_history = conn.execute(wheel_movements_query).fetchall()
 
     # Process timestamps for tire movements history
     processed_tire_movements_history = []
