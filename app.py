@@ -831,8 +831,9 @@ def stock_movement():
     active_tab = request.args.get('tab', 'tire_movements') 
 
     # --- สำหรับ Tire Movements History ---
+    # แก้ไข: เพิ่ม AS user_username ใน SQL query
     tire_movements_query = """
-        SELECT tm.*, t.brand, t.model, t.size, u.username
+        SELECT tm.*, t.brand, t.model, t.size, u.username AS user_username
         FROM tire_movements tm
         JOIN tires t ON tm.tire_id = t.id
         LEFT JOIN users u ON tm.user_id = u.id
@@ -851,8 +852,7 @@ def stock_movement():
         # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
         movement_data = movement
         movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
-        # *** ตรงนี้คือการแก้ไข: เปลี่ยนการเข้าถึงคีย์จาก 'user_username' เป็น 'username' ***
-        movement_data['user_username'] = movement_data.get('username') 
+        # ลบบรรทัดนี้ออก: movement_data['user_username'] = movement_data.get('username')
         processed_tire_movements_history.append(movement_data)
     tire_movements_history = processed_tire_movements_history
 
@@ -870,8 +870,9 @@ def stock_movement():
 
 
     # --- สำหรับ Wheel Movements History ---
+    # แก้ไข: เพิ่ม AS user_username ใน SQL query
     wheel_movements_query = """
-        SELECT wm.*, w.brand, w.model, w.diameter, u.username
+        SELECT wm.*, w.brand, w.model, w.diameter, u.username AS user_username
         FROM wheel_movements wm
         JOIN wheels w ON wm.wheel_id = w.id
         LEFT JOIN users u ON wm.user_id = u.id
@@ -890,8 +891,7 @@ def stock_movement():
         # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
         movement_data = movement
         movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
-        # *** ตรงนี้คือการแก้ไข: เปลี่ยนการเข้าถึงคีย์จาก 'user_username' เป็น 'username' ***
-        movement_data['user_username'] = movement_data.get('username') 
+        # ลบบรรทัดนี้ออก: movement_data['user_username'] = movement_data.get('username')
         processed_wheel_movements_history.append(movement_data)
     wheel_movements_history = processed_wheel_movements_history
 
