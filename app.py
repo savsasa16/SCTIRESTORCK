@@ -641,7 +641,7 @@ def delete_tire(tire_id):
     return redirect(url_for('index', tab='tires'))
 
 # --- Wheel Routes (Main item editing) ---
-@app.route('/wheel_detail/<int:wheel_id>')
+@app.route('/wheel_detail/<int:wheel_id>') # แก้ไขตรงนี้: ลบเลข 24 ออก
 @login_required
 def wheel_detail(wheel_id):
     conn = get_db()
@@ -854,6 +854,18 @@ def stock_movement():
         processed_tire_movements_history.append(movement_data)
     tire_movements_history = processed_tire_movements_history
 
+    # *** เพิ่ม DEBUG PRINT อย่างละเอียดตรงนี้ ***
+    print("\n--- DEBUG: Tire Movements History for STOCK_MOVEMENT Page ---")
+    if not tire_movements_history:
+        print("No tire movements found for stock_movement page.")
+    else:
+        for i, move in enumerate(tire_movements_history):
+            # พิมพ์ทุกคีย์ใน object เพื่อให้แน่ใจว่า 'user_username' มีอยู่และมีค่าอะไร
+            print(f"Item {i} data: {dict(move)}") 
+            # พิมพ์เฉพาะ user_username
+            print(f"  -> User for Item {i}: {move.get('user_username', 'KEY NOT FOUND')}")
+    print("----------------------------------------------------------\n")
+
 
     # --- สำหรับ Wheel Movements History ---
     wheel_movements_query = """
@@ -878,6 +890,16 @@ def stock_movement():
         movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
         processed_wheel_movements_history.append(movement_data)
     wheel_movements_history = processed_wheel_movements_history
+
+    # *** เพิ่ม DEBUG PRINT อย่างละเอียดตรงนี้สำหรับ Wheel Movements ***
+    print("\n--- DEBUG: Wheel Movements History for STOCK_MOVEMENT Page ---")
+    if not wheel_movements_history:
+        print("No wheel movements found for stock_movement page.")
+    else:
+        for i, move in enumerate(wheel_movements_history):
+            print(f"Item {i} data: {dict(move)}")
+            print(f"  -> User for Item {i}: {move.get('user_username', 'KEY NOT FOUND')}")
+    print("----------------------------------------------------------\n")
 
     if request.method == 'POST':
         submit_type = request.form.get('submit_type')
@@ -1271,7 +1293,7 @@ def daily_stock_report():
         detailed_wheel_report[key]['remaining_quantity'] = wheel_current_qty_map.get(
             movement['wheel_main_id'], 0
         )
-
+    
     wheel_brand_summaries = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'current_quantity_sum': 0})
     sorted_unique_wheel_items = sorted(detailed_wheel_report.items(), key=lambda x: x[0])
 
