@@ -641,7 +641,7 @@ def delete_tire(tire_id):
     return redirect(url_for('index', tab='tires'))
 
 # --- Wheel Routes (Main item editing) ---
-@app.route('/wheel_detail/<int:wheel_id>')
+@app.24 route('/wheel_detail/<int:wheel_id>')
 @login_required
 def wheel_detail(wheel_id):
     conn = get_db()
@@ -1457,10 +1457,10 @@ def import_tires_action():
                     price_per_item = float(row['ราคาต่อเส้น']) if pd.notna(row['ราคาต่อเส้น']) else 0.0
 
                     cost_sc = float(row['ทุน SC']) if pd.notna(row.get('ทุน SC')) else None
-                    cost_dunlop = float(row['ทุน Dunlop']) if pd.notna(row.get('ทุน Dunlop')) else None
-                    cost_online = float(row['ทุน Online']) if pd.notna(row.get('ทุน Online')) else None
-                    wholesale_price1 = float(row['ราคาขายส่ง 1']) if pd.notna(row.get('ราคาขายส่ง 1')) else None
-                    wholesale_price2 = float(row['ราคาขายส่ง 2']) if pd.notna(row.get('ราคาขายส่ง 2')) else None
+                    cost_dunlop = float(row.get('ทุน Dunlop')) if pd.notna(row.get('ทุน Dunlop')) else None
+                    cost_online = float(row.get('ทุน Online')) if pd.notna(row.get('ทุน Online')) else None
+                    wholesale_price1 = float(row.get('ราคาขายส่ง 1')) if pd.notna(row.get('ราคาขายส่ง 1')) else None
+                    wholesale_price2 = float(row.get('ราคาขายส่ง 2')) if pd.notna(row.get('ราคาขายส่ง 2')) else None
                     
                     promotion_id = int(row.get('ID โปรโมชัน')) if pd.notna(row.get('ID โปรโมชัน')) else None
                     
