@@ -246,36 +246,23 @@ def index():
     tire_query = request.args.get('tire_query', '').strip()
     tire_selected_brand = request.args.get('tire_brand_filter', 'all').strip()
 
-    # --- DEBUG PRINTS (KEEP FOR NOW) ---
-    print(f"DEBUG: tire_query = '{tire_query}', tire_selected_brand = '{tire_selected_brand}'")
-
     all_tires = database.get_all_tires(conn, query=tire_query, brand_filter=tire_selected_brand)
-    print(f"DEBUG: Data from database.get_all_tires: {all_tires}")
-    print(f"DEBUG: Number of raw tires: {len(all_tires) if all_tires else 0}")
     
     available_tire_brands = database.get_all_tire_brands(conn)
 
     # Process tire data for display (with summaries)
     processed_tires_for_display = process_tire_report_data(all_tires)
-    print(f"DEBUG: Processed tire data for display: {processed_tires_for_display}")
-    print(f"DEBUG: Number of processed tires for display: {len(processed_tires_for_display)}")
-
+    
     wheel_query = request.args.get('wheel_query', '').strip()
     wheel_selected_brand = request.args.get('wheel_brand_filter', 'all').strip()
 
     all_wheels = database.get_all_wheels(conn, query=wheel_query, brand_filter=wheel_selected_brand)
-    print(f"DEBUG: Data from database.get_all_wheels: {all_wheels}")
-    print(f"DEBUG: Number of raw wheels: {len(all_wheels) if all_wheels else 0}")
 
-    # --- ADDED: Missing line to define available_wheel_brands ---
     available_wheel_brands = database.get_all_wheel_brands(conn) 
 
     # Process wheel data for display (with summaries)
     processed_wheels_for_display = process_wheel_report_data(all_wheels)
-    print(f"DEBUG: Processed wheel data for display: {processed_wheels_for_display}")
-    print(f"DEBUG: Number of processed wheels for display: {len(processed_wheels_for_display)}")
-
-
+    
     active_tab = request.args.get('tab', 'tires')
 
     return render_template('index.html',
@@ -428,6 +415,9 @@ def add_item():
         submit_type = request.form.get('submit_type')
         form_data = request.form
 
+        # --- Get current_user.id for adding movement (ADDED) ---
+        current_user_id = current_user.id if current_user.is_authenticated else None
+
         if submit_type == 'add_tire':
             brand = request.form['brand'].strip()
             model = request.form['model'].strip()
@@ -467,10 +457,12 @@ def add_item():
                 
                 year_of_manufacture = year_of_manufacture.strip() if year_of_manufacture and year_of_manufacture.strip() else None
 
+                # MODIFIED: Pass user_id to add_tire
                 database.add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, 
                                   wholesale_price1, wholesale_price2, price_per_item, 
                                   promotion_id_db, 
-                                  year_of_manufacture)
+                                  year_of_manufacture,
+                                  user_id=current_user_id)
                 flash('เพิ่มยางใหม่สำเร็จ!', 'success')
                 return redirect(url_for('add_item', tab='tire'))
 
@@ -537,7 +529,8 @@ def add_item():
                         active_tab = 'wheel'
                         return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
                 
-                database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
+                # MODIFIED: Pass user_id to add_wheel
+                database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url, user_id=current_user_id)
                 flash('เพิ่มแม็กใหม่สำเร็จ!', 'success')
                 return redirect(url_for('add_item', tab='wheel'))
 
@@ -837,48 +830,53 @@ def stock_movement():
     
     active_tab = request.args.get('tab', 'tire_movements') 
 
+    # --- สำหรับ Tire Movements History ---
     tire_movements_query = """
-    SELECT tm.*, t.brand, t.model, t.size, u.username
-    FROM tire_movements tm
-    JOIN tires t ON tm.tire_id = t.id
-    LEFT JOIN users u ON tm.user_id = u.id
-    ORDER BY tm.timestamp DESC LIMIT 50
-"""
-if "psycopg2" in str(type(conn)):
-    cursor_tire = conn.cursor()
-    cursor_tire.execute(tire_movements_query)
-    tire_movements_history = cursor_tire.fetchall() # เปลี่ยนชื่อตัวแปรนี้กลับมาเป็น tire_movements_history
-else:
-    tire_movements_history = conn.execute(tire_movements_query).fetchall()
+        SELECT tm.*, t.brand, t.model, t.size, u.username
+        FROM tire_movements tm
+        JOIN tires t ON tm.tire_id = t.id
+        LEFT JOIN users u ON tm.user_id = u.id
+        ORDER BY tm.timestamp DESC LIMIT 50
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor_tire = conn.cursor()
+        cursor_tire.execute(tire_movements_query)
+        tire_movements_history_raw = cursor_tire.fetchall()
+    else:
+        # ใช้ conn.execute() โดยตรงเพื่อให้ได้ sqlite3.Row object
+        tire_movements_history_raw = conn.execute(tire_movements_query).fetchall()
 
-    wheel_movements_query = """
-    SELECT wm.*, w.brand, w.model, w.diameter, u.username
-    FROM wheel_movements wm
-    JOIN wheels w ON wm.wheel_id = w.id
-    LEFT JOIN users u ON wm.user_id = u.id
-    ORDER BY wm.timestamp DESC LIMIT 50
-"""
-if "psycopg2" in str(type(conn)):
-    cursor_wheel = conn.cursor()
-    cursor_wheel.execute(wheel_movements_query)
-    wheel_movements_history = cursor_wheel.fetchall() # เปลี่ยนชื่อตัวแปรนี้กลับมาเป็น wheel_movements_history
-else:
-    wheel_movements_history = conn.execute(wheel_movements_query).fetchall()
-
-    # Process timestamps for tire movements history
     processed_tire_movements_history = []
-    for movement in tire_movements_history:
-        m_dict = dict(movement)
-        m_dict['timestamp'] = convert_to_bkk_time(m_dict['timestamp']) # Convert to BKK time
-        processed_tire_movements_history.append(m_dict)
+    for movement in tire_movements_history_raw:
+        # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
+        movement_data = movement
+        movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
+        processed_tire_movements_history.append(movement_data)
     tire_movements_history = processed_tire_movements_history
 
-    # Process timestamps for wheel movements history
+
+    # --- สำหรับ Wheel Movements History ---
+    wheel_movements_query = """
+        SELECT wm.*, w.brand, w.model, w.diameter, u.username
+        FROM wheel_movements wm
+        JOIN wheels w ON wm.wheel_id = w.id
+        LEFT JOIN users u ON wm.user_id = u.id
+        ORDER BY wm.timestamp DESC LIMIT 50
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor_wheel = conn.cursor()
+        cursor_wheel.execute(wheel_movements_query)
+        wheel_movements_history_raw = cursor_wheel.fetchall()
+    else:
+        # ใช้ conn.execute() โดยตรงเพื่อให้ได้ sqlite3.Row object
+        wheel_movements_history_raw = conn.execute(wheel_movements_query).fetchall()
+
     processed_wheel_movements_history = []
-    for movement in wheel_movements_history:
-        m_dict = dict(movement)
-        m_dict['timestamp'] = convert_to_bkk_time(m_dict['timestamp']) # Convert to BKK time
-        processed_wheel_movements_history.append(m_dict)
+    for movement in wheel_movements_history_raw:
+        # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
+        movement_data = movement
+        movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
+        processed_wheel_movements_history.append(movement_data)
     wheel_movements_history = processed_wheel_movements_history
 
     if request.method == 'POST':
@@ -1004,15 +1002,17 @@ def edit_tire_movement(movement_id):
         return redirect(url_for('daily_stock_report'))
 
     # Process timestamp for editing form
-    movement = dict(movement) # Ensure it's mutable
-    movement['timestamp'] = convert_to_bkk_time(movement['timestamp'])
+    # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
+    movement_data = movement
+    movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
+
 
     if request.method == 'POST':
         new_notes = request.form.get('notes', '').strip()
         bill_image_file = request.files.get('bill_image')
         delete_existing_image = request.form.get('delete_existing_image') == 'on'
 
-        current_image_url = movement['image_filename']
+        current_image_url = movement_data['image_filename']
         bill_image_url_to_db = current_image_url
 
         if delete_existing_image:
@@ -1034,10 +1034,10 @@ def edit_tire_movement(movement_id):
                     bill_image_url_to_db = new_image_url
                 except Exception as e:
                     flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพบิลไปยัง Cloudinary: {e}', 'danger')
-                    return render_template('edit_tire_movement.html', movement=movement)
+                    return render_template('edit_tire_movement.html', movement=movement_data) # ใช้ movement_data
             else:
                 flash('ชนิดไฟล์รูปภาพบิลไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
-                return render_template('edit_tire_movement.html', movement=movement)
+                return render_template('edit_tire_movement.html', movement=movement_data) # ใช้ movement_data
 
         try:
             # Here, you might also want to update who edited it and when (e.g., edited_by_user_id, last_modified_at)
@@ -1047,7 +1047,7 @@ def edit_tire_movement(movement_id):
         except Exception as e:
             flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูล: {e}', 'danger')
 
-    return render_template('edit_tire_movement.html', movement=movement)
+    return render_template('edit_tire_movement.html', movement=movement_data) # ใช้ movement_data
 
 @app.route('/edit_wheel_movement/<int:movement_id>', methods=['GET', 'POST'])
 @login_required
@@ -1064,15 +1064,16 @@ def edit_wheel_movement(movement_id):
         return redirect(url_for('daily_stock_report'))
 
     # Process timestamp for editing form
-    movement = dict(movement) # Ensure it's mutable
-    movement['timestamp'] = convert_to_bkk_time(movement['timestamp'])
+    # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
+    movement_data = movement
+    movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
 
     if request.method == 'POST':
         new_notes = request.form.get('notes', '').strip()
         bill_image_file = request.files.get('bill_image')
         delete_existing_image = request.form.get('delete_existing_image') == 'on'
 
-        current_image_url = movement['image_filename']
+        current_image_url = movement_data['image_filename']
         bill_image_url_to_db = current_image_url
 
         if delete_existing_image:
@@ -1094,10 +1095,10 @@ def edit_wheel_movement(movement_id):
                     bill_image_url_to_db = new_image_url
                 except Exception as e:
                     flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพบิลไปยัง Cloudinary: {e}', 'danger')
-                    return render_template('edit_wheel_movement.html', movement=movement)
+                    return render_template('edit_wheel_movement.html', movement=movement_data) # ใช้ movement_data
             else:
                 flash('ชนิดไฟล์รูปภาพบิลไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
-                return render_template('edit_wheel_movement.html', movement=movement)
+                return render_template('edit_wheel_movement.html', movement=movement_data) # ใช้ movement_data
 
         try:
             # Here, you might also want to update who edited it and when
@@ -1107,7 +1108,7 @@ def edit_wheel_movement(movement_id):
         except Exception as e:
             flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูล: {e}', 'danger')
 
-    return render_template('edit_wheel_movement.html', movement=movement)
+    return render_template('edit_wheel_movement.html', movement=movement_data) # ใช้ movement_data
 
 # --- daily_stock_report ---
 @app.route('/daily_stock_report')
@@ -1162,9 +1163,9 @@ def daily_stock_report():
 
     processed_tire_movements_raw = []
     for movement in tire_movements_raw:
-        m_dict = dict(movement)
-        m_dict['timestamp'] = convert_to_bkk_time(m_dict['timestamp']) # Convert to BKK time
-        processed_tire_movements_raw.append(m_dict)
+        movement_data = movement # ไม่ต้องใช้ dict(movement)
+        movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp']) # Convert to BKK time
+        processed_tire_movements_raw.append(movement_data)
     tire_movements_raw = processed_tire_movements_raw
 
 
@@ -1248,9 +1249,9 @@ def daily_stock_report():
 
     processed_wheel_movements_raw = []
     for movement in wheel_movements_raw:
-        m_dict = dict(movement)
-        m_dict['timestamp'] = convert_to_bkk_time(m_dict['timestamp']) # Convert to BKK time
-        processed_wheel_movements_raw.append(m_dict)
+        movement_data = movement # ไม่ต้องใช้ dict(movement)
+        movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp']) # Convert to BKK time
+        processed_wheel_movements_raw.append(movement_data)
     wheel_movements_raw = processed_wheel_movements_raw
 
 
@@ -1455,11 +1456,11 @@ def import_tires_action():
                     quantity = int(row['สต็อก']) if pd.notna(row['สต็อก']) else 0
                     price_per_item = float(row['ราคาต่อเส้น']) if pd.notna(row['ราคาต่อเส้น']) else 0.0
 
-                    cost_sc = float(cost_sc) if cost_sc and cost_sc.strip() else None
-                    cost_dunlop = float(cost_dunlop) if cost_dunlop and cost_dunlop.strip() else None
-                    cost_online = float(cost_online) if cost_online and cost_online.strip() else None
-                    wholesale_price1 = float(wholesale_price1) if wholesale_price1 and wholesale_price1.strip() else None
-                    wholesale_price2 = float(wholesale_price2) if wholesale_price2 and wholesale_price2.strip() else None
+                    cost_sc = float(row['ทุน SC']) if pd.notna(row.get('ทุน SC')) else None
+                    cost_dunlop = float(row['ทุน Dunlop']) if pd.notna(row.get('ทุน Dunlop')) else None
+                    cost_online = float(row['ทุน Online']) if pd.notna(row.get('ทุน Online')) else None
+                    wholesale_price1 = float(row['ราคาขายส่ง 1']) if pd.notna(row.get('ราคาขายส่ง 1')) else None
+                    wholesale_price2 = float(row['ราคาขายส่ง 2']) if pd.notna(row.get('ราคาขายส่ง 2')) else None
                     
                     promotion_id = int(row.get('ID โปรโมชัน')) if pd.notna(row.get('ID โปรโมชัน')) else None
                     
@@ -1482,12 +1483,14 @@ def import_tires_action():
                         if quantity != old_quantity:
                             movement_type = 'IN' if quantity > old_quantity else 'OUT'
                             quantity_change_diff = abs(quantity - old_quantity)
-                            database.add_tire_movement(conn, tire_id, movement_type, quantity_change_diff, quantity, "Import from Excel (Qty Update)", None)
+                            # MODIFIED: Pass user_id for import movements
+                            database.add_tire_movement(conn, tire_id, movement_type, quantity_change_diff, quantity, "Import from Excel (Qty Update)", None, user_id=current_user.id)
                         
                     else:
                         new_tire_id = database.add_tire_import(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, 
                                                                promotion_id, year_of_manufacture)
-                        database.add_tire_movement(conn, new_tire_id, 'IN', quantity, quantity, "Import from Excel (initial stock)", None)
+                        # MODIFIED: Pass user_id for import movements
+                        database.add_tire_movement(conn, new_tire_id, 'IN', quantity, quantity, "Import from Excel (initial stock)", None, user_id=current_user.id)
                         imported_count += 1
                 except Exception as row_e:
                     error_rows.append(f"แถวที่ {index + 2}: {row_e} - {row.to_dict()}")
@@ -1629,10 +1632,12 @@ def import_wheels_action():
                         if quantity != old_quantity:
                             movement_type = 'IN' if quantity > old_quantity else 'OUT'
                             quantity_change_diff = abs(quantity - old_quantity)
-                            database.add_wheel_movement(conn, wheel_id, movement_type, quantity_change_diff, quantity, "Import from Excel (Qty Update)", None)
+                            # MODIFIED: Pass user_id for import movements
+                            database.add_wheel_movement(conn, wheel_id, movement_type, quantity_change_diff, quantity, "Import from Excel (Qty Update)", None, user_id=current_user.id)
                     else:
                         new_wheel_id = database.add_wheel_import(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
-                        database.add_wheel_movement(conn, new_wheel_id, 'IN', quantity, quantity, "Import from Excel (initial stock)", None)
+                        # MODIFIED: Pass user_id for import movements
+                        database.add_wheel_movement(conn, new_wheel_id, 'IN', quantity, quantity, "Import from Excel (initial stock)", None, user_id=current_user.id)
                         imported_count += 1
                 except Exception as row_e:
                     error_rows.append(f"แถวที่ {index + 2}: {row_e} - {row.to_dict()}")
