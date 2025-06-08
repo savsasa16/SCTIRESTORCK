@@ -179,10 +179,8 @@ def init_db(conn):
             );
         """)
 
-    # Tire Movements Table (ลบ ON DELETE CASCADE)
+    # Tire Movements Table (ไม่มี ON DELETE CASCADE)
     if is_postgres:
-        # ข้อควรระวัง: ถ้าตารางมีอยู่แล้วและมี ON DELETE CASCADE อยู่เดิม คุณจะต้องรัน ALTER TABLE ด้วยตนเอง
-        # ALTER TABLE tire_movements DROP CONSTRAINT tire_movements_tire_id_fkey;
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tire_movements (
                 id SERIAL PRIMARY KEY,
@@ -194,7 +192,7 @@ def init_db(conn):
                 notes TEXT,
                 image_filename VARCHAR(500) NULL,
                 user_id INTEGER NULL,
-                FOREIGN KEY (tire_id) REFERENCES tires(id), -- REMOVED ON DELETE CASCADE
+                FOREIGN KEY (tire_id) REFERENCES tires(id), -- ไม่มี ON DELETE CASCADE
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
         """)
@@ -210,15 +208,13 @@ def init_db(conn):
                 notes TEXT,
                 image_filename TEXT NULL,
                 user_id INTEGER NULL,
-                FOREIGN KEY (tire_id) REFERENCES tires(id), -- REMOVED ON DELETE CASCADE
+                FOREIGN KEY (tire_id) REFERENCES tires(id), -- ไม่มี ON DELETE CASCADE
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
         """)
 
-    # Wheel Movements Table (ลบ ON DELETE CASCADE)
+    # Wheel Movements Table (ไม่มี ON DELETE CASCADE)
     if is_postgres:
-        # ข้อควรระวัง: ถ้าตารางมีอยู่แล้วและมี ON DELETE CASCADE อยู่เดิม คุณจะต้องรัน ALTER TABLE ด้วยตนเอง
-        # ALTER TABLE wheel_movements DROP CONSTRAINT wheel_movements_wheel_id_fkey;
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS wheel_movements (
                 id SERIAL PRIMARY KEY,
@@ -230,7 +226,7 @@ def init_db(conn):
                 notes TEXT,
                 image_filename VARCHAR(500) NULL,
                 user_id INTEGER NULL,
-                FOREIGN KEY (wheel_id) REFERENCES wheels(id), -- REMOVED ON DELETE CASCADE
+                FOREIGN KEY (wheel_id) REFERENCES wheels(id), -- ไม่มี ON DELETE CASCADE
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
         """)
@@ -246,12 +242,12 @@ def init_db(conn):
                 notes TEXT,
                 image_filename TEXT NULL,
                 user_id INTEGER NULL,
-                FOREIGN KEY (wheel_id) REFERENCES wheels(id), -- REMOVED ON DELETE CASCADE
+                FOREIGN KEY (wheel_id) REFERENCES wheels(id), -- ไม่มี ON DELETE CASCADE
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
         """)
 
-    # Wheel Fitments Table (ยังคงมี ON DELETE CASCADE - เพราะเราต้องการลบ fitment เมื่อ wheel ถูกลบ)
+    # Wheel Fitments Table (ยังคงมี ON DELETE CASCADE)
     if is_postgres:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS wheel_fitments (
@@ -702,7 +698,7 @@ def calculate_tire_promo_prices(price_per_item, promo_type, promo_value1, promo_
     }
 
 
-def get_all_tires(conn, query=None, brand_filter='all'):
+def get_all_tires(conn, query=None, brand_filter='all', include_deleted=False): # ADDED include_deleted
     cursor = conn.cursor()
     sql_query = """
         SELECT t.*,
@@ -713,10 +709,12 @@ def get_all_tires(conn, query=None, brand_filter='all'):
                p.is_active AS promo_is_active
         FROM tires t
         LEFT JOIN promotions p ON t.promotion_id = p.id
-        WHERE t.is_deleted = FALSE -- ADDED FOR SOFT DELETE
     """
     params = []
     conditions = []
+
+    if not include_deleted: # Conditionally add is_deleted filter
+        conditions.append("t.is_deleted = FALSE" if "psycopg2" in str(type(conn)) else "t.is_deleted = 0")
 
     if query:
         search_term = f"%{query}%"
@@ -728,7 +726,7 @@ def get_all_tires(conn, query=None, brand_filter='all'):
         params.append(brand_filter)
 
     if conditions:
-        sql_query += " AND " + " AND ".join(conditions) # Changed WHERE to AND for filtering soft deleted items
+        sql_query += " WHERE " + " AND ".join(conditions) # Changed WHERE to AND for filtering soft deleted items
 
     sql_query += " ORDER BY t.brand, t.model"
 
@@ -903,15 +901,56 @@ def get_all_tire_brands(conn):
     brands_data = cursor.fetchall()
     return [row['brand'] for row in brands_data]
 
+# เพิ่มฟังก์ชันสำหรับดึงยางที่ถูกลบ
+def get_deleted_tires(conn):
+    cursor = conn.cursor()
+    sql_query = """
+        SELECT t.*,
+               p.name AS promo_name,
+               p.type AS promo_type,
+               p.value1 AS promo_value1,
+               p.value2 AS promo_value2,
+               p.is_active AS promo_is_active
+        FROM tires t
+        LEFT JOIN promotions p ON t.promotion_id = p.id
+        WHERE t.is_deleted = TRUE
+        ORDER BY t.brand, t.model
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(sql_query)
+    else:
+        cursor.execute(sql_query.replace('TRUE', '1')) # SQLite boolean
+    tires = cursor.fetchall()
+    # Process for display if needed (like index page)
+    processed_tires = []
+    for tire in tires:
+        tire_dict = dict(tire) 
+        # Add promo price calculation if needed, similar to get_all_tires
+        # For deleted items, usually just basic info is enough, so skip complex calculations here
+        processed_tires.append(tire_dict)
+    return processed_tires
+
+
+# เพิ่มฟังก์ชันสำหรับกู้คืนยาง (restore_tire)
+def restore_tire(conn, tire_id):
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("UPDATE tires SET is_deleted = FALSE WHERE id = %s", (tire_id,))
+    else:
+        cursor.execute("UPDATE tires SET is_deleted = 0 WHERE id = ?", (tire_id,))
+    conn.commit()
+
 # --- Wheel Functions ---
-def get_all_wheels(conn, query=None, brand_filter='all'):
+def get_all_wheels(conn, query=None, brand_filter='all', include_deleted=False): # ADDED include_deleted
     cursor = conn.cursor()
     sql_query = """
         SELECT * FROM wheels
-        WHERE is_deleted = FALSE -- ADDED FOR SOFT DELETE
     """
     params = []
     conditions = []
+
+    if not include_deleted: # Conditionally add is_deleted filter
+        conditions.append("is_deleted = FALSE" if "psycopg2" in str(type(conn)) else "is_deleted = 0")
 
     if "psycopg2" in str(type(conn)):
         if query:
@@ -933,7 +972,7 @@ def get_all_wheels(conn, query=None, brand_filter='all'):
             params.append(brand_filter)
     
     if conditions:
-        sql_query += " AND " + " AND ".join(conditions) # Changed WHERE to AND for filtering soft deleted items
+        sql_query += " WHERE " + " AND ".join(conditions)
     
     sql_query += " ORDER BY brand, model, diameter"
     
@@ -1112,6 +1151,34 @@ def get_all_wheel_brands(conn):
         cursor.execute("SELECT DISTINCT brand FROM wheels WHERE is_deleted = 0 ORDER BY brand") # Filter soft deleted
     brands_data = cursor.fetchall()
     return [row['brand'] for row in brands_data]
+
+# เพิ่มฟังก์ชันสำหรับดึงแม็กที่ถูกลบ
+def get_deleted_wheels(conn):
+    cursor = conn.cursor()
+    sql_query = """
+        SELECT w.*
+        FROM wheels w
+        WHERE w.is_deleted = TRUE
+        ORDER BY w.brand, w.model
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(sql_query)
+    else:
+        cursor.execute(sql_query.replace('TRUE', '1')) # SQLite boolean
+    wheels = cursor.fetchall()
+    processed_wheels = []
+    for wheel in wheels:
+        processed_wheels.append(dict(wheel)) # Convert to dict
+    return processed_wheels
+
+# เพิ่มฟังก์ชันสำหรับกู้คืนแม็ก (restore_wheel)
+def restore_wheel(conn, wheel_id):
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("UPDATE wheels SET is_deleted = FALSE WHERE id = %s", (wheel_id,))
+    else:
+        cursor.execute("UPDATE wheels SET is_deleted = 0 WHERE id = ?", (wheel_id,))
+    conn.commit()
 
 def add_wheel_fitment(conn, wheel_id, brand, model, year_start, year_end):
     cursor = conn.cursor()
