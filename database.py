@@ -175,7 +175,7 @@ def init_db(conn):
             );
         """)
 
-    # Tire Movements Table (เพิ่ม image_filename)
+    # Tire Movements Table (เพิ่ม image_filename และ user_id)
     if is_postgres:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tire_movements (
@@ -187,7 +187,9 @@ def init_db(conn):
                 remaining_quantity INTEGER NOT NULL,
                 notes TEXT,
                 image_filename VARCHAR(500) NULL, -- เปลี่ยนเป็น VARCHAR(500) สำหรับ URL Cloudinary
-                FOREIGN KEY (tire_id) REFERENCES tires(id)
+                user_id INTEGER NULL, -- ADDED THIS LINE
+                FOREIGN KEY (tire_id) REFERENCES tires(id),
+                FOREIGN KEY (user_id) REFERENCES users(id) -- ADDED THIS LINE
             );
         """)
     else: # SQLite
@@ -201,11 +203,13 @@ def init_db(conn):
                 remaining_quantity INTEGER NOT NULL,
                 notes TEXT,
                 image_filename TEXT NULL, -- TEXT ก็เพียงพอสำหรับ URL ใน SQLite
-                FOREIGN KEY (tire_id) REFERENCES tires(id)
+                user_id INTEGER NULL, -- ADDED THIS LINE
+                FOREIGN KEY (tire_id) REFERENCES tires(id),
+                FOREIGN KEY (user_id) REFERENCES users(id) -- ADDED THIS LINE
             );
         """)
 
-    # Wheel Movements Table (เพิ่ม image_filename)
+    # Wheel Movements Table (เพิ่ม image_filename และ user_id)
     if is_postgres:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS wheel_movements (
@@ -217,7 +221,9 @@ def init_db(conn):
                 remaining_quantity INTEGER NOT NULL,
                 notes TEXT,
                 image_filename VARCHAR(500) NULL, -- เปลี่ยนเป็น VARCHAR(500) สำหรับ URL Cloudinary
-                FOREIGN KEY (wheel_id) REFERENCES wheels(id)
+                user_id INTEGER NULL, -- ADDED THIS LINE
+                FOREIGN KEY (wheel_id) REFERENCES wheels(id),
+                FOREIGN KEY (user_id) REFERENCES users(id) -- ADDED THIS LINE
             );
         """)
     else: # SQLite
@@ -231,7 +237,9 @@ def init_db(conn):
                 remaining_quantity INTEGER NOT NULL,
                 notes TEXT,
                 image_filename TEXT NULL, -- TEXT ก็เพียงพอสำหรับ URL ใน SQLite
-                FOREIGN KEY (wheel_id) REFERENCES wheels(id)
+                user_id INTEGER NULL, -- ADDED THIS LINE
+                FOREIGN KEY (wheel_id) REFERENCES wheels(id),
+                FOREIGN KEY (user_id) REFERENCES users(id) -- ADDED THIS LINE
             );
         """)
 
@@ -468,7 +476,8 @@ def delete_promotion(conn, promo_id):
     conn.commit()
 
 # --- Tire Functions ---
-def add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, promotion_id, year_of_manufacture):
+# MODIFIED: เพิ่ม user_id ใน signature
+def add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, promotion_id, year_of_manufacture, user_id=None):
     cursor = conn.cursor()
     is_postgres = "psycopg2" in str(type(conn))
 
@@ -486,7 +495,8 @@ def add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_onli
         tire_id = cursor.lastrowid
     
     # บันทึกการเคลื่อนไหวสต็อก (นำเข้า) พร้อม image_filename=None
-    add_tire_movement(conn, tire_id, 'IN', quantity, quantity, 'เพิ่มยางใหม่เข้าสต็อก', None)
+    # MODIFIED: ส่ง user_id ที่ได้รับมา ให้ add_tire_movement
+    add_tire_movement(conn, tire_id, 'IN', quantity, quantity, 'เพิ่มยางใหม่เข้าสต็อก', None, user_id=user_id)
     
     conn.commit()
     return tire_id
@@ -953,7 +963,8 @@ def get_wheel(conn, wheel_id):
     return wheel_data
 
 # แก้ไขพารามิเตอร์: image_filename -> image_url
-def add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url):
+# MODIFIED: เพิ่ม user_id ใน signature
+def add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url, user_id=None):
     cursor = conn.cursor()
     is_postgres = "psycopg2" in str(type(conn))
 
@@ -971,7 +982,8 @@ def add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cos
         wheel_id = cursor.lastrowid
     
     # บันทึกการเคลื่อนไหวสต็อก (นำเข้า) พร้อม image_filename=None
-    add_wheel_movement(conn, wheel_id, 'IN', quantity, quantity, 'เพิ่มแม็กใหม่เข้าสต็อก', None)
+    # MODIFIED: ส่ง user_id ที่ได้รับมา ให้ add_wheel_movement
+    add_wheel_movement(conn, wheel_id, 'IN', quantity, quantity, 'เพิ่มแม็กใหม่เข้าสต็อก', None, user_id=user_id)
     
     conn.commit()
     return wheel_id
