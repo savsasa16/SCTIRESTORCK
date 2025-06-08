@@ -1,3 +1,5 @@
+# app.py
+from flask import Flask, render_template, request, redirect, url_for, flash, g, send_file, current_app
 import database
 import pandas as pd
 from io import BytesIO
@@ -8,7 +10,6 @@ from datetime import datetime, timedelta
 import pytz
 from collections import defaultdict
 import re
-from flask import Flask, render_template, request, redirect, url_for, flash, g, send_file, current_app
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -1119,11 +1120,11 @@ def daily_stock_report():
     if report_date_str:
         try:
             # Parse the date string into a datetime object (at midnight UTC for consistency or BKK timezone)
-            # Assuming report_date_str isYYYY-MM-DD
+            # Assuming report_date_str is YYYY-MM-DD
             report_datetime_obj = BKK_TZ.localize(datetime.strptime(report_date_str, '%Y-%m-%d'))
             display_date_str = report_datetime_obj.strftime('%d %b %Y')
         except ValueError:
-            flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้YYYY-MM-DD", "danger")
+            flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้ YYYY-MM-DD", "danger")
             # Fallback to current BKK time if parsing fails
             report_datetime_obj = get_bkk_time()
             display_date_str = report_datetime_obj.strftime('%d %b %Y')
@@ -1132,10 +1133,10 @@ def daily_stock_report():
         report_datetime_obj = get_bkk_time()
         display_date_str = report_datetime_obj.strftime('%d %b %Y')
 
-    # Now use report_datetime_obj.date() for SQL filtering, and report_datetime_obj for timedelta arithmetic
+    # Now use report_datetime_obj for calculations and report_date for display
     report_date = report_datetime_obj.date() # Get just the date part for comparisons and display
     sql_date_filter = report_date.strftime('%Y-%m-%d')
-    sql_date_filter_end_of_day = report_date_obj.replace(hour=23, minute=59, second=59).isoformat()
+    sql_date_filter_end_of_day = report_datetime_obj.replace(hour=23, minute=59, second=59).isoformat()
 
     # --- Tire Report Data ---
     # Get all tire movements for the selected report date
@@ -1897,3 +1898,4 @@ def restore_wheel_action(wheel_id):
 # --- Main entry point ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
