@@ -132,25 +132,22 @@ def logout():
 # --- Helper function for processing report tables in app.py (for index and daily_stock_report) ---
 def process_tire_report_data(all_tires):
     processed_report = []
-    brand_summaries = defaultdict(lambda: {'quantity_sum': 0}) # Only sum quantity for index page
+    brand_summaries = defaultdict(lambda: {'quantity_sum': 0})
     
-    # Sort tires by brand first, then model/size for consistent grouping
     sorted_tires = sorted(all_tires, key=lambda x: (x['brand'], x['model'], x['size']))
     
     last_brand = None
     for tire in sorted_tires:
         current_brand = tire['brand']
         
-        # Add summary row for previous brand if brand changes
         if last_brand is not None and current_brand != last_brand:
             summary_data = brand_summaries[last_brand]
             processed_report.append({
                 'is_summary': True,
                 'brand': last_brand,
-                'quantity': summary_data['quantity_sum'] # Only quantity sum for summary
+                'quantity': summary_data['quantity_sum']
             })
         
-        # Add actual tire item data
         processed_report.append({
             'is_summary': False,
             'brand': tire['brand'],
@@ -165,15 +162,13 @@ def process_tire_report_data(all_tires):
             'display_promo_price_per_item': tire['display_promo_price_per_item'],
             'display_price_for_4': tire['display_price_for_4'],
             'year_of_manufacture': tire['year_of_manufacture'],
-            'id': tire['id'] # Include ID for action buttons
+            'id': tire['id']
         })
         
-        # Accumulate sums for brand summary
         brand_summaries[current_brand]['quantity_sum'] += tire['quantity']
         
         last_brand = current_brand
         
-    # Add summary for the very last brand
     if last_brand is not None:
         summary_data = brand_summaries[last_brand]
         processed_report.append({
@@ -186,16 +181,14 @@ def process_tire_report_data(all_tires):
 
 def process_wheel_report_data(all_wheels):
     processed_report = []
-    brand_summaries = defaultdict(lambda: {'quantity_sum': 0}) # Only sum quantity for index page
+    brand_summaries = defaultdict(lambda: {'quantity_sum': 0})
 
-    # Sort wheels by brand first, then model/diameter/width/pcd for consistent grouping
     sorted_wheels = sorted(all_wheels, key=lambda x: (x['brand'], x['model'], x['diameter'], x['width'], x['pcd']))
 
     last_brand = None
     for wheel in sorted_wheels:
         current_brand = wheel['brand']
 
-        # Add summary row for previous brand if brand changes
         if last_brand is not None and current_brand != last_brand:
             summary_data = brand_summaries[last_brand]
             processed_report.append({
@@ -204,7 +197,6 @@ def process_wheel_report_data(all_wheels):
                 'quantity': summary_data['quantity_sum']
             })
 
-        # Add actual wheel item data
         processed_report.append({
             'is_summary': False,
             'brand': wheel['brand'],
@@ -218,15 +210,13 @@ def process_wheel_report_data(all_wheels):
             'cost': wheel['cost'],
             'retail_price': wheel['retail_price'],
             'image_filename': wheel['image_filename'],
-            'id': wheel['id'] # Include ID for action buttons
+            'id': wheel['id']
         })
 
-        # Accumulate sums for brand summary
         brand_summaries[current_brand]['quantity_sum'] += wheel['quantity']
 
         last_brand = current_brand
 
-    # Add summary for the very last brand
     if last_brand is not None:
         summary_data = brand_summaries[last_brand]
         processed_report.append({
@@ -246,31 +236,27 @@ def index():
     tire_query = request.args.get('tire_query', '').strip()
     tire_selected_brand = request.args.get('tire_brand_filter', 'all').strip()
 
-    all_tires = database.get_all_tires(conn, query=tire_query, brand_filter=tire_selected_brand, include_deleted=False) # Always false for index
+    all_tires = database.get_all_tires(conn, query=tire_query, brand_filter=tire_selected_brand, include_deleted=False)
     
     available_tire_brands = database.get_all_tire_brands(conn)
 
-    # Process tire data for display (with summaries)
     processed_tires_for_display = process_tire_report_data(all_tires)
     
     wheel_query = request.args.get('wheel_query', '').strip()
     wheel_selected_brand = request.args.get('wheel_brand_filter', 'all').strip()
 
-    all_wheels = database.get_all_wheels(conn, query=wheel_query, brand_filter=wheel_selected_brand, include_deleted=False) # Always false for index
+    all_wheels = database.get_all_wheels(conn, query=wheel_query, brand_filter=wheel_selected_brand, include_deleted=False)
 
     available_wheel_brands = database.get_all_wheel_brands(conn) 
 
-    # Process wheel data for display (with summaries)
     processed_wheels_for_display = process_wheel_report_data(all_wheels)
     
     active_tab = request.args.get('tab', 'tires')
 
     return render_template('index.html',
-                           # Change to use processed data for tables
                            tires_for_display=processed_tires_for_display,
                            wheels_for_display=processed_wheels_for_display,
                            
-                           # Keep original filtering variables for the form
                            tire_query=tire_query,
                            available_tire_brands=available_tire_brands,
                            tire_selected_brand=tire_selected_brand,
@@ -312,7 +298,7 @@ def add_promotion():
                     raise ValueError("สำหรับ 'ซื้อ X แถม Y' โปรดระบุ X และ Y ที่มากกว่า 0")
                 elif promo_type == 'percentage_discount' and (value1 <= 0 or value1 > 100):
                     raise ValueError("ส่วนลดเปอร์เซ็นต์ต้องอยู่ระหว่าง 0-100")
-                elif promo_type == 'fixed_price_per_n' and value1 <= 0: # Corrected type
+                elif promo_type == 'fixed_price_per_n' and value1 <= 0:
                     raise ValueError("ราคาพิเศษต้องมากกว่า 0")
 
                 conn = get_db()
@@ -360,7 +346,7 @@ def edit_promotion(promo_id):
                     raise ValueError("สำหรับ 'ซื้อ X แถม Y' โปรดระบุ X และ Y ที่มากกว่า 0")
                 elif promo_type == 'percentage_discount' and (value1 <= 0 or value1 > 100):
                     raise ValueError("ส่วนลดเปอร์เซ็นต์ต้องอยู่ระหว่าง 0-100")
-                elif promo_type == 'fixed_price_per_n' and value1 <= 0: # Corrected type
+                elif promo_type == 'fixed_price_per_n' and value1 <= 0:
                     raise ValueError("ราคาพิเศษต้องมากกว่า 0")
 
                 conn = get_db()
@@ -416,7 +402,6 @@ def add_item():
         submit_type = request.form.get('submit_type')
         form_data = request.form
 
-        # --- Get current_user.id for adding movement (ADDED) ---
         current_user_id = current_user.id if current_user.is_authenticated else None
 
         if submit_type == 'add_tire':
@@ -458,7 +443,6 @@ def add_item():
                 
                 year_of_manufacture = year_of_manufacture.strip() if year_of_manufacture and year_of_manufacture.strip() else None
 
-                # MODIFIED: Pass user_id to add_tire
                 database.add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, 
                                   wholesale_price1, wholesale_price2, price_per_item, 
                                   promotion_id_db, 
@@ -530,7 +514,6 @@ def add_item():
                         active_tab = 'wheel'
                         return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
                 
-                # MODIFIED: Pass user_id to add_wheel
                 database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url, user_id=current_user_id)
                 flash('เพิ่มแม็กใหม่สำเร็จ!', 'success')
                 return redirect(url_for('add_item', tab='wheel'))
@@ -549,7 +532,6 @@ def add_item():
     
     return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
 
-# The /edit_tire route should now render the new edit_tire.html (for main item details)
 @app.route('/edit_tire/<int:tire_id>', methods=('GET', 'POST'))
 @login_required
 def edit_tire(tire_id):
@@ -615,7 +597,6 @@ def edit_tire(tire_id):
                 else:
                     flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูลยาง: {e}', 'danger')
 
-    # Corrected: Render the newly created edit_tire.html (for main item details)
     return render_template('edit_tire.html', tire=tire, current_year=current_year, all_promotions=all_promotions)
 
 @app.route('/delete_tire/<int:tire_id>', methods=('POST',))
@@ -629,7 +610,7 @@ def delete_tire(tire_id):
 
     if tire is None:
         flash('ไม่พบยางที่ระบุ', 'danger')
-    elif tire['quantity'] > 0: # ยังคงตรวจสอบสต็อก
+    elif tire['quantity'] > 0:
         flash('ไม่สามารถลบยางได้เนื่องจากยังมีสต็อกเหลืออยู่. กรุณาปรับสต็อกให้เป็น 0 ก่อน.', 'danger')
         return redirect(url_for('index', tab='tires'))
     else:
@@ -641,7 +622,6 @@ def delete_tire(tire_id):
     
     return redirect(url_for('index', tab='tires'))
 
-# --- Wheel Routes (Main item editing) ---
 @app.route('/wheel_detail/<int:wheel_id>')
 @login_required
 def wheel_detail(wheel_id):
@@ -656,8 +636,6 @@ def wheel_detail(wheel_id):
     
     return render_template('wheel_detail.html', wheel=wheel, fitments=fitments, current_year=current_year)
 
-
-# The /edit_wheel route should now render the new edit_wheel.html (for main item details)
 @app.route('/edit_wheel/<int:wheel_id>', methods=('GET', 'POST'))
 @login_required
 def edit_wheel(wheel_id):
@@ -722,7 +700,6 @@ def edit_wheel(wheel_id):
                     else:
                         flash('ชนิดไฟล์รูปภาพไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
                         return render_template('edit_wheel.html', wheel=wheel, current_year=current_year)
-                # else: ถ้าไม่เลือกไฟล์ใหม่, current_image_url จะยังคงเป็นค่าเดิม (URL รูปภาพเก่า)
 
                 database.update_wheel(conn, wheel_id, brand, model, diameter, pcd, width, et, color, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, current_image_url)
                 flash('แก้ไขข้อมูลแม็กสำเร็จ!', 'success')
@@ -735,7 +712,6 @@ def edit_wheel(wheel_id):
                 else:
                     flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูลแม็ก: {e}', 'danger')
 
-    # Corrected: Render the newly created edit_wheel.html (for main item details)
     return render_template('edit_wheel.html', wheel=wheel, current_year=current_year)
 
 @app.route('/delete_wheel/<int:wheel_id>', methods=('POST',))
@@ -749,7 +725,7 @@ def delete_wheel(wheel_id):
 
     if wheel is None:
         flash('ไม่พบแม็กที่ระบุ', 'danger')
-    elif wheel['quantity'] > 0: # ยังคงตรวจสอบสต็อก
+    elif wheel['quantity'] > 0:
         flash('ไม่สามารถลบแม็กได้เนื่องจากยังมีสต็อกเหลืออยู่. กรุณาปรับสต็อกให้เป็น 0 ก่อน.', 'danger')
         return redirect(url_for('index', tab='wheels'))
     else:
@@ -913,7 +889,6 @@ def stock_movement():
                 flash('จำนวนที่เปลี่ยนแปลงต้องมากกว่า 0', 'danger')
                 return redirect(url_for('stock_movement', tab=active_tab_on_error))
             
-            # --- Get current_user.id for adding movement (ADDED) ---
             current_user_id = current_user.id if current_user.is_authenticated else None
 
             if submit_type == 'tire_movement':
@@ -933,7 +908,6 @@ def stock_movement():
                     new_quantity -= quantity_change
                 
                 database.update_tire_quantity(conn, tire_id, new_quantity)
-                # MODIFIED: Pass current_user_id
                 database.add_tire_movement(conn, tire_id, move_type, quantity_change, new_quantity, notes, bill_image_url_to_db, user_id=current_user_id)
                 flash(f'บันทึกการเคลื่อนไหวสต็อกยางสำเร็จ! คงเหลือ: {new_quantity} เส้น', 'success')
                 return redirect(url_for('stock_movement', tab='tire_movements'))
@@ -955,7 +929,6 @@ def stock_movement():
                     new_quantity -= quantity_change
                 
                 database.update_wheel_quantity(conn, wheel_id, new_quantity)
-                # MODIFIED: Pass current_user_id
                 database.add_wheel_movement(conn, wheel_id, move_type, quantity_change, new_quantity, notes, bill_image_url_to_db, user_id=current_user_id)
                 flash(f'บันทึกการเคลื่อนไหวสต็อกแม็กสำเร็จ! คงเหลือ: {new_quantity} วง', 'success')
                 return redirect(url_for('stock_movement', tab='wheel_movements'))
@@ -974,7 +947,6 @@ def stock_movement():
                            tire_movements=tire_movements_history, 
                            wheel_movements=wheel_movements_history)
 
-# --- Routes for Editing Movements (Actual use of edit_tire_movement.html and edit_wheel_movement.html) ---
 @app.route('/edit_tire_movement/<int:movement_id>', methods=['GET', 'POST'])
 @login_required
 def edit_tire_movement(movement_id):
@@ -1150,59 +1122,86 @@ def daily_stock_report():
     for movement in tire_movements_raw:
         tire_ids_involved.add(movement['tire_main_id'])
 
-    distinct_tire_ids_query = f"""
+    # --- Calculate initial quantities for ALL tires *before* the report date ---
+    # This query gets the sum of movements for each tire_id up to the *end of the day before* the report date.
+    # We use a subquery to ensure the date comparison is correct for the day *before* the report date.
+    day_before_report = report_datetime_obj.replace(hour=0, minute=0, second=0) - timedelta(microseconds=1) # Just before midnight of report date
+    day_before_report_iso = day_before_report.isoformat()
+
+    # Get all distinct tire_ids that had movements before or on the report date
+    distinct_tire_ids_query_all_history = f"""
         SELECT DISTINCT tire_id
         FROM tire_movements
         WHERE timestamp <= %s
     """
     if "psycopg2" in str(type(conn)):
-        cursor.execute(distinct_tire_ids_query, (sql_date_filter_end_of_day,))
+        cursor.execute(distinct_tire_ids_query_all_history, (sql_date_filter_end_of_day,))
     else:
-        cursor.execute(distinct_tire_ids_query.replace('%s', '?'), (sql_date_filter_end_of_day,))
+        cursor.execute(distinct_tire_ids_query_all_history.replace('%s', '?'), (sql_date_filter_end_of_day,))
     
     for row in cursor.fetchall():
-        tire_ids_involved.add(row['tire_id'])
+        tire_ids_involved.add(row['tire_id']) # Add all historical tire IDs to the set
+
 
     for tire_id in tire_ids_involved:
-        history_query = f"""
+        # Sum movements for each tire *up to the day before* the report date
+        history_query_up_to_day_before = f"""
             SELECT type, quantity_change
             FROM tire_movements
             WHERE tire_id = %s AND timestamp <= %s
             ORDER BY timestamp ASC
         """
         if "psycopg2" in str(type(conn)):
-            cursor.execute(history_query, (tire_id, sql_date_filter_end_of_day))
+            cursor.execute(history_query_up_to_day_before, (tire_id, day_before_report_iso))
         else:
-            cursor.execute(history_query.replace('%s', '?'), (tire_id, sql_date_filter_end_of_day,))
+            cursor.execute(history_query_up_to_day_before.replace('%s', '?'), (tire_id, day_before_report_iso,))
         
-        calculated_qty = 0
+        calculated_qty_before_day = 0
         for move in cursor.fetchall():
             if move['type'] == 'IN':
-                calculated_qty += move['quantity_change']
+                calculated_qty_before_day += move['quantity_change']
             elif move['type'] == 'OUT':
-                calculated_qty -= move['quantity_change']
-        tire_quantities_before_report[tire_id] = calculated_qty
+                calculated_qty_before_day -= move['quantity_change']
+        tire_quantities_before_report[tire_id] = calculated_qty_before_day # This is the starting quantity for the report day
 
     sorted_detailed_tire_report = []
     detailed_tire_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0, 'tire_main_id': None, 'brand': '', 'model': '', 'size': ''})
 
-    for movement in tire_movements_raw:
+    for movement in tire_movements_raw: # These are movements *on* the report day
         key = (movement['brand'], movement['model'], movement['size'])
         tire_id = movement['tire_main_id']
 
-        if detailed_tire_report[key]['tire_main_id'] is None:
+        # Ensure the item is tracked in detailed_tire_report
+        if key not in detailed_tire_report:
             detailed_tire_report[key]['tire_main_id'] = tire_id
             detailed_tire_report[key]['brand'] = movement['brand']
             detailed_tire_report[key]['model'] = movement['model']
             detailed_tire_report[key]['size'] = movement['size']
-            
-            detailed_tire_report[key]['remaining_quantity'] = tire_quantities_before_report[tire_id]
+            detailed_tire_report[key]['remaining_quantity'] = tire_quantities_before_report[tire_id] # Initialize with quantity from day before
 
         if movement['type'] == 'IN':
             detailed_tire_report[key]['IN'] += movement['quantity_change']
+            detailed_tire_report[key]['remaining_quantity'] += movement['quantity_change'] # Update remaining for the day
         elif movement['type'] == 'OUT':
             detailed_tire_report[key]['OUT'] += movement['quantity_change']
+            detailed_tire_report[key]['remaining_quantity'] -= movement['quantity_change'] # Update remaining for the day
     
+    # After processing movements for the day, for any tire_id that had no movement on the report date
+    # but existed before the report date, ensure it's in the report with its "before_report" quantity.
+    for tire_id, qty in tire_quantities_before_report.items():
+        # Get tire details for items that didn't have movements on the current day but existed before
+        if not any(item['tire_main_id'] == tire_id for item in tire_movements_raw):
+            tire_info = database.get_tire(conn, tire_id)
+            if tire_info and not tire_info['is_deleted']: # Only include if not deleted
+                key = (tire_info['brand'], tire_info['model'], tire_info['size'])
+                if key not in detailed_tire_report:
+                    detailed_tire_report[key]['tire_main_id'] = tire_id
+                    detailed_tire_report[key]['brand'] = tire_info['brand']
+                    detailed_tire_report[key]['model'] = tire_info['model']
+                    detailed_tire_report[key]['size'] = tire_info['size']
+                    detailed_tire_report[key]['remaining_quantity'] = qty # Quantity from day before, since no movement on this day
+
+
     tire_brand_summaries = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'current_quantity_sum': 0})
     sorted_unique_tire_items = sorted(detailed_tire_report.items(), key=lambda x: x[0])
 
@@ -1225,7 +1224,7 @@ def daily_stock_report():
             'size': size,
             'IN': data['IN'],
             'OUT': data['OUT'],
-            'remaining_quantity': data['remaining_quantity']
+            'remaining_quantity': data['remaining_quantity'] # This is the calculated quantity for the end of day
         })
 
         tire_brand_summaries[brand]['IN'] += data['IN']
@@ -1276,62 +1275,88 @@ def daily_stock_report():
     for movement in wheel_movements_raw:
         wheel_ids_involved.add(movement['wheel_main_id'])
 
-    distinct_wheel_ids_query = f"""
+    # --- Calculate initial quantities for ALL wheels *before* the report date ---
+    # We use a subquery to ensure the date comparison is correct for the day *before* the report date.
+    # day_before_report and day_before_report_iso are already defined from tire section
+
+    # Get all distinct wheel_ids that had movements before or on the report date
+    distinct_wheel_ids_query_all_history = f"""
         SELECT DISTINCT wheel_id
         FROM wheel_movements
         WHERE timestamp <= %s
     """
     if "psycopg2" in str(type(conn)):
-        cursor.execute(distinct_wheel_ids_query, (sql_date_filter_end_of_day,))
+        cursor.execute(distinct_wheel_ids_query_all_history, (sql_date_filter_end_of_day,))
     else:
-        cursor.execute(distinct_wheel_ids_query.replace('%s', '?'), (sql_date_filter_end_of_day,))
+        cursor.execute(distinct_wheel_ids_query_all_history.replace('%s', '?'), (sql_date_filter_end_of_day,))
     
     for row in cursor.fetchall():
-        wheel_ids_involved.add(row['wheel_id'])
+        wheel_ids_involved.add(row['wheel_id']) # Add all historical wheel IDs to the set
+
 
     for wheel_id in wheel_ids_involved:
-        history_query = f"""
+        # Sum movements for each wheel *up to the day before* the report date
+        history_query_up_to_day_before = f"""
             SELECT type, quantity_change
             FROM wheel_movements
             WHERE wheel_id = %s AND timestamp <= %s
             ORDER BY timestamp ASC
         """
         if "psycopg2" in str(type(conn)):
-            cursor.execute(history_query, (wheel_id, sql_date_filter_end_of_day))
+            cursor.execute(history_query_up_to_day_before, (wheel_id, day_before_report_iso))
         else:
-            cursor.execute(history_query.replace('%s', '?'), (wheel_id, sql_date_filter_end_of_day,))
+            cursor.execute(history_query_up_to_day_before.replace('%s', '?'), (wheel_id, day_before_report_iso,))
         
-        calculated_qty = 0
+        calculated_qty_before_day = 0
         for move in cursor.fetchall():
             if move['type'] == 'IN':
-                calculated_qty += move['quantity_change']
+                calculated_qty_before_day += move['quantity_change']
             elif move['type'] == 'OUT':
-                calculated_qty -= move['quantity_change']
-        wheel_quantities_before_report[wheel_id] = calculated_qty
+                calculated_qty_before_day -= move['quantity_change']
+        wheel_quantities_before_report[wheel_id] = calculated_qty_before_day # This is the starting quantity for the report day
 
 
     sorted_detailed_wheel_report = []
     detailed_wheel_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0, 'wheel_main_id': None, 'brand': '', 'model': '', 'diameter': None, 'pcd': '', 'width': None})
 
-    for movement in wheel_movements_raw:
+    for movement in wheel_movements_raw: # These are movements *on* the report day
         key = (movement['brand'], movement['model'], movement['diameter'], movement['pcd'], movement['width'])
         wheel_id = movement['wheel_main_id']
 
-        if detailed_wheel_report[key]['wheel_main_id'] is None:
+        # Ensure the item is tracked in detailed_wheel_report
+        if key not in detailed_wheel_report:
             detailed_wheel_report[key]['wheel_main_id'] = wheel_id
             detailed_wheel_report[key]['brand'] = movement['brand']
             detailed_wheel_report[key]['model'] = movement['model']
             detailed_wheel_report[key]['diameter'] = movement['diameter']
             detailed_wheel_report[key]['pcd'] = movement['pcd']
             detailed_wheel_report[key]['width'] = movement['width']
-            
-            detailed_wheel_report[key]['remaining_quantity'] = wheel_quantities_before_report[wheel_id]
+            detailed_wheel_report[key]['remaining_quantity'] = wheel_quantities_before_report[wheel_id] # Initialize with quantity from day before
 
         if movement['type'] == 'IN':
             detailed_wheel_report[key]['IN'] += movement['quantity_change']
+            detailed_wheel_report[key]['remaining_quantity'] += movement['quantity_change'] # Update remaining for the day
         elif movement['type'] == 'OUT':
             detailed_wheel_report[key]['OUT'] += movement['quantity_change']
+            detailed_wheel_report[key]['remaining_quantity'] -= movement['quantity_change'] # Update remaining for the day
     
+    # After processing movements for the day, for any wheel_id that had no movement on the report date
+    # but existed before the report date, ensure it's in the report with its "before_report" quantity.
+    for wheel_id, qty in wheel_quantities_before_report.items():
+        if not any(item['wheel_main_id'] == wheel_id for item in wheel_movements_raw):
+            wheel_info = database.get_wheel(conn, wheel_id)
+            if wheel_info and not wheel_info['is_deleted']: # Only include if not deleted
+                key = (wheel_info['brand'], wheel_info['model'], wheel_info['diameter'], wheel_info['pcd'], wheel_info['width'])
+                if key not in detailed_wheel_report:
+                    detailed_wheel_report[key]['wheel_main_id'] = wheel_id
+                    detailed_wheel_report[key]['brand'] = wheel_info['brand']
+                    detailed_wheel_report[key]['model'] = wheel_info['model']
+                    detailed_wheel_report[key]['diameter'] = wheel_info['diameter']
+                    detailed_wheel_report[key]['pcd'] = wheel_info['pcd']
+                    detailed_wheel_report[key]['width'] = wheel_info['width']
+                    detailed_wheel_report[key]['remaining_quantity'] = qty # Quantity from day before, since no movement on this day
+
+
     wheel_brand_summaries = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'current_quantity_sum': 0})
     sorted_unique_wheel_items = sorted(detailed_wheel_report.items(), key=lambda x: x[0])
 
@@ -1377,14 +1402,46 @@ def daily_stock_report():
     tire_total_in = sum(item['IN'] for item in sorted_detailed_tire_report if not item['is_summary'])
     tire_total_out = sum(item['OUT'] for item in sorted_detailed_tire_report if not item['is_summary'])
     
-    # Calculate tire_total_remaining based on the sum of remaining_quantity for the report date
-    tire_total_remaining_for_report_date = sum(item['remaining_quantity'] for item in sorted_detailed_tire_report if not item['is_summary'])
+    # Calculate the total remaining for the report date
+    tire_total_remaining_for_report_date = 0
+    # First, get the sum of all movements *before* the report date for all tires
+    query_total_before_tires = f"""
+        SELECT SUM(CASE WHEN type = 'IN' THEN quantity_change ELSE -quantity_change END)
+        FROM tire_movements
+        WHERE timestamp < %s
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(query_total_before_tires, (report_datetime_obj.strftime('%Y-%m-%d %H:%M:%S%z'),)) # Use full timestamp to be precise
+    else:
+        cursor.execute(query_total_before_tires.replace('%s', '?'), (report_datetime_obj.strftime('%Y-%m-%d %H:%M:%S.%f'),)) # SQLite needs microseconds
+    
+    initial_total_tires = cursor.fetchone()[0] or 0
+    
+    # Then, add the net change from the report date
+    tire_total_remaining_for_report_date = initial_total_tires + tire_total_in - tire_total_out
+
 
     wheel_total_in = sum(item['IN'] for item in sorted_detailed_wheel_report if not item['is_summary'])
     wheel_total_out = sum(item['OUT'] for item in sorted_detailed_wheel_report if not item['is_summary'])
 
-    # Calculate wheel_total_remaining based on the sum of remaining_quantity for the report date
-    wheel_total_remaining_for_report_date = sum(item['remaining_quantity'] for item in sorted_detailed_wheel_report if not item['is_summary'])
+    # Calculate the total remaining for the report date
+    wheel_total_remaining_for_report_date = 0
+    # First, get the sum of all movements *before* the report date for all wheels
+    query_total_before_wheels = f"""
+        SELECT SUM(CASE WHEN type = 'IN' THEN quantity_change ELSE -quantity_change END)
+        FROM wheel_movements
+        WHERE timestamp < %s
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(query_total_before_wheels, (report_datetime_obj.strftime('%Y-%m-%d %H:%M:%S%z'),)) # Use full timestamp to be precise
+    else:
+        cursor.execute(query_total_before_wheels.replace('%s', '?'), (report_datetime_obj.strftime('%Y-%m-%d %H:%M:%S.%f'),)) # SQLite needs microseconds
+    
+    initial_total_wheels = cursor.fetchone()[0] or 0
+
+    # Then, add the net change from the report date
+    wheel_total_remaining_for_report_date = initial_total_wheels + wheel_total_in - wheel_total_out
+
 
     # Calculate yesterday and tomorrow dates using the datetime object
     yesterday_date_calc = report_datetime_obj - timedelta(days=1)
@@ -1401,11 +1458,9 @@ def daily_stock_report():
                            wheel_report=sorted_detailed_wheel_report,
                            tire_total_in=tire_total_in,
                            tire_total_out=tire_total_out,
-                           # ใช้ยอดคงเหลือที่คำนวณสำหรับวันนั้นๆ แทนยอดปัจจุบัน
                            tire_total_remaining=tire_total_remaining_for_report_date, 
                            wheel_total_in=wheel_total_in,
                            wheel_total_out=wheel_total_out,
-                           # ใช้ยอดคงเหลือที่คำนวณสำหรับวันนั้นๆ แทนยอดปัจจุบัน
                            wheel_total_remaining=wheel_total_remaining_for_report_date, 
                            
                            tire_movements_raw=tire_movements_raw,
