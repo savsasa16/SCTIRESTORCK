@@ -823,7 +823,6 @@ def stock_movement():
     active_tab = request.args.get('tab', 'tire_movements') 
 
     # --- สำหรับ Tire Movements History ---
-    # แก้ไข: เพิ่ม AS user_username ใน SQL query
     tire_movements_query = """
         SELECT tm.*, t.brand, t.model, t.size, u.username AS user_username
         FROM tire_movements tm
@@ -836,21 +835,17 @@ def stock_movement():
         cursor_tire.execute(tire_movements_query)
         tire_movements_history_raw = cursor_tire.fetchall()
     else:
-        # ใช้ conn.execute() โดยตรงเพื่อให้ได้ sqlite3.Row object
         tire_movements_history_raw = conn.execute(tire_movements_query).fetchall()
 
     processed_tire_movements_history = []
     for movement in tire_movements_history_raw:
-        # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
         movement_data = movement
         movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
-        # ลบบรรทัดนี้ออก: movement_data['user_username'] = movement_data.get('username')
         processed_tire_movements_history.append(movement_data)
     tire_movements_history = processed_tire_movements_history
 
 
     # --- สำหรับ Wheel Movements History ---
-    # แก้ไข: เพิ่ม AS user_username ใน SQL query
     wheel_movements_query = """
         SELECT wm.*, w.brand, w.model, w.diameter, u.username AS user_username
         FROM wheel_movements wm
@@ -863,15 +858,12 @@ def stock_movement():
         cursor_wheel.execute(wheel_movements_query)
         wheel_movements_history_raw = cursor_wheel.fetchall()
     else:
-        # ใช้ conn.execute() โดยตรงเพื่อให้ได้ sqlite3.Row object
         wheel_movements_history_raw = conn.execute(wheel_movements_query).fetchall()
 
     processed_wheel_movements_history = []
     for movement in wheel_movements_history_raw:
-        # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
         movement_data = movement
         movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
-        # ลบบรรทัดนี้ออก: movement_data['user_username'] = movement_data.get('username')
         processed_wheel_movements_history.append(movement_data)
     wheel_movements_history = processed_wheel_movements_history
 
@@ -991,14 +983,12 @@ def edit_tire_movement(movement_id):
         return redirect(url_for('daily_stock_report'))
 
     conn = get_db()
-    movement = database.get_tire_movement(conn, movement_id) # database.get_tire_movement now returns username
+    movement = database.get_tire_movement(conn, movement_id)
 
     if movement is None:
         flash('ไม่พบข้อมูลการเคลื่อนไหวที่ระบุ', 'danger')
         return redirect(url_for('daily_stock_report'))
 
-    # Process timestamp for editing form
-    # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
     movement_data = movement
     movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
 
@@ -1030,20 +1020,19 @@ def edit_tire_movement(movement_id):
                     bill_image_url_to_db = new_image_url
                 except Exception as e:
                     flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพบิลไปยัง Cloudinary: {e}', 'danger')
-                    return render_template('edit_tire_movement.html', movement=movement_data) # ใช้ movement_data
+                    return render_template('edit_tire_movement.html', movement=movement_data)
             else:
                 flash('ชนิดไฟล์รูปภาพบิลไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
-                return render_template('edit_tire_movement.html', movement=movement_data) # ใช้ movement_data
+                return render_template('edit_tire_movement.html', movement=movement_data)
 
         try:
-            # Here, you might also want to update who edited it and when (e.g., edited_by_user_id, last_modified_at)
             database.update_tire_movement(conn, movement_id, new_notes, bill_image_url_to_db)
             flash('แก้ไขข้อมูลการเคลื่อนไหวสต็อกยางสำเร็จ!', 'success')
             return redirect(url_for('daily_stock_report'))
         except Exception as e:
             flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูล: {e}', 'danger')
 
-    return render_template('edit_tire_movement.html', movement=movement_data) # ใช้ movement_data
+    return render_template('edit_tire_movement.html', movement=movement_data)
 
 @app.route('/edit_wheel_movement/<int:movement_id>', methods=['GET', 'POST'])
 @login_required
@@ -1053,14 +1042,12 @@ def edit_wheel_movement(movement_id):
         return redirect(url_for('daily_stock_report'))
 
     conn = get_db()
-    movement = database.get_wheel_movement(conn, movement_id) # database.get_wheel_movement now returns username
+    movement = database.get_wheel_movement(conn, movement_id)
 
     if movement is None:
         flash('ไม่พบข้อมูลการเคลื่อนไหวที่ระบุ', 'danger')
         return redirect(url_for('daily_stock_report'))
 
-    # Process timestamp for editing form
-    # ไม่ต้องใช้ dict(movement) เพราะมันเป็น sqlite3.Row หรือ DictCursor อยู่แล้ว
     movement_data = movement
     movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
 
@@ -1091,20 +1078,19 @@ def edit_wheel_movement(movement_id):
                     bill_image_url_to_db = new_image_url
                 except Exception as e:
                     flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพบิลไปยัง Cloudinary: {e}', 'danger')
-                    return render_template('edit_wheel_movement.html', movement=movement_data) # ใช้ movement_data
+                    return render_template('edit_wheel_movement.html', movement=movement_data)
             else:
                 flash('ชนิดไฟล์รูปภาพบิลไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
-                return render_template('edit_wheel_movement.html', movement=movement_data) # ใช้ movement_data
+                return render_template('edit_wheel_movement.html', movement=movement_data)
 
         try:
-            # Here, you might also want to update who edited it and when
             database.update_wheel_movement(conn, movement_id, new_notes, bill_image_url_to_db)
             flash('แก้ไขข้อมูลการเคลื่อนไหวสต็อกแม็กสำเร็จ!', 'success')
             return redirect(url_for('daily_stock_report'))
         except Exception as e:
             flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูล: {e}', 'danger')
 
-    return render_template('edit_wheel_movement.html', movement=movement_data) # ใช้ movement_data
+    return render_template('edit_wheel_movement.html', movement=movement_data)
 
 # --- daily_stock_report ---
 @app.route('/daily_stock_report')
@@ -1114,32 +1100,25 @@ def daily_stock_report():
     
     report_date_str = request.args.get('date')
     
-    # Initialize report_datetime_obj as a datetime object for calculations
     report_datetime_obj = None
 
     if report_date_str:
         try:
-            # Parse the date string into a datetime object (at midnight UTC for consistency or BKK timezone)
-            # Assuming report_date_str is YYYY-MM-DD
             report_datetime_obj = BKK_TZ.localize(datetime.strptime(report_date_str, '%Y-%m-%d'))
             display_date_str = report_datetime_obj.strftime('%d %b %Y')
         except ValueError:
-            flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้ YYYY-MM-DD", "danger")
-            # Fallback to current BKK time if parsing fails
+            flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้YYYY-MM-DD", "danger")
             report_datetime_obj = get_bkk_time()
             display_date_str = report_datetime_obj.strftime('%d %b %Y')
     else:
-        # Default to current BKK time if no date is provided
         report_datetime_obj = get_bkk_time()
         display_date_str = report_datetime_obj.strftime('%d %b %Y')
 
-    # Now use report_datetime_obj for calculations and report_date for display
-    report_date = report_datetime_obj.date() # Get just the date part for comparisons and display
+    report_date = report_datetime_obj.date()
     sql_date_filter = report_date.strftime('%Y-%m-%d')
     sql_date_filter_end_of_day = report_datetime_obj.replace(hour=23, minute=59, second=59).isoformat()
 
     # --- Tire Report Data ---
-    # Get all tire movements for the selected report date
     tire_movements_query_today = f"""
         SELECT
             tm.id, tm.timestamp, tm.type, tm.quantity_change, tm.image_filename, tm.notes,
@@ -1160,20 +1139,17 @@ def daily_stock_report():
 
     processed_tire_movements_raw_today = []
     for movement in tire_movements_raw_today:
-        movement_data = dict(movement) # Convert to dict if not already
+        movement_data = dict(movement)
         movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
         processed_tire_movements_raw_today.append(movement_data)
-    tire_movements_raw = processed_tire_movements_raw_today # Use this for detailed movements table
+    tire_movements_raw = processed_tire_movements_raw_today
 
 
-    # Calculate remaining quantity for each tire for the selected report date
-    # Step 1: Get quantities before the report date
     tire_quantities_before_report = defaultdict(int)
     tire_ids_involved = set()
     for movement in tire_movements_raw:
         tire_ids_involved.add(movement['tire_main_id'])
 
-    # Get all distinct tire_ids for movements before or on report date
     distinct_tire_ids_query = f"""
         SELECT DISTINCT tire_id
         FROM tire_movements
@@ -1210,7 +1186,6 @@ def daily_stock_report():
     sorted_detailed_tire_report = []
     detailed_tire_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0, 'tire_main_id': None, 'brand': '', 'model': '', 'size': ''})
 
-    # Accumulate IN/OUT for the current report date and get initial quantity
     for movement in tire_movements_raw:
         key = (movement['brand'], movement['model'], movement['size'])
         tire_id = movement['tire_main_id']
@@ -1221,7 +1196,6 @@ def daily_stock_report():
             detailed_tire_report[key]['model'] = movement['model']
             detailed_tire_report[key]['size'] = movement['size']
             
-            # The remaining quantity as of the end of the report date
             detailed_tire_report[key]['remaining_quantity'] = tire_quantities_before_report[tire_id]
 
         if movement['type'] == 'IN':
@@ -1229,7 +1203,6 @@ def daily_stock_report():
         elif movement['type'] == 'OUT':
             detailed_tire_report[key]['OUT'] += movement['quantity_change']
     
-    # Sort and prepare for display
     tire_brand_summaries = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'current_quantity_sum': 0})
     sorted_unique_tire_items = sorted(detailed_tire_report.items(), key=lambda x: x[0])
 
@@ -1252,7 +1225,7 @@ def daily_stock_report():
             'size': size,
             'IN': data['IN'],
             'OUT': data['OUT'],
-            'remaining_quantity': data['remaining_quantity'] # This is the calculated quantity for the end of day
+            'remaining_quantity': data['remaining_quantity']
         })
 
         tire_brand_summaries[brand]['IN'] += data['IN']
@@ -1272,7 +1245,6 @@ def daily_stock_report():
 
 
     # --- Wheel Report Data ---
-    # Get all wheel movements for the selected report date
     wheel_movements_query_today = f"""
         SELECT
             wm.id, wm.timestamp, wm.type, wm.quantity_change, wm.image_filename, wm.notes,
@@ -1293,20 +1265,17 @@ def daily_stock_report():
 
     processed_wheel_movements_raw_today = []
     for movement in wheel_movements_raw_today:
-        movement_data = dict(movement) # Convert to dict if not already
+        movement_data = dict(movement)
         movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
         processed_wheel_movements_raw_today.append(movement_data)
-    wheel_movements_raw = processed_wheel_movements_raw_today # Use this for detailed movements table
+    wheel_movements_raw = processed_wheel_movements_raw_today
 
 
-    # Calculate remaining quantity for each wheel for the selected report date
-    # Step 1: Get quantities before the report date
     wheel_quantities_before_report = defaultdict(int)
     wheel_ids_involved = set()
     for movement in wheel_movements_raw:
         wheel_ids_involved.add(movement['wheel_main_id'])
 
-    # Get all distinct wheel_ids for movements before or on report date
     distinct_wheel_ids_query = f"""
         SELECT DISTINCT wheel_id
         FROM wheel_movements
@@ -1344,7 +1313,6 @@ def daily_stock_report():
     sorted_detailed_wheel_report = []
     detailed_wheel_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'remaining_quantity': 0, 'wheel_main_id': None, 'brand': '', 'model': '', 'diameter': None, 'pcd': '', 'width': None})
 
-    # Accumulate IN/OUT for the current report date and get initial quantity
     for movement in wheel_movements_raw:
         key = (movement['brand'], movement['model'], movement['diameter'], movement['pcd'], movement['width'])
         wheel_id = movement['wheel_main_id']
@@ -1357,7 +1325,6 @@ def daily_stock_report():
             detailed_wheel_report[key]['pcd'] = movement['pcd']
             detailed_wheel_report[key]['width'] = movement['width']
             
-            # The remaining quantity as of the end of the report date
             detailed_wheel_report[key]['remaining_quantity'] = wheel_quantities_before_report[wheel_id]
 
         if movement['type'] == 'IN':
@@ -1365,7 +1332,6 @@ def daily_stock_report():
         elif movement['type'] == 'OUT':
             detailed_wheel_report[key]['OUT'] += movement['quantity_change']
     
-    # Sort and prepare for display
     wheel_brand_summaries = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'current_quantity_sum': 0})
     sorted_unique_wheel_items = sorted(detailed_wheel_report.items(), key=lambda x: x[0])
 
@@ -1390,7 +1356,7 @@ def daily_stock_report():
             'width': width,
             'IN': data['IN'],
             'OUT': data['OUT'],
-            'remaining_quantity': data['remaining_quantity'] # This is the calculated quantity for the end of day
+            'remaining_quantity': data['remaining_quantity']
         })
 
         wheel_brand_summaries[brand]['IN'] += data['IN']
@@ -1410,18 +1376,15 @@ def daily_stock_report():
 
     tire_total_in = sum(item['IN'] for item in sorted_detailed_tire_report if not item['is_summary'])
     tire_total_out = sum(item['OUT'] for item in sorted_detailed_tire_report if not item['is_summary'])
+    
+    # Calculate tire_total_remaining based on the sum of remaining_quantity for the report date
+    tire_total_remaining_for_report_date = sum(item['remaining_quantity'] for item in sorted_detailed_tire_report if not item['is_summary'])
+
     wheel_total_in = sum(item['IN'] for item in sorted_detailed_wheel_report if not item['is_summary'])
     wheel_total_out = sum(item['OUT'] for item in sorted_detailed_wheel_report if not item['is_summary'])
-    
-    # The total remaining quantities for the whole inventory should still be current total
-    cursor = conn.cursor()
-    cursor.execute("SELECT SUM(quantity) AS total_qty FROM tires WHERE is_deleted = FALSE")
-    all_tires_in_stock = cursor.fetchone()[0] or 0
 
-    cursor = conn.cursor()
-    cursor.execute("SELECT SUM(quantity) AS total_qty FROM wheels WHERE is_deleted = FALSE")
-    all_wheels_in_stock = cursor.fetchone()[0] or 0
-
+    # Calculate wheel_total_remaining based on the sum of remaining_quantity for the report date
+    wheel_total_remaining_for_report_date = sum(item['remaining_quantity'] for item in sorted_detailed_wheel_report if not item['is_summary'])
 
     # Calculate yesterday and tomorrow dates using the datetime object
     yesterday_date_calc = report_datetime_obj - timedelta(days=1)
@@ -1438,10 +1401,12 @@ def daily_stock_report():
                            wheel_report=sorted_detailed_wheel_report,
                            tire_total_in=tire_total_in,
                            tire_total_out=tire_total_out,
-                           tire_total_remaining=all_tires_in_stock, # Still show overall current stock
+                           # ใช้ยอดคงเหลือที่คำนวณสำหรับวันนั้นๆ แทนยอดปัจจุบัน
+                           tire_total_remaining=tire_total_remaining_for_report_date, 
                            wheel_total_in=wheel_total_in,
                            wheel_total_out=wheel_total_out,
-                           wheel_total_remaining=all_wheels_in_stock, # Still show overall current stock
+                           # ใช้ยอดคงเหลือที่คำนวณสำหรับวันนั้นๆ แทนยอดปัจจุบัน
+                           wheel_total_remaining=wheel_total_remaining_for_report_date, 
                            
                            tire_movements_raw=tire_movements_raw,
                            wheel_movements_raw=wheel_movements_raw
@@ -1451,7 +1416,7 @@ def daily_stock_report():
 @app.route('/export_import', methods=('GET', 'POST'))
 @login_required
 def export_import():
-    if not current_user.is_admin(): # MODIFIED: ใช้ is_admin() แทน can_admin()
+    if not current_user.is_admin():
         flash('คุณไม่มีสิทธิ์ในการนำเข้า/ส่งออกข้อมูล', 'danger')
         return redirect(url_for('index'))
     conn = get_db()
@@ -1579,13 +1544,11 @@ def import_tires_action():
                         if quantity != old_quantity:
                             movement_type = 'IN' if quantity > old_quantity else 'OUT'
                             quantity_change_diff = abs(quantity - old_quantity)
-                            # MODIFIED: Pass user_id for import movements
                             database.add_tire_movement(conn, tire_id, movement_type, quantity_change_diff, quantity, "Import from Excel (Qty Update)", None, user_id=current_user.id)
                         
                     else:
                         new_tire_id = database.add_tire_import(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, 
                                                                promotion_id, year_of_manufacture)
-                        # MODIFIED: Pass user_id for import movements
                         database.add_tire_movement(conn, new_tire_id, 'IN', quantity, quantity, "Import from Excel (initial stock)", None, user_id=current_user.id)
                         imported_count += 1
                 except Exception as row_e:
@@ -1728,11 +1691,9 @@ def import_wheels_action():
                         if quantity != old_quantity:
                             movement_type = 'IN' if quantity > old_quantity else 'OUT'
                             quantity_change_diff = abs(quantity - old_quantity)
-                            # MODIFIED: Pass user_id for import movements
                             database.add_wheel_movement(conn, wheel_id, movement_type, quantity_change_diff, quantity, "Import from Excel (Qty Update)", None, user_id=current_user.id)
                     else:
                         new_wheel_id = database.add_wheel_import(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
-                        # MODIFIED: Pass user_id for import movements
                         database.add_wheel_movement(conn, new_wheel_id, 'IN', quantity, quantity, "Import from Excel (initial stock)", None, user_id=current_user.id)
                         imported_count += 1
                 except Exception as row_e:
