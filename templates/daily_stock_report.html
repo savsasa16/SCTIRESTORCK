@@ -191,54 +191,7 @@
     </div>
 </div>
 
-<div class="report-section">
-    <h3>รายงานสต็อกยาง</h3>
-    {% if tire_report %}
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ยี่ห้อยาง</th>
-                        <th>รุ่นยาง</th>
-                        <th>เบอร์ยาง</th>
-                        <th>รับเข้า (เส้น)</th>
-                        <th>จ่ายออก (เส้น)</th>
-                        <th>คงเหลือปัจจุบัน (เส้น)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% set last_brand_display_tire = "" %} {# ใช้ตัวแปรแยกกันสำหรับยางและแม็ก #}
-                    {% for item in tire_report %}
-                        {% if item.is_summary %}
-                            <tr class="summary-row">
-                                <td colspan="3"><b>ยอดรวม {{ item.brand }}</b></td>
-                                <td><b>{{ item.IN }}</b></td>
-                                <td><b>{{ item.OUT }}</b></td>
-                                <td><b>{{ item.remaining_quantity }}</b></td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td>
-                                    {% if item.brand != last_brand_display_tire %}
-                                        {{ item.brand }}
-                                        {% set last_brand_display_tire = item.brand %}
-                                    {% endif %}
-                                </td>
-                                <td>{{ item.model }}</td>
-                                <td>{{ item.size }}</td>
-                                <td>{{ item.IN }}</td>
-                                <td>{{ item.OUT }}</td>
-                                <td>{{ item.remaining_quantity }}</td>
-                            </tr>
-                        {% endif %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <p>ไม่พบการเคลื่อนไหวของยางสำหรับวันนี้</p>
-    {% endif %}
-</div>
+{# ส่วน "รายงานสต็อกยาง" ถูกลบออกตามคำขอ #}
 
 <div class="report-section" style="margin-top: 30px;">
     <h3>รายงานสต็อกแม็ก</h3>
