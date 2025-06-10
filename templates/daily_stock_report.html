@@ -3,18 +3,15 @@
 {% block title %}รายงานสต็อกประจำวัน{% endblock %}
 
 {% block content %}
-<h2>รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d-%m-%Y') }}</h2> {# MODIFIED: เปลี่ยนรูปแบบวันที่ #}
+<h2>รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d-%m-%Y') }}</h2>
 
 <div class="date-navigation">
-    {# ปุ่ม "เมื่อวาน" - ใช้ yesterday_date_param ที่มาจาก Flask #}
     <a href="{{ url_for('daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary date-nav-button">
-        <i class="fas fa-chevron-left"></i> เมื่อวาน {# MODIFIED: เปลี่ยนข้อความเป็น "เมื่อวาน" #}
+        <i class="fas fa-chevron-left"></i> เมื่อวาน
     </a>
-    {# Flatpickr input - value ยังคงเป็นYYYY-MM-DD เพื่อให้ Flatpickr ทำงานได้ถูกต้อง #}
     <input type="text" id="reportDateInput" value="{{ report_date_param }}" placeholder="เลือกวันที่">
-    {# เพิ่มปุ่ม "วันที่ถัดไป" - ต้องคำนวณ tomorrow_date_param มาจาก Flask #}
-    {% if report_date_obj < get_bkk_time().date() %} {# ตรวจสอบวันที่ปัจจุบัน #}
-        <a href="{{ url_for('daily_stock_report', date=tomorrow_date_param) }}" class="btn btn-outline-secondary date-nav-button"> {# MODIFIED: ใช้ tomorrow_date_param ที่ส่งมาจาก app.py #}
+    {% if report_date_obj < get_bkk_time().date() %}
+        <a href="{{ url_for('daily_stock_report', date=tomorrow_date_param) }}" class="btn btn-outline-secondary date-nav-button">
             วันที่ถัดไป <i class="fas fa-chevron-right"></i>
         </a>
     {% endif %}
@@ -26,14 +23,13 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         flatpickr("#reportDateInput", {
-            dateFormat: "Y-m-d", // รูปแบบวันที่ที่ Flatpickr จะส่งค่าไปที่ Flask (เช่น 2025-06-06)
-            altInput: true, // MODIFIED: เปิดใช้งานช่อง input ทางเลือกสำหรับการแสดงผล
-            altFormat: "d-m-Y", // MODIFIED: รูปแบบวันที่ที่แสดงผลในช่อง input (เช่น 06-06-2025)
-            locale: "th", // ใช้ภาษาไทย (ต้องโหลด th.min.js)
-            defaultDate: "{{ report_date_param }}", // กำหนดวันที่เริ่มต้น
-            maxDate: "today", // ห้ามเลือกวันที่ในอนาคต
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d-m-Y",
+            locale: "th",
+            defaultDate: "{{ report_date_param }}",
+            maxDate: "today",
             onChange: function(selectedDates, dateStr, instance) {
-                // เมื่อเลือกวันที่ เปลี่ยน URL ทันที โดยใช้ dateStr ซึ่งเป็นYYYY-MM-DD
                 window.location.href = "{{ url_for('daily_stock_report') }}?date=" + dateStr;
             }
         });
@@ -44,11 +40,11 @@
     /* CSS สำหรับ date-navigation */
     .date-navigation {
         display: flex;
-        justify-content: flex-end; /* จัดองค์ประกอบไปทางขวา */
+        justify-content: flex-end;
         align-items: center;
-        margin-bottom: 20px; /* เว้นระยะห่างด้านล่าง */
-        gap: 10px; /* ระยะห่างระหว่างปุ่ม/input */
-        width: 100%; /* ให้ div นี้ใช้พื้นที่เต็มความกว้าง */
+        margin-bottom: 20px;
+        gap: 10px;
+        width: 100%;
     }
     .date-navigation input[type="text"] {
         padding: 8px 10px;
@@ -59,24 +55,24 @@
         width: auto;
         flex-grow: 0;
     }
-    .date-nav-button { /* สไตล์สำหรับปุ่ม วันที่แล้ว/ถัดไป */
+    .date-nav-button {
         padding: 8px 12px;
         font-size: 1em;
         text-decoration: none;
-        border: 1px solid var(--border-color); /* Added border to match input */
+        border: 1px solid var(--border-color);
         border-radius: var(--border-radius);
         display: flex;
         align-items: center;
         gap: 5px;
-        color: var(--text-light); /* Inherit default text color */
+        color: var(--text-light);
     }
     .date-nav-button:hover {
         background-color: var(--bg-hover-light);
-        text-decoration: none; /* Remove underline on hover */
+        text-decoration: none;
     }
 
 
-    /* CSS สำหรับ summary-card-container และ summary-card (จากโค้ดที่ 2) */
+    /* CSS สำหรับ summary-card-container และ summary-card */
     .summary-card-container {
         display: flex;
         justify-content: space-around;
@@ -84,10 +80,10 @@
         margin-bottom: 30px;
     }
     .summary-card {
-        background-color: var(--bg-white); /* Used var from global styles */
+        background-color: var(--bg-white);
         padding: 20px;
-        border-radius: var(--border-radius-md); /* Used var from global styles */
-        box-shadow: var(--shadow-light); /* Used var from global styles */
+        border-radius: var(--border-radius-md);
+        box-shadow: var(--shadow-light);
         flex: 1;
         text-align: center;
     }
@@ -100,25 +96,25 @@
     .summary-card p {
         margin: 5px 0;
         font-size: 1.1em;
-        color: var(--text-dark); /* Used var from global styles */
+        color: var(--text-dark);
     }
     .summary-card strong {
-        color: var(--text-dark); /* Used var from global styles */
+        color: var(--text-dark);
         font-size: 1.2em;
     }
 
-    /* CSS สำหรับ report-section และตาราง (จากโค้ดที่ 2) */
+    /* CSS สำหรับ report-section และตาราง */
     .report-section {
-        background-color: var(--bg-white); /* Used var from global styles */
+        background-color: var(--bg-white);
         padding: 20px;
-        border-radius: var(--border-radius-md); /* Used var from global styles */
-        box-shadow: var(--shadow-light); /* Used var from global styles */
+        border-radius: var(--border-radius-md);
+        box-shadow: var(--shadow-light);
         margin-bottom: 30px;
     }
     .report-section h3 {
-        color: var(--text-dark); /* Used var from global styles */
+        color: var(--text-dark);
         margin-bottom: 15px;
-        border-bottom: 1px solid var(--border-color); /* Used var from global styles */
+        border-bottom: 1px solid var(--border-color);
         padding-bottom: 10px;
         font-weight: 600;
     }
@@ -128,24 +124,24 @@
         margin-top: 15px;
     }
     .report-section th, .report-section td {
-        border: 1px solid var(--border-color); /* Used var from global styles */
+        border: 1px solid var(--border-color);
         padding: 10px;
         text-align: left;
     }
     .report-section th {
-        background-color: #f8f8f8; /* Used var from global styles */
-        color: var(--text-dark); /* Used var from global styles */
+        background-color: #f8f8f8;
+        color: var(--text-dark);
     }
     .report-section tbody tr:nth-child(even) {
-        background-color: var(--bg-stripe); /* Used var from global styles */
+        background-color: var(--bg-stripe);
     }
     /* Style for summary rows WITHIN the table (ยอดรวมยี่ห้อ) */
     .summary-row {
-        background-color: var(--primary-color) !important; /* Used var from global styles */
-        color: var(--text-white) !important; /* Used var from global styles */
+        background-color: var(--primary-color) !important;
+        color: var(--text-white) !important;
         font-weight: bold;
-        border-top: 2px solid var(--primary-dark); /* Used var from global styles */
-        border-bottom: 2px solid var(--primary-dark); /* Used var from global styles */
+        border-top: 2px solid var(--primary-dark);
+        border-bottom: 2px solid var(--primary-dark);
     }
     .summary-row td {
         padding: 12px 10px;
@@ -156,17 +152,16 @@
         padding: 5px 10px;
         font-size: 0.85em;
     }
-    /* Updated button styles to match global theme vars */
     .btn-warning {
         background-color: var(--accent-color);
-        color: var(--text-dark); /* Text should be dark on warning */
+        color: var(--text-dark);
         border: 1px solid var(--accent-color);
     }
     .btn-warning:hover {
-        background-color: #e09200; /* Darker orange */
+        background-color: #e09200;
         border-color: #e09200;
     }
-    .btn-secondary { /* Added style for the back button */
+    .btn-secondary {
         background-color: #6c757d;
         color: white;
     }
@@ -191,8 +186,7 @@
     </div>
 </div>
 
-{# ส่วน "รายงานสต็อกยาง" ถูกลบออกตามคำขอ #}
-{# ส่วน "รายงานสต็อกแม็ก" ถูกลบออกตามคำขอ #}
+{# ส่วน "รายงานสต็อกยาง" และ "รายงานสต็อกแม็ก" (ตารางสรุปตามรุ่น) ถูกลบออกแล้ว #}
 
 <div class="report-section">
     <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d-%m-%Y') }}</h3>
@@ -217,8 +211,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {# เรียงลำดับจากใหม่สุดไปเก่าสุดใน HTML #}
-                    {% for movement in tire_movements_raw | sort(attribute='timestamp', reverse=true) %}
+                    {# ตัดตัวเรียง Jinja2 ออกแล้ว โดยจะใช้การเรียงลำดับจาก Backend แทน #}
+                    {% for movement in tire_movements_raw %}
                         <tr>
                             <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td>
                             <td>{{ movement.user_username if movement.user_username else '-' }}</td>
@@ -277,8 +271,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {# เรียงลำดับจากใหม่สุดไปเก่าสุดใน HTML #}
-                    {% for movement in wheel_movements_raw | sort(attribute='timestamp', reverse=true) %}
+                    {# ตัดตัวเรียง Jinja2 ออกแล้ว โดยจะใช้การเรียงลำดับจาก Backend แทน #}
+                    {% for movement in wheel_movements_raw %}
                         <tr>
                             <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td>
                             <td>{{ movement.user_username if movement.user_username else '-' }}</td>
