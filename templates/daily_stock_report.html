@@ -196,7 +196,6 @@
                 <thead>
                     <tr>
                         <th>เวลา</th>
-                        <th>พนักงาน</th>
                         <th>ประเภท</th>
                         <th>จำนวน</th>
                         <th>คงเหลือ</th>
@@ -204,6 +203,7 @@
                         <th>รุ่น</th>
                         <th>เบอร์ยาง</th>
                         <th>หมายเหตุ</th>
+                        <th>พนักงาน</th>
                         <th>หลักฐาน</th>
                         {% if current_user.is_admin() %}
                         <th>จัดการ</th>
@@ -215,7 +215,6 @@
                     {% for movement in tire_movements_raw %}
                         <tr>
                             <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td>
-                            <td>{{ movement.user_username if movement.user_username else '-' }}</td>
                             <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                             <td>{{ movement.quantity_change }}</td>
                             <td>{{ movement.remaining_quantity }}</td>
@@ -223,6 +222,7 @@
                             <td>{{ movement.model }}</td>
                             <td>{{ movement.size }}</td>
                             <td>{{ movement.notes if movement.notes else '-' }}</td>
+                            <td>{{ movement.user_username if movement.user_username else '-' }}</td>
                             <td>
                                 {% if movement.image_filename %}
                                     <a href="{{ movement.image_filename }}" target="_blank">
@@ -255,7 +255,6 @@
                 <thead>
                     <tr>
                         <th>เวลา</th>
-                        <th>พนักงาน</th>
                         <th>ประเภท</th>
                         <th>จำนวน</th>
                         <th>คงเหลือ</th>
@@ -264,6 +263,7 @@
                         <th>ขอบ</th>
                         <th>รู</th>
                         <th>หมายเหตุ</th>
+                        <th>พนักงาน</th>
                         <th>หลักฐาน</th>
                         {% if current_user.is_admin() %}
                         <th>จัดการ</th>
@@ -275,7 +275,6 @@
                     {% for movement in wheel_movements_raw %}
                         <tr>
                             <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td>
-                            <td>{{ movement.user_username if movement.user_username else '-' }}</td>
                             <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                             <td>{{ movement.quantity_change }}</td>
                             <td>{{ movement.remaining_quantity }}</td>
@@ -284,6 +283,7 @@
                             <td>{{ "%.1f"|format(movement.diameter) }}</td>
                             <td>{{ movement.pcd if movement.pcd else '-' }}</td>
                             <td>{{ movement.notes if movement.notes else '-' }}</td>
+                            <td>{{ movement.user_username if movement.user_username else '-' }}</td>
                             <td>
                                 {% if movement.image_filename %}
                                     <a href="{{ movement.image_filename }}" target="_blank">
