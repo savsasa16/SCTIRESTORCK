@@ -192,69 +192,17 @@
 </div>
 
 {# ส่วน "รายงานสต็อกยาง" ถูกลบออกตามคำขอ #}
-
-<div class="report-section" style="margin-top: 30px;">
-    <h3>รายงานสต็อกแม็ก</h3>
-    {% if wheel_report %}
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ยี่ห้อแม็ก</th>
-                        <th>ลาย</th>
-                        <th>ขนาด (ขอบ x กว้าง)</th>
-                        <th>รู</th>
-                        <th>รับเข้า (วง)</th>
-                        <th>จ่ายออก (วง)</th>
-                        <th>คงเหลือปัจจุบัน (วง)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% set last_brand_display_wheel = "" %} {# ใช้ตัวแปรแยกกันสำหรับยางและแม็ก #}
-                    {% for item in wheel_report %}
-                        {% if item.is_summary %}
-                            <tr class="summary-row">
-                                <td colspan="4"><b>ยอดรวม {{ item.brand }}</b></td>
-                                <td><b>{{ item.IN }}</b></td>
-                                <td><b>{{ item.OUT }}</b></td>
-                                <td><b>{{ item.remaining_quantity }}</b></td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td>
-                                    {% if item.brand != last_brand_display_wheel %}
-                                        {{ item.brand }}
-                                        {% set last_brand_display_wheel = item.brand %}
-                                    {% endif %}
-                                </td>
-                                <td>{{ item.model }}</td>
-                                <td>{{ "%.1f"|format(item.diameter) }}x{{ "%.1f"|format(item.width) }}</td>
-                                <td>{{ item.pcd if item.pcd else '-' }}</td> {# เพิ่ม pcd เข้ามาและจัดการกรณีเป็น None #}
-                                <td>{{ item.IN }}</td>
-                                <td>{{ item.OUT }}</td>
-                                <td>{{ item.remaining_quantity }}</td>
-                            </tr>
-                        {% endif %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <p>ไม่พบการเคลื่อนไหวของแม็กสำหรับวันนี้</p>
-    {% endif %}
-</div>
-
----
+{# ส่วน "รายงานสต็อกแม็ก" ถูกลบออกตามคำขอ #}
 
 <div class="report-section">
-    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d-%m-%Y') }}</h3> {# MODIFIED: เปลี่ยนรูปแบบวันที่ #}
+    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d-%m-%Y') }}</h3>
     {% if tire_movements_raw %}
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th>เวลา</th>
-                        <th>พนักงาน</th> {# ADDED: New column header for user #}
+                        <th>พนักงาน</th>
                         <th>ประเภท</th>
                         <th>จำนวน</th>
                         <th>คงเหลือ</th>
@@ -269,10 +217,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for movement in tire_movements_raw %}
+                    {# เรียงลำดับจากใหม่สุดไปเก่าสุดใน HTML #}
+                    {% for movement in tire_movements_raw | sort(attribute='timestamp', reverse=true) %}
                         <tr>
-                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td> {# Check if timestamp exists before formatting #}
-                            <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# ADDED: Display username #}
+                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td>
+                            <td>{{ movement.user_username if movement.user_username else '-' }}</td>
                             <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                             <td>{{ movement.quantity_change }}</td>
                             <td>{{ movement.remaining_quantity }}</td>
@@ -282,7 +231,6 @@
                             <td>{{ movement.notes if movement.notes else '-' }}</td>
                             <td>
                                 {% if movement.image_filename %}
-                                    {# ตรวจสอบว่า image_filename เป็น URL ที่สมบูรณ์หรือเป็น path #}
                                     <a href="{{ movement.image_filename }}" target="_blank">
                                         <i class="fas fa-image"></i> ดูบิล
                                     </a>
@@ -306,21 +254,21 @@
 </div>
 
 <div class="report-section" style="margin-top: 30px;">
-    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d-%m-%Y') }}</h3> {# MODIFIED HERE #}
+    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d-%m-%Y') }}</h3>
     {% if wheel_movements_raw %}
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th>เวลา</th>
-                        <th>พนักงาน</th> {# ADDED: New column header for user #}
+                        <th>พนักงาน</th>
                         <th>ประเภท</th>
                         <th>จำนวน</th>
                         <th>คงเหลือ</th>
                         <th>ยี่ห้อ</th>
                         <th>ลาย</th>
                         <th>ขอบ</th>
-                        <th>รู</th> {# Added 'รู' to the table #}
+                        <th>รู</th>
                         <th>หมายเหตุ</th>
                         <th>หลักฐาน</th>
                         {% if current_user.is_admin() %}
@@ -329,17 +277,18 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for movement in wheel_movements_raw %}
+                    {# เรียงลำดับจากใหม่สุดไปเก่าสุดใน HTML #}
+                    {% for movement in wheel_movements_raw | sort(attribute='timestamp', reverse=true) %}
                         <tr>
-                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td> {# Check if timestamp exists before formatting #}
-                            <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# ADDED: Display username #}
+                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td>
+                            <td>{{ movement.user_username if movement.user_username else '-' }}</td>
                             <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
                             <td>{{ movement.quantity_change }}</td>
                             <td>{{ movement.remaining_quantity }}</td>
                             <td>{{ movement.brand }}</td>
                             <td>{{ movement.model }}</td>
                             <td>{{ "%.1f"|format(movement.diameter) }}</td>
-                            <td>{{ movement.pcd if movement.pcd else '-' }}</td> {# Added pcd and handle None #}
+                            <td>{{ movement.pcd if movement.pcd else '-' }}</td>
                             <td>{{ movement.notes if movement.notes else '-' }}</td>
                             <td>
                                 {% if movement.image_filename %}
