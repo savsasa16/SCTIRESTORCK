@@ -169,7 +169,7 @@
                                         {% set last_brand_display_wheel = item.brand %}
                                     {% endif %}
                                 </td>
-                                <td>{{ "%.0f"|format(item.model) }}</td> {# MODIFIED: ไม่มีทศนิยม #}
+                                <td>{{ item.model }}</td> {# ลบส่วน |format ออก #}
                                 <td>{{ "%.0f"|format(item.diameter) }}x{{ "%.0f"|format(item.width) }}</td> {# MODIFIED: ไม่มีทศนิยม #}
                                 <td>{{ item.pcd }} {{ item.et if item.et else '-' }}</td>
                                 <td>{{ item.color if item.color else '-' }}</td>
