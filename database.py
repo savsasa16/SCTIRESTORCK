@@ -63,27 +63,6 @@ def init_db(conn):
     
     is_postgres = "psycopg2" in str(type(conn)) # จะคืนค่า True หาก conn เป็น psycopg2 connection
 
-    # Users Table (ไม่มีอะไรเปลี่ยน)
-    if is_postgres:
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                username VARCHAR(255) UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                role VARCHAR(50) NOT NULL DEFAULT 'viewer'
-            );
-        """)
-    else: # SQLite
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'viewer'
-            );
-        """)
-    conn.commit()
-
     # Promotions Table
     if is_postgres:
         cursor.execute("""
@@ -295,6 +274,27 @@ def init_db(conn):
                 FOREIGN KEY (wheel_id) REFERENCES wheels(id) ON DELETE CASCADE
             );
         """)
+
+    # Users Table (ไม่มีอะไรเปลี่ยน)
+    if is_postgres:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role VARCHAR(50) NOT NULL DEFAULT 'viewer'
+            );
+        """)
+    else: # SQLite
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'viewer'
+            );
+        """)
+    conn.commit()
 
 # --- User Model ---
 class User:
