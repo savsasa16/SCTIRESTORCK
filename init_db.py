@@ -1,43 +1,45 @@
+# init_db_script.py
 import os
-import database
-from flask import Flask
+import database # import database.py ของคุณ
 from dotenv import load_dotenv
 
-load_dotenv() # Load environment variables for local testing
+# โหลด environment variables จากไฟล์ .env ใน Local development
+# บน Render จะโหลดจาก Environment Variables ที่ตั้งค่าไว้โดยตรง
+load_dotenv() 
 
-app = Flask(__name__) # Create a minimal Flask app context
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key') # Just needs to be defined
-
-# You need app_context for g.db to work properly
-# If get_db_connection() doesn't rely on g, you can remove Flask context
-# But using it is safer for consistency with app.py
-with app.app_context():
-    conn = database.get_db_connection()
+if __name__ == '__main__':
+    conn = None
     try:
-        print("Initializing database...")
+        print("Attempting to get database connection for initialization...")
+        conn = database.get_db_connection()
+        print("Connection successful. Initializing database tables...")
         database.init_db(conn)
-        print("Database initialization complete. Checking for initial admin user...")
+        print("Database tables created/checked successfully in Neon.")
 
+        # ตรวจสอบและสร้าง Admin user หากยังไม่มี (เป็นส่วนสำคัญสำหรับการเข้าสู่ระบบครั้งแรก)
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users")
-        user_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+        admin_count = cursor.fetchone()['count'] if isinstance(cursor.fetchone(), dict) else cursor.fetchone()[0] # Adjust for DictCursor vs normal fetchone
 
-        if user_count == 0:
-            admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-            admin_password = os.environ.get('ADMIN_PASSWORD', 'adminpassword')
-            database.add_user(conn, admin_username, admin_password, role='admin')
-            print(f"Initial admin user '{admin_username}' created with password '{admin_password}' and role 'admin'.")
+        if admin_count == 0:
+            admin_username = "admin"
+            admin_initial_password = os.environ.get('ADMIN_INITIAL_PASSWORD', 'changeme123') # ใช้ค่าจาก ENV หรือ Default
+            print(f"No admin user found. Creating default admin user: {admin_username}")
+            user_id = database.add_user(conn, admin_username, admin_initial_password, 'admin')
+            if user_id:
+                print(f"Admin user '{admin_username}' created successfully.")
+            else:
+                print(f"Failed to create admin user '{admin_username}'. It might already exist (race condition).")
         else:
-            print(f"Users table already has {user_count} entries. Skipping initial admin user creation.")
+            print("Admin user already exists. Skipping creation.")
 
-        conn.commit() # Ensure all changes are saved
-        print("Database operations committed.")
+        conn.commit() # Ensure all changes are committed
+        print("Database initialization and admin user check complete.")
 
     except Exception as e:
-        print(f"Error during database initialization: {e}")
-        if conn:
-            conn.rollback() # Rollback any partial changes
-        raise # Re-raise the exception to indicate failure
+        print(f"FATAL ERROR during database initialization: {e}", flush=True)
+        # Re-raise the exception to make Render's build fail if DB init fails
+        raise
     finally:
         if conn:
             conn.close()
