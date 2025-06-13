@@ -698,7 +698,7 @@ def calculate_tire_promo_prices(price_per_item, promo_type, promo_value1, promo_
     }
 
 
-def get_all_tires(conn, query=None, brand_filter='all', include_deleted=False): # ADDED include_deleted
+def get_all_tires(conn, query=None, brand_filter='all', include_deleted=False):
     cursor = conn.cursor()
     sql_query = """
         SELECT t.*,
@@ -713,7 +713,7 @@ def get_all_tires(conn, query=None, brand_filter='all', include_deleted=False): 
     params = []
     conditions = []
 
-    if not include_deleted: # Conditionally add is_deleted filter
+    if not include_deleted:
         conditions.append("t.is_deleted = FALSE" if "psycopg2" in str(type(conn)) else "t.is_deleted = 0")
 
     if query:
@@ -726,7 +726,7 @@ def get_all_tires(conn, query=None, brand_filter='all', include_deleted=False): 
         params.append(brand_filter)
 
     if conditions:
-        sql_query += " WHERE " + " AND ".join(conditions) # Changed WHERE to AND for filtering soft deleted items
+        sql_query += " WHERE " + " AND ".join(conditions)
 
     sql_query += " ORDER BY t.brand, t.model"
 
@@ -739,7 +739,7 @@ def get_all_tires(conn, query=None, brand_filter='all', include_deleted=False): 
 
     processed_tires = []
     for tire in tires:
-        tire_dict = dict(tire) 
+        tire_dict = dict(tire)
 
         promo_calc_result = {
             'price_per_item_promo': None,
