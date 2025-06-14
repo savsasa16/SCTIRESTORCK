@@ -1078,19 +1078,21 @@ def daily_stock_report():
 
     if report_date_str:
         try:
-            report_datetime_obj = BKK_TZ.localize(datetime.strptime(report_date_str, '%Y-%m-%d'))
+            report_datetime_obj = BKK_TZ.localize(datetime.strptime(report_date_str, '%Y-%m-%d')).replace(hour=0, minute=0, second=0, microsecond=0)
             display_date_str = report_datetime_obj.strftime('%d %b %Y')
         except ValueError:
             flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้YYYY-MM-DD", "danger")
-            report_datetime_obj = get_bkk_time()
+            report_datetime_obj = get_bkk_time().replace(hour=0, minute=0, second=0, microsecond=0)
             display_date_str = report_datetime_obj.strftime('%d %b %Y')
     else:
-        report_datetime_obj = get_bkk_time()
+        report_datetime_obj = get_bkk_time().replace(hour=0, minute=0, second=0, microsecond=0)
         display_date_str = report_datetime_obj.strftime('%d %b %Y')
+    
+    start_of_report_day_iso = report_datetime_obj.isoformat()    
 
     report_date = report_datetime_obj.date()
     sql_date_filter = report_date.strftime('%Y-%m-%d')
-    sql_date_filter_end_of_day = report_datetime_obj.replace(hour=23, minute=59, second=59).isoformat()
+    sql_date_filter_end_of_day = report_datetime_obj.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
 
     # --- Tire Report Data ---
     tire_movements_query_today = f"""
@@ -1396,9 +1398,9 @@ def daily_stock_report():
         WHERE timestamp < %s
     """
     if "psycopg2" in str(type(conn)):
-        cursor.execute(query_total_before_tires, (report_datetime_obj.strftime('%Y-%m-%d %H:%M:%S%z'),))
+        cursor.execute(query_total_before_tires, (start_of_report_day_iso,))
     else:
-        cursor.execute(query_total_before_tires.replace('%s', '?'), (report_datetime_obj.strftime('%Y-%m-%d %H:%M:%S.%f'),))
+        cursor.execute(query_total_before_tires.replace('%s', '?'), (start_of_report_day_iso,))
     
     initial_total_tires = cursor.fetchone()[0] or 0
     
@@ -1415,9 +1417,9 @@ def daily_stock_report():
         WHERE timestamp < %s
     """
     if "psycopg2" in str(type(conn)):
-        cursor.execute(query_total_before_wheels, (report_datetime_obj.strftime('%Y-%m-%d %H:%M:%S%z'),))
+        cursor.execute(query_total_before_wheels, (start_of_report_day_iso,))
     else:
-        cursor.execute(query_total_before_wheels.replace('%s', '?'), (report_datetime_obj.strftime('%Y-%m-%d %H:%M:%S.%f'),))
+        cursor.execute(query_total_before_wheels.replace('%s', '?'), (start_of_report_day_iso,))
     
     initial_total_wheels = cursor.fetchone()[0] or 0
 
