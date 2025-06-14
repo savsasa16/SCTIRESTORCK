@@ -406,8 +406,8 @@ def add_item():
         current_user_id = current_user.id if current_user.is_authenticated else None
 
         if submit_type == 'add_tire':
-            brand = request.form['brand'].strip()
-            model = request.form['model'].strip()
+            brand = request.form['brand'].strip().lower()
+            model = request.form['model'].strip().lower()
             size = request.form['size'].strip()
             quantity = request.form['quantity']
 
@@ -465,8 +465,8 @@ def add_item():
                 return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
 
         elif submit_type == 'add_wheel':
-            brand = request.form['brand'].strip()
-            model = request.form['model'].strip()
+            brand = request.form['brand'].strip().lower()
+            model = request.form['model'].strip().lower()
             diameter = request.form['diameter']
             pcd = request.form['pcd'].strip()
             width = request.form['width']
@@ -550,8 +550,8 @@ def edit_tire(tire_id):
     all_promotions = database.get_all_promotions(conn, include_inactive=True)
 
     if request.method == 'POST':
-        brand = request.form['brand'].strip()
-        model = request.form['model'].strip()
+        brand = request.form['brand'].strip().lower()
+        model = request.form['model'].strip().lower()
         size = request.form['size'].strip()
 
         cost_sc = request.form.get('cost_sc')
@@ -1698,25 +1698,32 @@ def import_wheels_action():
 
             for index, row in df.iterrows():
                 try:
-                    brand = str(row.get('ยี่ห้อ', '')).strip()
-                    model = str(row.get('ลาย', '')).strip()
+                    brand = str(row.get('ยี่ห้อ', '')).strip().lower()
+                    model = str(row.get('ลาย', '')).strip().lower()
                     pcd = str(row.get('รู', '')).strip()
 
                     if not brand or not model or not pcd:
                             raise ValueError("ข้อมูล 'ยี่ห้อ', 'ลาย', หรือ 'รู' ไม่สามารถเว้นว่างได้")
 
                     diameter = float(row['ขอบ']) if pd.notna(row['ขอบ']) else 0.0
-                    width = float(row['กว้าง']) if pd.notna(row['กว้าง']) else 0.0
-                    quantity = int(row['สต็อก']) if pd.notna(row['สต็อก']) else 0
-                    cost = float(row['ทุน']) if pd.notna(row['ทุน']) else None
-                    retail_price = float(row['ราคาขายปลีก']) if pd.notna(row['ราคาขายปลีก']) else 0.0
+                    width = float(row['กว้าง']) if pd.notna(row['กว้าง']) else 0.0
+                    quantity = int(row['สต็อก']) if pd.notna(row['สต็อก']) else 0
+                    cost = float(row['ทุน']) if pd.notna(row['ทุน']) else None
+                    retail_price = float(row['ราคาขายปลีก']) if pd.notna(row['ราคาขายปลีก']) else 0.0
+                    
+                    et_raw = row.get('ET')
+                    color_raw = row.get('สี')
+                    image_url_raw = row.get('ไฟล์รูปภาพ')
+                    cost_online_raw = row.get('ทุน Online')
+                    wholesale_price1_raw = row.get('ราคาขายส่ง 1')
+                    wholesale_price2_raw = row.get('ราคาขายส่ง 2')
 
-                    et = int(et) if pd.notna(et) else None
-                    color = str(color).strip() if pd.notna(color) else None
-                    image_url = str(image_url).strip() if pd.notna(image_url) else None
-                    cost_online = float(cost_online) if pd.notna(cost_online) else None
-                    wholesale_price1 = float(wholesale_price1) if pd.notna(wholesale_price1) else None
-                    wholesale_price2 = float(wholesale_price2) if pd.notna(wholesale_price2) else None
+                    et = int(et_raw) if pd.notna(et_raw) else None # ใช้ et_raw
+                    color = str(color_raw).strip() if pd.notna(color_raw) else None # ใช้ color_raw
+                    image_url = str(image_url_raw).strip() if pd.notna(image_url_raw) else None # ใช้ image_url_raw
+                    cost_online = float(cost_online_raw) if pd.notna(cost_online_raw) else None # ใช้ cost_online_raw
+                    wholesale_price1 = float(wholesale_price1_raw) if pd.notna(wholesale_price1_raw) else None # ใช้ wholesale_price1_raw
+                    wholesale_price2 = float(wholesale_price2_raw) if pd.notna(wholesale_price2_raw) else None # ใช้ wholesale_price2_raw
                     
                     cursor = conn.cursor()
                     if "psycopg2" in str(type(conn)):
