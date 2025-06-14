@@ -1707,9 +1707,9 @@ def import_wheels_action():
 
                     diameter = float(row['ขอบ']) if pd.notna(row['ขอบ']) else 0.0
                     width = float(row['กว้าง']) if pd.notna(row['กว้าง']) else 0.0
-                    quantity = int(row['สต็อก']) if pd.notna(row['สต็อก']) else 0
-                    cost = float(row['ทุน']) if pd.notna(row['ทุน']) else None
-                    retail_price = float(row['ราคาขายปลีก']) if pd.notna(row['ราคาขายปลีก']) else 0.0
+                    quantity = int(row['สต็อก']) if pd.notna(row['สต็อก']) else 0
+                    cost = float(row['ทุน']) if pd.notna(row['ทุน']) else None
+                    retail_price = float(row['ราคาขายปลีก']) if pd.notna(row['ราคาขายปลีก']) else 0.0
                     
                     et_raw = row.get('ET')
                     color_raw = row.get('สี')
@@ -1719,11 +1719,11 @@ def import_wheels_action():
                     wholesale_price2_raw = row.get('ราคาขายส่ง 2')
 
                     et = int(et_raw) if pd.notna(et_raw) else None # ใช้ et_raw
-                    color = str(color_raw).strip() if pd.notna(color_raw) else None # ใช้ color_raw
-                    image_url = str(image_url_raw).strip() if pd.notna(image_url_raw) else None # ใช้ image_url_raw
-                    cost_online = float(cost_online_raw) if pd.notna(cost_online_raw) else None # ใช้ cost_online_raw
-                    wholesale_price1 = float(wholesale_price1_raw) if pd.notna(wholesale_price1_raw) else None # ใช้ wholesale_price1_raw
-                    wholesale_price2 = float(wholesale_price2_raw) if pd.notna(wholesale_price2_raw) else None # ใช้ wholesale_price2_raw
+                    color = str(color_raw).strip() if pd.notna(color_raw) else None # ใช้ color_raw
+                    image_url = str(image_url_raw).strip() if pd.notna(image_url_raw) else None # ใช้ image_url_raw
+                    cost_online = float(cost_online_raw) if pd.notna(cost_online_raw) else None # ใช้ cost_online_raw
+                    wholesale_price1 = float(wholesale_price1_raw) if pd.notna(wholesale_price1_raw) else None # ใช้ wholesale_price1_raw
+                    wholesale_price2 = float(wholesale_price2_raw) if pd.notna(wholesale_price2_raw) else None # ใช้ wholesale_price2_raw
                     
                     cursor = conn.cursor()
                     if "psycopg2" in str(type(conn)):
