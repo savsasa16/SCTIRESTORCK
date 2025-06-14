@@ -1706,7 +1706,7 @@ def import_wheels_action():
                             raise ValueError("ข้อมูล 'ยี่ห้อ', 'ลาย', หรือ 'รู' ไม่สามารถเว้นว่างได้")
 
                     diameter = float(row['ขอบ']) if pd.notna(row['ขอบ']) else 0.0
-                    width = float(row['กว้าง']) if pd.notna(row['กว้าง']) else 0.0
+                    width = float(row['กว้าง']) if pd.notna(row['กว้าง']) else 0.0
                     quantity = int(row['สต็อก']) if pd.notna(row['สต็อก']) else 0
                     cost = float(row['ทุน']) if pd.notna(row['ทุน']) else None
                     retail_price = float(row['ราคาขายปลีก']) if pd.notna(row['ราคาขายปลีก']) else 0.0
