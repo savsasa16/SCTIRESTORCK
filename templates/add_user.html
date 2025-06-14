@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}เพิ่มผู้ใช้ใหม่{% endblock %}
+
+{% block content %}
+<h2>เพิ่มผู้ใช้ใหม่</h2>
+
+<div class="form-section">
+    <form action="{{ url_for('add_new_user') }}" method="post">
+        <div class="form-group">
+            <label for="username">ชื่อผู้ใช้:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+            <label for="password">รหัสผ่าน:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div class="form-group">
+            <label for="confirm_password">ยืนยันรหัสผ่าน:</label>
+            <input type="password" id="confirm_password" name="confirm_password" required>
+        </div>
+        <div class="form-group"> {# NEW: Role Selection #}
+            <label for="role">บทบาท:</label>
+            <select id="role" name="role" required>
+                <option value="viewer">Viewer (ดูได้อย่างเดียว)</option>
+                <option value="editor">Editor (ดู, เพิ่ม, แก้ไข, ลบสต็อก)</option>
+                <option value="admin">Admin (ทุกอย่าง + จัดการผู้ใช้)</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> เพิ่มผู้ใช้</button>
+        <a href="{{ url_for('manage_users') }}" class="btn btn-outline" style="margin-left: 10px;"><i class="fas fa-arrow-left"></i> ยกเลิก</a>
+    </form>
+</div>
+{% endblock %}

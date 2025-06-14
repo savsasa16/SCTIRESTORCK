@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>แก้ไขข้อมูลแม็ก</h2>
+
+<div class="form-section">
+    <form action="{{ url_for('edit_wheel', wheel_id=wheel.id) }}" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="brand">ยี่ห้อ:</label>
+            <input type="text" id="brand" name="brand" value="{{ wheel.brand }}" required>
+        </div>
+        <div class="form-group">
+            <label for="model">ลาย:</label>
+            <input type="text" id="model" name="model" value="{{ wheel.model }}" required>
+        </div>
+        <div class="form-group">
+            <label for="diameter">ขอบ (นิ้ว):</label>
+            <input type="number" id="diameter" name="diameter" value="{{ '%.1f'|format(wheel.diameter) }}" step="0.1" required>
+        </div>
+        <div class="form-group">
+            <label for="pcd">รู:</label>
+            <input type="text" id="pcd" name="pcd" value="{{ wheel.pcd }}" required>
+        </div>
+        <div class="form-group">
+            <label for="width">กว้าง (นิ้ว):</label>
+            <input type="number" id="width" name="width" value="{{ '%.1f'|format(wheel.width) }}" step="0.1" required>
+        </div>
+        <div class="form-group">
+            <label for="et">ET:</label>
+            <input type="number" id="et" name="et" value="{{ wheel.et if wheel.et is not none else '' }}">
+        </div>
+        <div class="form-group">
+            <label for="color">สี:</label>
+            <input type="text" id="color" name="color" value="{{ wheel.color if wheel.color is not none else '' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="retail_price">ราคาขายปลีก (บาท):</label>
+            <input type="number" id="retail_price" name="retail_price" value="{{ '%.2f'|format(wheel.retail_price) }}" step="0.01" required>
+        </div>
+
+        <h3>ต้นทุนและราคาขายส่ง (ไม่บังคับ)</h3>
+        <div class="form-group">
+            <label for="cost">ทุน (บาท/วง):</label>
+            <input type="number" id="cost" name="cost" value="{{ '%.2f'|format(wheel.cost) if wheel.cost is not none else '' }}" step="0.01">
+        </div>
+        <div class="form-group">
+            <label for="cost_online">ทุน Online (บาท/วง):</label>
+            <input type="number" id="cost_online" name="cost_online" value="{{ '%.2f'|format(wheel.cost_online) if wheel.cost_online is not none else '' }}" step="0.01">
+        </div>
+        <div class="form-group">
+            <label for="wholesale_price1">ราคาขายส่ง 1 (บาท/วง):</label>
+            <input type="number" id="wholesale_price1" name="wholesale_price1" value="{{ '%.2f'|format(wheel.wholesale_price1) if wheel.wholesale_price1 is not none else '' }}" step="0.01">
+        </div>
+        <div class="form-group">
+            <label for="wholesale_price2">ราคาขายส่ง 2 (บาท/วง):</label>
+            <input type="number" id="wholesale_price2" name="wholesale_price2" value="{{ '%.2f'|format(wheel.wholesale_price2) if wheel.wholesale_price2 is not none else '' }}" step="0.01">
+        </div>
+
+        <div class="form-group">
+            <label>รูปแม็กปัจจุบัน:</label>
+            {% if wheel.image_filename %}
+                <p>
+                    <a href="{{ wheel.image_filename }}" target="_blank">
+                        <img src="{{ wheel.image_filename }}" alt="Wheel Image" style="max-width: 150px; height: auto; border: 1px solid #ccc;">
+                    </a>
+                </p>
+                <div class="form-check">
+                    <input type="checkbox" id="delete_existing_image" name="delete_existing_image">
+                    <label for="delete_existing_image">ลบรูปแม็กปัจจุบัน</label>
+                </div>
+            {% else %}
+                <p>ไม่มีรูปแม็กปัจจุบัน</p>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="image_file">อัปโหลดรูปแม็กใหม่ (จะแทนที่รูปเดิมหากมี):</label>
+            <input type="file" id="image_file" name="image_file" accept="image/*">
+        </div>
+
+        <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
+        <a href="{{ url_for('wheel_detail', wheel_id=wheel.id) }}" class="btn btn-secondary">ยกเลิก</a>
+    </form>
+</div>
+{% endblock %}

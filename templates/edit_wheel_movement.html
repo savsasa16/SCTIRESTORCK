@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>แก้ไขการเคลื่อนไหวสต็อกแม็ก</h2>
+
+<div class="form-section">
+    <form action="{{ url_for('edit_wheel_movement', movement_id=movement.id) }}" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+            <label>แม็ก:</label>
+            <p><strong>{{ movement.brand }} {{ movement.model }} {{ "%.1f"|format(movement.diameter) }} นิ้ว</strong> (ID: {{ movement.wheel_id }})</p>
+        </div>
+        <div class="form-group">
+            <label>ประเภท:</label>
+            <p>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }} (จำนวน: {{ movement.quantity_change }} วง)</p>
+        </div>
+        <div class="form-group">
+            <label for="notes">หมายเหตุ:</label>
+            <input type="text" id="notes" name="notes" value="{{ movement.notes if movement.notes else '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>รูปบิลปัจจุบัน:</label>
+            {% if movement.image_filename %}
+                <p>
+                    <a href="{{ movement.image_filename }}" target="_blank">
+                        <img src="{{ movement.image_filename }}" alt="Bill Image" style="max-width: 150px; height: auto; border: 1px solid #ccc;">
+                    </a>
+                </p>
+                <div class="form-check">
+                    <input type="checkbox" id="delete_existing_image" name="delete_existing_image">
+                    <label for="delete_existing_image">ลบรูปบิลปัจจุบัน</label>
+                </div>
+            {% else %}
+                <p>ไม่มีรูปบิลปัจจุบัน</p>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="bill_image">อัปโหลดรูปบิลใหม่ (จะแทนที่รูปเดิมหากมี):</label>
+            <input type="file" id="bill_image" name="bill_image" accept="image/*">
+        </div>
+
+        <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
+        <a href="{{ url_for('daily_stock_report') }}" class="btn btn-secondary">ยกเลิก</a>
+    </form>
+</div>
+{% endblock %}
