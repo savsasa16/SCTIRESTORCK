@@ -1543,8 +1543,8 @@ def import_tires_action():
 
             for index, row in df.iterrows():
                 try:
-                    brand = str(row.get('ยี่ห้อ', '')).strip()
-                    model = str(row.get('รุ่นยาง', '')).strip()
+                    brand = str(row.get('ยี่ห้อ', '')).strip().lower()
+                    model = str(row.get('รุ่นยาง', '')).strip().lower()
                     size = str(row.get('เบอร์ยาง', '')).strip()
                     
                     if not brand or not model or not size:

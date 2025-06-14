@@ -63,11 +63,11 @@
                             <tr>
                                 <td>
                                     {% if item.brand != last_brand_display_tire %}
-                                        {{ item.brand }}
+                                        {{ item.brand | title }}
                                         {% set last_brand_display_tire = item.brand %}
                                     {% endif %}
                                 </td>
-                                <td>{{ item.model }}</td>
+                                <td>{{ item.model | title }}</td>
                                 <td>{{ item.size }}</td>
                                 <td><span class="{% if item.quantity <= 5 %}text-danger{% elif item.quantity <= 10 %}text-warning{% endif %}">{{ item.quantity }}</span></td>
                                 <td>
