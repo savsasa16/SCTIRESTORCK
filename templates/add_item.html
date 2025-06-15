@@ -30,7 +30,7 @@
         <div class="form-group">
             <label for="tire_barcode_id_for_add">Barcode ID (สำหรับยาง)</label>
             <input type="text" id="tire_barcode_id_for_add" name="barcode_id_for_add" value="{{ request.args.get('scanned_barcode', '') }}" autofocus>
-            <small class="form-text text-muted">ยิงบาร์โค้ดจากตัวยาง หรือพิมพ์รหัสบาร์โค้ดลงไป (เป็นทางเลือก)</small>
+            <small class="form-text text-muted">ยิงบาร์โค้ดจากตัวยาง หรือพิมพ์รหัสบาร์โค้ดลงไป</small>
         </div>
         {# -------------------------------------------------- #}
 
@@ -120,7 +120,7 @@
         <div class="form-group">
             <label for="wheel_barcode_id_for_add">Barcode ID (สำหรับแม็ก)</label>
             <input type="text" id="wheel_barcode_id_for_add" name="barcode_id_for_add" value="{{ request.args.get('scanned_barcode', '') }}" autofocus>
-            <small class="form-text text-muted">ยิงบาร์โค้ดจากตัวแม็ก หรือพิมพ์รหัสบาร์โค้ดลงไป (เป็นทางเลือก)</small>
+            <small class="form-text text-muted">ยิงบาร์โค้ดจากตัวแม็ก หรือพิมพ์รหัสบาร์โค้ดลงไป</small>
         </div>
         {# -------------------------------------------------- #}
 
@@ -137,7 +137,7 @@
 
         <div class="form-row">
             <div class="form-group">
-                <label for="wheel_pcd">รู ET (เช่น 5/114.3 +35)*</label>
+                <label for="wheel_pcd">รู (เช่น 5/114.3)*</label>
                 <input type="text" id="wheel_pcd" name="pcd" value="{{ form_data.pcd if form_data and active_tab == 'wheel' else '' }}" required>
             </div>
             <div class="form-group">
