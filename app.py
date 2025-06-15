@@ -2066,6 +2066,7 @@ def api_search_items_for_link():
             LOWER(model) LIKE %s OR
             LOWER(size) LIKE %s
         )
+        ORDER BY brand, model, size
         LIMIT 50
     """
     if "psycopg2" in str(type(conn)):
@@ -2088,6 +2089,7 @@ def api_search_items_for_link():
             LOWER(model) LIKE %s OR
             LOWER(pcd) LIKE %s
         )
+        ORDER BY brand, model, diameter
         LIMIT 50
     """
     if "psycopg2" in str(type(conn)):
