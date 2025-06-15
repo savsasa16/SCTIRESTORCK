@@ -2101,6 +2101,49 @@ def api_search_items_for_link():
         items.append(item)
 
     return jsonify({"success": True, "items": items}), 200
+    
+@app.route('/api/link_barcode_to_item', methods=['POST'])
+@login_required
+def api_link_barcode_to_item():
+    data = request.get_json()
+    scanned_barcode = data.get('scanned_barcode')
+    item_id = data.get('item_id') # ID ของยาง/แม็ก ที่ผู้ใช้เลือกจากหน้าค้นหา
+    item_type = data.get('item_type') # 'tire' or 'wheel' (มาจาก frontend)
+
+    if not scanned_barcode or not item_id or not item_type:
+        return jsonify({"success": False, "message": "ข้อมูลไม่สมบูรณ์สำหรับการเชื่อมโยงบาร์โค้ด"}), 400
+
+    conn = get_db()
+    try:
+        # ตรวจสอบว่า Barcode ID นี้มีอยู่ในระบบ tire_barcodes หรือ wheel_barcodes แล้วหรือยัง
+        existing_tire_barcode_id = database.get_tire_id_by_barcode(conn, scanned_barcode)
+        existing_wheel_barcode_id = database.get_wheel_id_by_barcode(conn, scanned_barcode)
+        
+        if existing_tire_barcode_id or existing_wheel_barcode_id:
+            # ถ้ามีอยู่แล้วและผูกกับ item_id เดิม ก็ถือว่าสำเร็จ (ไม่ทำอะไร)
+            if (item_type == 'tire' and existing_tire_barcode_id == item_id) or \
+               (item_type == 'wheel' and existing_wheel_barcode_id == item_id):
+                return jsonify({"success": True, "message": f"บาร์โค้ด '{scanned_barcode}' ถูกเชื่อมโยงกับสินค้านี้อยู่แล้ว"}), 200
+            else:
+                # ถ้ามีอยู่แล้วแต่ผูกกับ item_id อื่น แสดงว่าซ้ำซ้อน
+                return jsonify({"success": False, "message": f"บาร์โค้ด '{scanned_barcode}' มีอยู่ในระบบแล้ว และถูกเชื่อมโยงกับสินค้าอื่น"}), 409
+
+        # ถ้ายังไม่มีในระบบ ให้เพิ่มการเชื่อมโยงใหม่
+        if item_type == 'tire':
+            database.add_tire_barcode(conn, item_id, scanned_barcode, is_primary=False) # ตั้งเป็น False เพราะเป็นบาร์โค้ดทางเลือก
+        elif item_type == 'wheel':
+            database.add_wheel_barcode(conn, item_id, scanned_barcode, is_primary=False) # ตั้งเป็น False เพราะเป็นบาร์โค้ดทางเลือก
+        else:
+            conn.rollback()
+            return jsonify({"success": False, "message": "ประเภทสินค้าไม่ถูกต้อง (ต้องเป็น tire หรือ wheel)"}), 400
+
+        conn.commit()
+        return jsonify({"success": True, "message": f"เชื่อมโยงบาร์โค้ด '{scanned_barcode}' กับสินค้าสำเร็จ!"}), 200
+
+    except Exception as e:
+        conn.rollback()
+        # ตรวจสอบข้อผิดพลาดเฉพาะเจาะจงมากขึ้นหากจำเป็น (เช่น UNIQUE constraint failed)
+        return jsonify({"success": False, "message": f"เกิดข้อผิดพลาดในการเชื่อมโยงบาร์โค้ด: {str(e)}"}), 500
 
 # --- Main entry point ---
 if __name__ == '__main__':
