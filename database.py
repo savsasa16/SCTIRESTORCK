@@ -1214,3 +1214,85 @@ def delete_wheel_fitment(conn, fitment_id):
     else:
         cursor.execute("DELETE FROM wheel_fitments WHERE id = ?", (fitment_id,))
     conn.commit()
+
+def add_tire_barcode(conn, tire_id, barcode_string, is_primary=False):
+    """
+    เพิ่ม Barcode ID ใหม่สำหรับยางที่ระบุ
+    tire_id: ID ของยางในตาราง tires
+    barcode_string: Barcode ID ที่ยิงได้
+    is_primary: True ถ้าต้องการให้เป็นบาร์โค้ดหลักสำหรับยางนี้
+    """
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("INSERT INTO tire_barcodes (tire_id, barcode_string, is_primary_barcode) VALUES (%s, %s, %s) ON CONFLICT (barcode_string) DO NOTHING",
+                       (tire_id, barcode_string, is_primary))
+    else:
+        # SQLite
+        cursor.execute("INSERT OR IGNORE INTO tire_barcodes (tire_id, barcode_string, is_primary_barcode) VALUES (?, ?, ?)",
+                       (tire_id, barcode_string, is_primary))
+    # ไม่ต้อง conn.commit() ที่นี่ เพราะจะให้ caller (app.py) จัดการใน transaction
+
+def get_tire_id_by_barcode(conn, barcode_string):
+    """
+    ค้นหา tire_id จาก barcode_string ที่ระบุ
+    """
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("SELECT tire_id FROM tire_barcodes WHERE barcode_string = %s", (barcode_string,))
+    else:
+        cursor.execute("SELECT tire_id FROM tire_barcodes WHERE barcode_string = ?", (barcode_string,))
+    result = cursor.fetchone()
+    return result['tire_id'] if result else None
+
+def get_barcodes_for_tire(conn, tire_id):
+    """
+    ดึง Barcode ID ทั้งหมดสำหรับยางที่ระบุ
+    """
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("SELECT barcode_string, is_primary_barcode FROM tire_barcodes WHERE tire_id = %s ORDER BY is_primary_barcode DESC, barcode_string ASC", (tire_id,))
+    else:
+        cursor.execute("SELECT barcode_string, is_primary_barcode FROM tire_barcodes WHERE tire_id = ? ORDER BY is_primary_barcode DESC, barcode_string ASC", (tire_id,))
+    return [dict(row) for row in cursor.fetchall()]
+
+# --- ฟังก์ชันสำหรับจัดการ Barcode ID ของแม็ก (Wheel Barcodes) ---
+
+def add_wheel_barcode(conn, wheel_id, barcode_string, is_primary=False):
+    """
+    เพิ่ม Barcode ID ใหม่สำหรับแม็กที่ระบุ
+    wheel_id: ID ของแม็กในตาราง wheels
+    barcode_string: Barcode ID ที่ยิงได้
+    is_primary: True ถ้าต้องการให้เป็นบาร์โค้ดหลักสำหรับแม็กนี้
+    """
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("INSERT INTO wheel_barcodes (wheel_id, barcode_string, is_primary_barcode) VALUES (%s, %s, %s) ON CONFLICT (barcode_string) DO NOTHING",
+                       (wheel_id, barcode_string, is_primary))
+    else:
+        # SQLite
+        cursor.execute("INSERT OR IGNORE INTO wheel_barcodes (wheel_id, barcode_string, is_primary_barcode) VALUES (?, ?, ?)",
+                       (wheel_id, barcode_string, is_primary))
+    # ไม่ต้อง conn.commit() ที่นี่
+
+def get_wheel_id_by_barcode(conn, barcode_string):
+    """
+    ค้นหา wheel_id จาก barcode_string ที่ระบุ
+    """
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("SELECT wheel_id FROM wheel_barcodes WHERE barcode_string = %s", (barcode_string,))
+    else:
+        cursor.execute("SELECT wheel_id FROM wheel_barcodes WHERE barcode_string = ?", (barcode_string,))
+    result = cursor.fetchone()
+    return result['wheel_id'] if result else None
+
+def get_barcodes_for_wheel(conn, wheel_id):
+    """
+    ดึง Barcode ID ทั้งหมดสำหรับแม็กที่ระบุ
+    """
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("SELECT barcode_string, is_primary_barcode FROM wheel_barcodes WHERE wheel_id = %s ORDER BY is_primary_barcode DESC, barcode_string ASC", (wheel_id,))
+    else:
+        cursor.execute("SELECT barcode_string, is_primary_barcode FROM wheel_barcodes WHERE wheel_id = ? ORDER BY is_primary_barcode DESC, barcode_string ASC", (wheel_id,))
+    return [dict(row) for row in cursor.fetchall()]
