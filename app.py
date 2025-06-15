@@ -2066,7 +2066,7 @@ def api_search_items_for_link():
             LOWER(model) LIKE %s OR
             LOWER(size) LIKE %s
         )
-        LIMIT 20 -- จำกัดผลลัพธ์เพื่อประสิทธิภาพ
+        LIMIT 50
     """
     if "psycopg2" in str(type(conn)):
         cursor = conn.cursor()
@@ -2088,7 +2088,7 @@ def api_search_items_for_link():
             LOWER(model) LIKE %s OR
             LOWER(pcd) LIKE %s
         )
-        LIMIT 20
+        LIMIT 50
     """
     if "psycopg2" in str(type(conn)):
         cursor.execute(wheel_search_query, (f"%{query}%", f"%{query}%", f"%{query}%"))
