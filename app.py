@@ -9,7 +9,7 @@ import pandas as pd
 from io import BytesIO
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user, jsonify
 import os
 
 import database # Your existing database.py file
@@ -1839,7 +1839,6 @@ def edit_user_role(user_id):
     flash(f'แก้ไขบทบาทผู้ใช้ ID {user_id} เป็น "{new_role}" สำเร็จ!', 'success')
     return redirect(url_for('manage_users'))
 
-
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
 def delete_user(user_id):
@@ -1915,6 +1914,51 @@ def restore_wheel_action(wheel_id):
         flash(f'เกิดข้อผิดพลาดในการกู้คืนแม็ก: {e}', 'danger')
     return redirect(url_for('admin_deleted_items', tab='deleted_wheels'))
 
+@app.route('/barcode_scanner')
+@login_required
+def barcode_scanner_page():
+    """Renders the barcode scanning page."""
+    return render_template('barcode_scanner.html')
+    
+@app.route('/api/scan_item_lookup', methods=['GET'])
+@login_required
+def api_scan_item_lookup():
+    scanned_barcode_string = request.args.get('barcode_id')
+    if not scanned_barcode_string:
+        return jsonify({"success": False, "message": "ไม่พบบาร์โค้ด"}), 400
+
+    conn = get_db()
+
+    # --- ขั้นตอนที่ 1: ค้นหาในตาราง tire_barcodes ---
+    tire_id = database.get_tire_id_by_barcode(conn, scanned_barcode_string)
+    if tire_id:
+        tire = database.get_tire(conn, tire_id) # ดึงข้อมูลยางหลัก
+        if tire:
+            # แปลง sqlite3.Row/DictRow เป็น dict เพื่อให้ง่ายต่อการส่ง JSON
+            if not isinstance(tire, dict):
+                tire = dict(tire)
+            tire['type'] = 'tire'
+            tire['current_quantity'] = tire['quantity'] # ใช้ current_quantity ใน Frontend
+            return jsonify({"success": True, "item": tire})
+
+    # --- ขั้นตอนที่ 2: ค้นหาในตาราง wheel_barcodes ---
+    wheel_id = database.get_wheel_id_by_barcode(conn, scanned_barcode_string)
+    if wheel_id:
+        wheel = database.get_wheel(conn, wheel_id) # ดึงข้อมูลแม็กหลัก
+        if wheel:
+            if not isinstance(wheel, dict):
+                wheel = dict(wheel)
+            wheel['type'] = 'wheel'
+            wheel['current_quantity'] = wheel['quantity'] # ใช้ current_quantity ใน Frontend
+            return jsonify({"success": True, "item": wheel})
+
+    # --- ถ้าไม่พบเลย: ส่งคืนข้อความว่าไม่พบ และแนะนำให้เชื่อมโยง ---
+    return jsonify({
+        "success": False,
+        "message": f"ไม่พบสินค้าสำหรับบาร์โค้ด: '{scanned_barcode_string}'. คุณต้องการเชื่อมโยงบาร์โค้ดนี้กับสินค้าที่มีอยู่หรือไม่?",
+        "action_required": "link_new_barcode", # บอก Frontend ให้เปิด Modal เชื่อมโยง
+        "scanned_barcode": scanned_barcode_string # ส่ง Barcode ที่สแกนกลับไปด้วย
+    }), 404
 
 # --- Main entry point ---
 if __name__ == '__main__':

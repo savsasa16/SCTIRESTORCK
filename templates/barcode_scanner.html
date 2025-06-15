@@ -1,0 +1,515 @@
+{% extends 'base.html' %}
+
+{% block title %}ตัดสต็อกด้วยบาร์โค้ด{% endblock %}
+
+{% block content %}
+<style>
+    /* สไตล์เพิ่มเติมสำหรับหน้า Barcode Scanner */
+    .barcode-scan-section {
+        background-color: var(--bg-white);
+        padding: 25px;
+        border-radius: var(--border-radius-md);
+        box-shadow: var(--shadow-light);
+        margin-bottom: 30px;
+    }
+    .barcode-scan-section h3 {
+        color: var(--primary-color);
+        margin-top: 20px;
+        margin-bottom: 15px;
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 10px;
+    }
+    .barcode-scan-section .form-group {
+        margin-bottom: 20px;
+    }
+    .barcode-scan-section label {
+        font-size: 1.1em;
+        margin-bottom: 8px;
+    }
+    .barcode-scan-section input[type="text"] {
+        padding: 12px;
+        font-size: 1.2em;
+        border-radius: var(--border-radius);
+        border: 2px solid var(--primary-color); /* ให้ช่อง input เด่นขึ้น */
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .barcode-scan-section input[type="text"]:focus {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.25);
+    }
+    .flash-message {
+        padding: 10px;
+        margin-top: 15px;
+        border-radius: var(--border-radius-sm);
+        text-align: center;
+        font-weight: bold;
+        display: none; /* ซ่อนไว้ก่อน */
+    }
+    .flash-info { background-color: #e0f7fa; color: #007bb2; display: block; }
+    .flash-success { background-color: #e8f5e9; color: #28a745; display: block; }
+    .flash-warning { background-color: #fff3e0; color: #ffc107; display: block; }
+    .flash-danger { background-color: #ffebee; color: #dc3545; display: block; }
+
+    #scannedItemsTable {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    #scannedItemsTable th, #scannedItemsTable td {
+        border: 1px solid var(--border-color);
+        padding: 10px;
+        text-align: left;
+    }
+    #scannedItemsTable th {
+        background-color: #f8f8f8;
+    }
+    #scannedItemsTable tbody tr:nth-child(even) {
+        background-color: var(--bg-stripe);
+    }
+    #scannedItemsTable .qty-input {
+        width: 70px;
+        padding: 5px;
+        border-radius: var(--border-radius-sm);
+        border: 1px solid var(--border-color);
+        text-align: center;
+    }
+    .action-buttons {
+        margin-top: 25px;
+        text-align: center;
+    }
+    .action-buttons button {
+        padding: 12px 25px;
+        font-size: 1.1em;
+        margin: 0 10px;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+    .action-buttons .btn-success { background-color: var(--success-color); color: white; border: none; }
+    .action-buttons .btn-success:hover { background-color: var(--success-dark); }
+    .action-buttons .btn-danger { background-color: var(--danger-color); color: white; border: none; }
+    .action-buttons .btn-danger:hover { background-color: var(--danger-dark); }
+    .action-buttons .btn-secondary { background-color: var(--secondary-color); color: white; border: none; }
+    .action-buttons .btn-secondary:hover { background-color: var(--secondary-dark); }
+
+    /* Modal styles */
+    .modal {
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1000; /* Sit on top */
+        left: 0;
+        top: 0;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto; /* Enable scroll if needed */
+        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    }
+    .modal-content {
+        background-color: #fefefe;
+        margin: 10% auto; /* 10% from the top and centered */
+        padding: 30px;
+        border-radius: var(--border-radius-md);
+        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+        width: 80%; /* Could be more or less, depending on screen size */
+        max-width: 600px; /* Max width for larger screens */
+        position: relative;
+    }
+    .close-button {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+    .close-button:hover,
+    .close-button:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .modal-content input[type="text"],
+    .modal-content select {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+    }
+    .modal-content button {
+        padding: 10px 15px;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+    }
+</style>
+
+<div class="barcode-scan-section">
+    <h2>ตัดสต็อกด้วยบาร์โค้ด</h2>
+
+    <div class="form-group">
+        <label for="barcodeInput">สแกนบาร์โค้ด:</label>
+        <input type="text" id="barcodeInput" autofocus placeholder="ยิงบาร์โค้ดที่นี่...">
+    </div>
+    <div id="scanStatus" class="flash-message"></div>
+
+    <h3>รายการที่สแกนแล้ว</h3>
+    <div class="table-responsive">
+        <table id="scannedItemsTable">
+            <thead>
+                <tr>
+                    <th>ประเภท</th>
+                    <th>ยี่ห้อ</th>
+                    <th>รุ่น/ลาย</th>
+                    <th>ข้อมูลจำเพาะ</th>
+                    <th>สต็อกปัจจุบัน</th>
+                    <th>จำนวนที่ทำรายการ</th>
+                    <th>ดำเนินการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {# JavaScript จะแทรกแถวที่นี่ #}
+                <tr><td colspan="7" class="text-center">ยังไม่มีรายการที่สแกน</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="action-buttons">
+        <button id="processInBtn" class="btn btn-success">รับเข้าสต็อก</button>
+        <button id="processOutBtn" class="btn btn-danger">จ่ายออกสต็อก</button>
+        <button id="clearAllBtn" class="btn btn-secondary">ล้างรายการทั้งหมด</button>
+    </div>
+</div>
+
+{# Modal สำหรับเชื่อมโยงบาร์โค้ด #}
+<div id="linkBarcodeModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h4>บาร์โค้ดไม่รู้จัก: <span id="modalScannedBarcode"></span></h4>
+        <p>กรุณาเลือกว่าต้องการเพิ่มสินค้าใหม่ หรือเชื่อมโยงบาร์โค้ดนี้กับสินค้าที่มีอยู่</p>
+        
+        <div class="form-group">
+            <label for="searchItemBarcode">ค้นหาสินค้า (ยี่ห้อ, รุ่น, เบอร์ยาง/ลาย):</label>
+            <input type="text" id="searchItemBarcode" placeholder="พิมพ์เพื่อค้นหา...">
+            <button id="searchItemBtn" class="btn btn-primary btn-sm" style="margin-top: 10px;">ค้นหา</button>
+        </div>
+        
+        <div id="searchItemResults">
+            {# ผลลัพธ์การค้นหาจะแสดงที่นี่ #}
+        </div>
+        
+        <p style="margin-top: 20px;">หรือ</p>
+        <button id="goToAddItemBtn" class="btn btn-info">ไปหน้าเพิ่มสินค้าใหม่</button>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const barcodeInput = document.getElementById('barcodeInput');
+        const scanStatus = document.getElementById('scanStatus');
+        const scannedItemsTableBody = document.querySelector('#scannedItemsTable tbody');
+        const processInBtn = document.getElementById('processInBtn');
+        const processOutBtn = document.getElementById('processOutBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+
+        // Modal elements
+        const linkBarcodeModal = document.getElementById('linkBarcodeModal');
+        const closeButton = document.querySelector('.close-button');
+        const modalScannedBarcodeSpan = document.getElementById('modalScannedBarcode');
+        const searchItemBarcodeInput = document.getElementById('searchItemBarcode');
+        const searchItemBtn = document.getElementById('searchItemBtn');
+        const searchItemResultsDiv = document.getElementById('searchItemResults');
+        const goToAddItemBtn = document.getElementById('goToAddItemBtn');
+
+        let scannedItems = {}; // { barcode_id: { data: item_data, quantity_to_process: N } }
+        let currentTimeout = null; // for debouncing
+
+        // Function to display messages
+        function showStatus(message, type = 'info') {
+            scanStatus.textContent = message;
+            scanStatus.className = `flash-message flash-${type}`;
+            scanStatus.style.display = 'block'; // Make sure it's visible
+            setTimeout(() => { scanStatus.textContent = ''; scanStatus.style.display = 'none'; }, 3000); // Clear after 3 seconds
+        }
+
+        // Function to render scanned items table
+        function renderScannedItems() {
+            scannedItemsTableBody.innerHTML = '';
+            let hasItems = false;
+            for (const barcode_id in scannedItems) {
+                hasItems = true;
+                const item = scannedItems[barcode_id].data;
+                const quantityToProcess = scannedItems[barcode_id].quantity_to_process;
+                const row = document.createElement('tr');
+
+                let spec_info = '';
+                if (item.type === 'tire') {
+                    spec_info = item.size;
+                } else if (item.type === 'wheel') {
+                    spec_info = `${item.diameter || ''}x${item.width || ''} ${item.pcd || ''} ${item.et ? item.et : ''}`;
+                }
+
+                row.innerHTML = `
+                    <td>${item.type === 'tire' ? 'ยาง' : 'แม็ก'}</td>
+                    <td>${item.brand ? item.brand.charAt(0).toUpperCase() + item.brand.slice(1) : ''}</td>
+                    <td>${item.model ? item.model.charAt(0).toUpperCase() + item.model.slice(1) : ''}</td>
+                    <td>${spec_info}</td>
+                    <td>${item.current_quantity}</td>
+                    <td>
+                        <input type="number" value="${quantityToProcess}" min="1" class="qty-input" data-barcode-id="${barcode_id}">
+                    </td>
+                    <td>
+                        <button class="btn btn-danger btn-sm remove-item-btn" data-barcode-id="${barcode_id}"><i class="fas fa-times"></i></button>
+                    </td>
+                `;
+                scannedItemsTableBody.appendChild(row);
+            }
+
+            if (!hasItems) {
+                 const noItemsRow = document.createElement('tr');
+                 noItemsRow.innerHTML = `<td colspan="7" class="text-center">ยังไม่มีรายการที่สแกน</td>`;
+                 scannedItemsTableBody.appendChild(noItemsRow);
+            }
+
+            // Add event listeners for quantity changes and remove buttons
+            document.querySelectorAll('.qty-input').forEach(input => {
+                input.onchange = function() {
+                    const id = this.dataset.barcodeId;
+                    let newQty = parseInt(this.value);
+                    if (isNaN(newQty) || newQty < 1) {
+                        newQty = 1; // Default to 1 if invalid
+                        this.value = 1;
+                    }
+                    scannedItems[id].quantity_to_process = newQty;
+                };
+            });
+
+            document.querySelectorAll('.remove-item-btn').forEach(button => {
+                button.onclick = function() {
+                    const id = this.dataset.barcodeId;
+                    delete scannedItems[id];
+                    renderScannedItems(); // Re-render table after removal
+                };
+            });
+
+            barcodeInput.focus(); // Keep focus on barcode input
+        }
+
+        // Barcode input handler
+        barcodeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent form submission
+                const barcode = this.value.trim();
+                this.value = ''; // Clear input field
+
+                if (barcode) {
+                    if (currentTimeout) {
+                        clearTimeout(currentTimeout);
+                    }
+                    currentTimeout = setTimeout(() => {
+                        fetch(`/api/scan_item_lookup?barcode_id=${barcode}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    const item_data = data.item;
+                                    if (item_data.id) {
+                                        if (scannedItems[item_data.id]) {
+                                            scannedItems[item_data.id].quantity_to_process++;
+                                        } else {
+                                            scannedItems[item_data.id] = {
+                                                data: item_data,
+                                                quantity_to_process: 1
+                                            };
+                                        }
+                                        showStatus(`สแกน ${item_data.brand.charAt(0).toUpperCase() + item_data.brand.slice(1)} ${item_data.model.charAt(0).toUpperCase() + item_data.model.slice(1)} สำเร็จ!`, 'success');
+                                        renderScannedItems();
+                                    } else {
+                                        showStatus('ข้อมูลไม่สมบูรณ์จากเซิร์ฟเวอร์', 'danger');
+                                    }
+                                } else {
+                                    showStatus(data.message, 'danger');
+                                    if (data.action_required === 'link_new_barcode' && data.scanned_barcode) {
+                                        modalScannedBarcodeSpan.textContent = data.scanned_barcode;
+                                        linkBarcodeModal.style.display = 'block';
+                                        // Store the barcode in a data attribute for later use in the modal
+                                        linkBarcodeModal.dataset.scannedBarcode = data.scanned_barcode; 
+                                    }
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
+                            });
+                    }, 100); // Debounce to prevent multiple rapid scans
+                }
+            }
+        });
+
+        // Clear all items button
+        clearAllBtn.addEventListener('click', function() {
+            if (confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างรายการทั้งหมด?')) {
+                scannedItems = {};
+                renderScannedItems();
+                showStatus('รายการถูกล้างแล้ว', 'info');
+            }
+        });
+
+        // Process stock transaction
+        function processTransaction(type) {
+            if (Object.keys(scannedItems).length === 0) {
+                showStatus('ไม่มีรายการให้ทำรายการ', 'warning');
+                return;
+            }
+
+            const itemsToProcess = [];
+            for (const barcode_id in scannedItems) {
+                const item = scannedItems[barcode_id].data;
+                const quantity = scannedItems[barcode_id].quantity_to_process;
+                itemsToProcess.push({
+                    id: item.id, // This is the actual DB ID/Barcode ID
+                    item_type: item.type, // 'tire' or 'wheel'
+                    quantity: quantity
+                });
+            }
+
+            fetch('/api/process_stock_transaction', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: type,
+                    items: itemsToProcess,
+                    notes: `Barcode scan ${type === 'IN' ? 'เข้า' : 'ออก'} @ ${new Date().toLocaleString('th-TH')}` // Optional notes
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showStatus(data.message, 'success');
+                    scannedItems = {}; // Clear items on success
+                    renderScannedItems();
+                } else {
+                    showStatus(data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
+            });
+        }
+
+        processInBtn.addEventListener('click', () => processTransaction('IN'));
+        processOutBtn.addEventListener('click', () => processTransaction('OUT'));
+
+        renderScannedItems(); // Initial render
+
+        // --- Modal related JavaScript ---
+        closeButton.addEventListener('click', () => {
+            linkBarcodeModal.style.display = 'none';
+            searchItemResultsDiv.innerHTML = ''; // Clear search results
+            searchItemBarcodeInput.value = ''; // Clear search input
+            barcodeInput.focus(); // Return focus to main barcode input
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target == linkBarcodeModal) {
+                linkBarcodeModal.style.display = 'none';
+                searchItemResultsDiv.innerHTML = '';
+                searchItemBarcodeInput.value = '';
+                barcodeInput.focus();
+            }
+        });
+
+        goToAddItemBtn.addEventListener('click', () => {
+            const scannedBarcode = linkBarcodeModal.dataset.scannedBarcode;
+            // You might want to pass the barcode to the add_item page
+            window.location.href = `{{ url_for('add_item') }}?tab=tire&scanned_barcode=${scannedBarcode}`;
+            // Or maybe a specific add_tire_page if you separate them
+        });
+
+        searchItemBtn.addEventListener('click', function() {
+            const query = searchItemBarcodeInput.value.trim();
+            if (query.length < 2) {
+                searchItemResultsDiv.innerHTML = '<p class="flash-warning">กรุณาพิมพ์อย่างน้อย 2 ตัวอักษรเพื่อค้นหา</p>';
+                return;
+            }
+            
+            // Fetch items from your existing search API (e.g., from index page, but modified for API use)
+            // This is a placeholder. You might need a new API endpoint like /api/search_items_for_link
+            fetch(`/api/search_items_for_link?query=${query}`)
+                .then(response => response.json())
+                .then(data => {
+                    searchItemResultsDiv.innerHTML = '';
+                    if (data.success && data.items.length > 0) {
+                        const resultsList = document.createElement('ul');
+                        resultsList.style.listStyle = 'none';
+                        resultsList.style.padding = '0';
+                        data.items.forEach(item => {
+                            const li = document.createElement('li');
+                            li.style.marginBottom = '10px';
+                            li.style.padding = '10px';
+                            li.style.border = '1px solid #eee';
+                            li.style.borderRadius = 'var(--border-radius-sm)';
+                            li.innerHTML = `
+                                <strong>${item.brand.charAt(0).toUpperCase() + item.brand.slice(1)} ${item.model.charAt(0).toUpperCase() + item.model.slice(1)}</strong> 
+                                (${item.type === 'tire' ? item.size : item.diameter + 'x' + item.width + ' ' + item.pcd}) 
+                                สต็อก: ${item.quantity}
+                                <button class="btn btn-primary btn-sm link-selected-barcode-btn" 
+                                        data-item-id="${item.id}" 
+                                        data-item-type="${item.type}" 
+                                        data-barcode-to-link="${linkBarcodeModal.dataset.scannedBarcode}"
+                                        style="margin-left: 10px;">ผูกบาร์โค้ดนี้</button>
+                            `;
+                            resultsList.appendChild(li);
+                        });
+                        searchItemResultsDiv.appendChild(resultsList);
+
+                        // Add event listeners for the "ผูกบาร์โค้ดนี้" buttons
+                        document.querySelectorAll('.link-selected-barcode-btn').forEach(button => {
+                            button.addEventListener('click', function() {
+                                const itemId = this.dataset.itemId;
+                                const itemType = this.dataset.itemType;
+                                const barcodeToLink = this.dataset.barcodeToLink;
+                                
+                                fetch('/api/link_barcode_to_item', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ 
+                                        scanned_barcode: barcodeToLink, 
+                                        item_id: itemId, 
+                                        item_type: itemType,
+                                        is_primary: false // Or true if this is designated as primary
+                                    })
+                                })
+                                .then(response => response.json())
+                                .then(linkData => {
+                                    if (linkData.success) {
+                                        showStatus(linkData.message, 'success');
+                                        linkBarcodeModal.style.display = 'none'; // Close modal
+                                        searchItemResultsDiv.innerHTML = ''; // Clear results
+                                        searchItemBarcodeInput.value = ''; // Clear input
+                                        barcodeInput.focus(); // Focus main input
+                                    } else {
+                                        searchItemResultsDiv.innerHTML = `<p class="flash-danger">${linkData.message}</p>`;
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error linking barcode:', error);
+                                    searchItemResultsDiv.innerHTML = '<p class="flash-danger">เกิดข้อผิดพลาดในการเชื่อมโยงบาร์โค้ด</p>';
+                                });
+                            });
+                        });
+
+                    } else {
+                        searchItemResultsDiv.innerHTML = '<p class="flash-info">ไม่พบสินค้าที่ตรงกับคำค้นหา. คุณอาจต้องเพิ่มสินค้าใหม่.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching items:', error);
+                    searchItemResultsDiv.innerHTML = '<p class="flash-danger">เกิดข้อผิดพลาดในการค้นหาสินค้า</p>';
+                });
+        });
+    });
+</script>
+{% endblock %}
