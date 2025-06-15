@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import pytz
 from collections import defaultdict
 import re
-from flask import Flask, render_template, request, redirect, url_for, flash, g, send_file, current_app
+from flask import Flask, render_template, request, redirect, url_for, flash, g, send_file, current_app, jsonify
 import pandas as pd
 from io import BytesIO
 from werkzeug.utils import secure_filename
