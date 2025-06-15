@@ -2041,6 +2041,66 @@ def api_process_stock_transaction():
     except Exception as e:
         conn.rollback() # หากเกิดข้อผิดพลาดใดๆ ให้ rollback transaction ทั้งหมด
         return jsonify({"success": False, "message": f"เกิดข้อผิดพลาดในการทำรายการ ระบบทำการย้อนกลับข้อมูล: {str(e)}"}), 500
+        
+        # app.py
+
+# ... (โค้ดส่วนบน, imports, และ API Endpoints อื่นๆ เช่น api_scan_item_lookup, api_process_stock_transaction) ...
+
+@app.route('/api/search_items_for_link', methods=['GET'])
+@login_required
+def api_search_items_for_link():
+    query = request.args.get('query', '').strip().lower()
+    if not query:
+        return jsonify({"success": False, "message": "กรุณาใส่คำค้นหา"}), 400
+
+    conn = get_db()
+    items = []
+
+    # ค้นหายาง (Tires)
+    # ใช้ LIKE เพื่อค้นหาส่วนหนึ่งของยี่ห้อ, รุ่น, หรือเบอร์ยาง
+    tire_search_query = f"""
+        SELECT id, brand, model, size, quantity AS current_quantity
+        FROM tires
+        WHERE is_deleted = FALSE AND (
+            LOWER(brand) LIKE %s OR
+            LOWER(model) LIKE %s OR
+            LOWER(size) LIKE %s
+        )
+        LIMIT 20 -- จำกัดผลลัพธ์เพื่อประสิทธิภาพ
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor = conn.cursor()
+        cursor.execute(tire_search_query, (f"%{query}%", f"%{query}%", f"%{query}%"))
+    else:
+        cursor = conn.execute(tire_search_query.replace('%s', '?'), (f"%{query}%", f"%{query}%", f"%{query}%"))
+    
+    for row in cursor.fetchall():
+        item = dict(row)
+        item['type'] = 'tire'
+        items.append(item)
+
+    # ค้นหาแม็ก (Wheels)
+    wheel_search_query = f"""
+        SELECT id, brand, model, diameter, pcd, width, quantity AS current_quantity
+        FROM wheels
+        WHERE is_deleted = FALSE AND (
+            LOWER(brand) LIKE %s OR
+            LOWER(model) LIKE %s OR
+            LOWER(pcd) LIKE %s
+        )
+        LIMIT 20
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(wheel_search_query, (f"%{query}%", f"%{query}%", f"%{query}%"))
+    else:
+        cursor = conn.execute(wheel_search_query.replace('%s', '?'), (f"%{query}%", f"%{query}%", f"%{query}%"))
+    
+    for row in cursor.fetchall():
+        item = dict(row)
+        item['type'] = 'wheel'
+        items.append(item)
+
+    return jsonify({"success": True, "items": items}), 200
 
 # --- Main entry point ---
 if __name__ == '__main__':
