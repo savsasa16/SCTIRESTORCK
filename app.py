@@ -9,7 +9,7 @@ import pandas as pd
 from io import BytesIO
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user, jsonify
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 import os
 
 import database # Your existing database.py file
