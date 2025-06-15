@@ -3,212 +3,253 @@
 {% block title %}เพิ่มสินค้าใหม่{% endblock %}
 
 {% block content %}
-<h2>เพิ่มยาง / แม็ก ใหม่</h2>
+<h2>เพิ่มสินค้าใหม่</h2>
 
 <div class="tabs">
-    <button class="tab-button active" data-tab="tire">เพิ่มยาง</button>
-    <button class="tab-button" data-tab="wheel">เพิ่มแม็ก</button>
+    <button class="tab-button active" data-tab="tire">ยาง</button>
+    <button class="tab-button" data-tab="wheel">แม็ก</button>
 </div>
 
-<div id="tire" class="tab-content {{ 'active' if active_tab == 'tire' }}">
+<div id="addTire" class="tab-content {{ 'active' if active_tab == 'tire' }}">
     <h3>เพิ่มยางใหม่</h3>
-    <div class="form-section">
-        <form action="{{ url_for('add_item') }}" method="post">
-            <input type="hidden" name="submit_type" value="add_tire">
-            <div class="form-row">
-                <div class="form-group half-width">
-                    <label for="tire_brand">ยี่ห้อยาง <span class="required">*</span>:</label>
-                    <input type="text" id="tire_brand" name="brand" required value="{{ form_data.brand if form_data and active_tab == 'tire' }}">
-                </div>
-                <div class="form-group half-width">
-                    <label for="tire_model">รุ่นยาง <span class="required">*</span>:</label>
-                    <input type="text" id="tire_model" name="model" required value="{{ form_data.model if form_data and active_tab == 'tire' }}">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group half-width">
-                    <label for="tire_size">เบอร์ยาง <span class="required">*</span>:</label>
-                    <input type="text" id="tire_size" name="size" required value="{{ form_data.size if form_data and active_tab == 'tire' }}">
-                </div>
-                <div class="form-group quarter-width">
-                    <label for="tire_quantity">จำนวน (เส้น) <span class="required">*</span>:</label>
-                    <input type="number" id="tire_quantity" name="quantity" min="0" required value="{{ form_data.quantity if form_data and active_tab == 'tire' }}">
-                </div>
-                <div class="form-group quarter-width">
-                    <label for="tire_year_of_manufacture">ปีผลิต:</label>
-                    <input type="number" id="tire_year_of_manufacture" name="year_of_manufacture" min="1900" max="{{ current_year }}" value="{{ form_data.year_of_manufacture if form_data and active_tab == 'tire' else current_year }}">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group quarter-width">
-                    <label for="tire_cost_sc">ทุน SC:</label> 
-                    <input type="number" id="tire_cost_sc" name="cost_sc" step="0.01" min="0" value="{{ form_data.cost_sc if form_data and active_tab == 'tire' }}">
-                </div>
-                <div class="form-group quarter-width">
-                    <label for="tire_cost_dunlop">ทุน Dunlop:</label>
-                    <input type="number" id="tire_cost_dunlop" name="cost_dunlop" step="0.01" min="0" value="{{ form_data.cost_dunlop if form_data and active_tab == 'tire' }}">
-                </div>
-                <div class="form-group quarter-width">
-                    <label for="tire_cost_online">ทุน Online:</label>
-                    <input type="number" id="tire_cost_online" name="cost_online" step="0.01" min="0" value="{{ form_data.cost_online if form_data and active_tab == 'tire' }}">
-                </div>
-                <div class="form-group quarter-width">
-                    <label for="tire_price_per_item">ราคาต่อเส้น <span class="required">*</span>:</label> 
-                    <input type="number" id="tire_price_per_item" name="price_per_item" step="0.01" min="0" required value="{{ form_data.price_per_item if form_data and active_tab == 'tire' }}">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group half-width">
-                    <label for="promotion_id">โปรโมชันสำหรับยางนี้:</label>
-                    <select id="promotion_id" name="promotion_id">
-                        <option value="none">-- ไม่มีโปรโมชัน --</option>
-                        {% for promo in all_promotions %}
-                            <option value="{{ promo.id }}" 
-                                {% if form_data and form_data.promotion_id == promo.id|string %}selected{% endif %}>
-                                {{ promo.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group half-width">
-                    <label for="tire_wholesale_price1">ราคาขายส่ง 1:</label>
-                    <input type="number" id="tire_wholesale_price1" name="wholesale_price1" step="0.01" min="0" value="{{ form_data.wholesale_price1 if form_data and active_tab == 'tire' }}">
-                </div>
-                <div class="form-group half-width">
-                    <label for="tire_wholesale_price2">ราคาขายส่ง 2:</label>
-                    <input type="number" id="tire_wholesale_price2" name="wholesale_price2" step="0.01" min="0" value="{{ form_data.wholesale_price2 if form_data and active_tab == 'tire' }}">
-                </div>
-            </div>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> เพิ่มยาง</button>
-        </form>
-    </div>
-</div>
-
-<div id="wheel" class="tab-content {{ 'active' if active_tab == 'wheel' }}">
-    <h3>เพิ่มแม็กใหม่</h3>
-    <div class="form-section">
-        <form action="{{ url_for('add_item') }}" method="post" enctype="multipart/form-data">
-            <input type="hidden" name="submit_type" value="add_wheel">
-            <div class="form-row">
-                <div class="form-group half-width">
-                    <label for="wheel_brand">ยี่ห้อแม็ก <span class="required">*</span>:</label>
-                    <input type="text" id="wheel_brand" name="brand" required value="{{ form_data.brand if form_data and active_tab == 'wheel' }}">
-                </div>
-                <div class="form-group half-width">
-                    <label for="wheel_model">ลายแม็ก <span class="required">*</span>:</label>
-                    <input type="text" id="wheel_model" name="model" required value="{{ form_data.model if form_data and active_tab == 'wheel' }}">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group quarter-width">
-                    <label for="wheel_diameter">ขอบ (นิ้ว) <span class="required">*</span>:</label>
-                    <input type="number" id="wheel_diameter" name="diameter" step="0.1" min="0" required value="{{ form_data.diameter if form_data and active_tab == 'wheel' }}">
-                </div>
-                <div class="form-group quarter-width">
-                    <label for="wheel_pcd">รู (PCD) <span class="required">*</span>:</label>
-                    <input type="text" id="wheel_pcd" name="pcd" required value="{{ form_data.pcd if form_data and active_tab == 'wheel' }}">
-                </div>
-                <div class="form-group quarter-width">
-                    <label for="wheel_width">กว้าง (นิ้ว) <span class="required">*</span>:</label>
-                    <input type="number" id="wheel_width" name="width" step="0.1" min="0" required value="{{ form_data.width if form_data and active_tab == 'wheel' }}">
-                </div>
-                <div class="form-group quarter-width">
-                    <label for="wheel_et">ET:</label>
-                    <input type="number" id="wheel_et" name="et" value="{{ form_data.et if form_data and active_tab == 'wheel' }}">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group half-width">
-                    <label for="wheel_color">สี:</label>
-                    <input type="text" id="wheel_color" name="color" value="{{ form_data.color if form_data and active_tab == 'wheel' }}">
-                </div>
-                <div class="form-group half-width">
-                    <label for="wheel_quantity">จำนวน (วง) <span class="required">*</span>:</label>
-                    <input type="number" id="wheel_quantity" name="quantity" min="0" required value="{{ form_data.quantity if form_data and active_tab == 'wheel' }}">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group quarter-width">
-                    <label for="wheel_cost">ทุน:</label> 
-                    <input type="number" id="wheel_cost" name="cost" step="0.01" min="0" value="{{ form_data.cost if form_data and active_tab == 'wheel' }}">
-                </div>
-                <div class="form-group quarter-width">
-                    <label for="wheel_cost_online">ทุน Online:</label>
-                    <input type="number" id="wheel_cost_online" name="cost_online" step="0.01" min="0" value="{{ form_data.cost_online if form_data and active_tab == 'wheel' }}">
-                </div>
-                <div class="form-group quarter-width">
-                    <label for="wheel_retail_price">ราคาขายปลีก <span class="required">*</span>:</label>
-                    <input type="number" id="wheel_retail_price" name="retail_price" step="0.01" min="0" required value="{{ form_data.retail_price if form_data and active_tab == 'wheel' }}">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group half-width">
-                    <label for="wheel_wholesale_price1">ราคาขายส่ง 1:</label>
-                    <input type="number" id="wheel_wholesale_price1" name="wholesale_price1" step="0.01" min="0" value="{{ form_data.wholesale_price1 if form_data and active_tab == 'wheel' }}">
-                </div>
-                <div class="form-group half-width">
-                    <label for="wheel_wholesale_price2">ราคาขายส่ง 2:</label>
-                    <input type="number" id="wheel_wholesale_price2" name="wholesale_price2" step="0.01" min="0" value="{{ form_data.wholesale_price2 if form_data and active_tab == 'wheel' }}">
-                </div>
+    <form id="addTireForm" method="POST" action="{{ url_for('add_item') }}">
+        <input type="hidden" name="submit_type" value="add_tire">
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tire_brand">ยี่ห้อ (เช่น Bridgestone)*</label>
+                <input type="text" id="tire_brand" name="brand" value="{{ form_data.brand if form_data and active_tab == 'tire' else '' }}" required>
             </div>
             <div class="form-group">
-                <label for="wheel_image_file">รูปภาพแม็ก:</label>
-                <input type="file" id="wheel_image_file" name="image_file" accept="image/png, image/jpeg, image/gif">
+                <label for="tire_model">รุ่นยาง (เช่น Turanza T005A)*</label>
+                <input type="text" id="tire_model" name="model" value="{{ form_data.model if form_data and active_tab == 'tire' else '' }}" required>
             </div>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> เพิ่มแม็ก</button>
-        </form>
-    </div>
+        </div>
+
+        {# --- เพิ่มตรงนี้: ช่องสำหรับ Barcode ID สำหรับยาง --- #}
+        <div class="form-group">
+            <label for="tire_barcode_id_for_add">Barcode ID (สำหรับยาง)</label>
+            <input type="text" id="tire_barcode_id_for_add" name="barcode_id_for_add" value="{{ request.args.get('scanned_barcode', '') }}" autofocus>
+            <small class="form-text text-muted">ยิงบาร์โค้ดจากตัวยาง หรือพิมพ์รหัสบาร์โค้ดลงไป (เป็นทางเลือก)</small>
+        </div>
+        {# -------------------------------------------------- #}
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tire_size">เบอร์ยาง (เช่น 205/55R16)*</label>
+                <input type="text" id="tire_size" name="size" value="{{ form_data.size if form_data and active_tab == 'tire' else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="tire_quantity">สต็อกเริ่มต้น*</label>
+                <input type="number" id="tire_quantity" name="quantity" value="{{ form_data.quantity if form_data and active_tab == 'tire' else 0 }}" min="0" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tire_price_per_item">ราคาต่อเส้น*</label>
+                <input type="number" step="0.01" id="tire_price_per_item" name="price_per_item" value="{{ form_data.price_per_item if form_data and active_tab == 'tire' else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="tire_year_of_manufacture">ปีผลิต (เช่น 24 หรือ 2024)</label>
+                <input type="number" id="tire_year_of_manufacture" name="year_of_manufacture" value="{{ form_data.year_of_manufacture if form_data and active_tab == 'tire' else current_year }}" min="0">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tire_cost_sc">ทุน SC</label>
+                <input type="number" step="0.01" id="tire_cost_sc" name="cost_sc" value="{{ form_data.cost_sc if form_data and active_tab == 'tire' else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="tire_cost_dunlop">ทุน Dunlop</label>
+                <input type="number" step="0.01" id="tire_cost_dunlop" name="cost_dunlop" value="{{ form_data.cost_dunlop if form_data and active_tab == 'tire' else '' }}">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tire_cost_online">ทุน Online</label>
+                <input type="number" step="0.01" id="tire_cost_online" name="cost_online" value="{{ form_data.cost_online if form_data and active_tab == 'tire' else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="tire_wholesale_price1">ราคาขายส่ง 1</label>
+                <input type="number" step="0.01" id="tire_wholesale_price1" name="wholesale_price1" value="{{ form_data.wholesale_price1 if form_data and active_tab == 'tire' else '' }}">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tire_wholesale_price2">ราคาขายส่ง 2</label>
+                <input type="number" step="0.01" id="tire_wholesale_price2" name="wholesale_price2" value="{{ form_data.wholesale_price2 if form_data and active_tab == 'tire' else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="tire_promotion_id">โปรโมชัน:</label>
+                <select id="tire_promotion_id" name="promotion_id">
+                    <option value="none">-- ไม่มีโปรโมชัน --</option>
+                    {% for promo in all_promotions %}
+                        <option value="{{ promo.id }}" {% if form_data.promotion_id and form_data.promotion_id == promo.id|string %}selected{% endif %}>
+                            {{ promo.name }} ({{ 'เปิดใช้งาน' if promo.is_active == 1 else 'ปิดใช้งาน' }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> เพิ่มยาง</button>
+    </form>
 </div>
 
-<style>
-    .required {
-        color: var(--danger-color);
-        font-weight: normal;
-        margin-left: 2px;
-    }
-</style>
+<div id="addWheel" class="tab-content {{ 'active' if active_tab == 'wheel' }}">
+    <h3>เพิ่มแม็กใหม่</h3>
+    <form id="addWheelForm" method="POST" action="{{ url_for('add_item') }}" enctype="multipart/form-data">
+        <input type="hidden" name="submit_type" value="add_wheel">
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="wheel_brand">ยี่ห้อ (เช่น Lenso)*</label>
+                <input type="text" id="wheel_brand" name="brand" value="{{ form_data.brand if form_data and active_tab == 'wheel' else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="wheel_model">ลาย (เช่น Project D-1)*</label>
+                <input type="text" id="wheel_model" name="model" value="{{ form_data.model if form_data and active_tab == 'wheel' else '' }}" required>
+            </div>
+        </div>
+
+        {# --- เพิ่มตรงนี้: ช่องสำหรับ Barcode ID สำหรับแม็ก --- #}
+        <div class="form-group">
+            <label for="wheel_barcode_id_for_add">Barcode ID (สำหรับแม็ก)</label>
+            <input type="text" id="wheel_barcode_id_for_add" name="barcode_id_for_add" value="{{ request.args.get('scanned_barcode', '') }}" autofocus>
+            <small class="form-text text-muted">ยิงบาร์โค้ดจากตัวแม็ก หรือพิมพ์รหัสบาร์โค้ดลงไป (เป็นทางเลือก)</small>
+        </div>
+        {# -------------------------------------------------- #}
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="wheel_diameter">ขอบ (นิ้ว)*</label>
+                <input type="number" step="0.1" id="wheel_diameter" name="diameter" value="{{ form_data.diameter if form_data and active_tab == 'wheel' else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="wheel_width">กว้าง (นิ้ว)*</label>
+                <input type="number" step="0.1" id="wheel_width" name="width" value="{{ form_data.width if form_data and active_tab == 'wheel' else '' }}" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="wheel_pcd">รู ET (เช่น 5/114.3 +35)*</label>
+                <input type="text" id="wheel_pcd" name="pcd" value="{{ form_data.pcd if form_data and active_tab == 'wheel' else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="wheel_et">ET (เป็นตัวเลขอย่างเดียว)</label>
+                <input type="number" id="wheel_et" name="et" value="{{ form_data.et if form_data and active_tab == 'wheel' else '' }}">
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="wheel_color">สี</label>
+                <input type="text" id="wheel_color" name="color" value="{{ form_data.color if form_data and active_tab == 'wheel' else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="wheel_quantity">สต็อกเริ่มต้น*</label>
+                <input type="number" id="wheel_quantity" name="quantity" value="{{ form_data.quantity if form_data and active_tab == 'wheel' else 0 }}" min="0" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="wheel_cost">ทุน (บาท)</label>
+                <input type="number" step="0.01" id="wheel_cost" name="cost" value="{{ form_data.cost if form_data and active_tab == 'wheel' else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="wheel_cost_online">ทุน Online (บาท)</label>
+                <input type="number" step="0.01" id="wheel_cost_online" name="cost_online" value="{{ form_data.cost_online if form_data and active_tab == 'wheel' else '' }}">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="wheel_wholesale_price1">ราคาขายส่ง 1 (บาท)</label>
+                <input type="number" step="0.01" id="wheel_wholesale_price1" name="wholesale_price1" value="{{ form_data.wholesale_price1 if form_data and active_tab == 'wheel' else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="wheel_wholesale_price2">ราคาขายส่ง 2 (บาท)</label>
+                <input type="number" step="0.01" id="wheel_wholesale_price2" name="wholesale_price2" value="{{ form_data.wholesale_price2 if form_data and active_tab == 'wheel' else '' }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="wheel_retail_price">ราคาขายปลีก (บาท)*</label>
+            <input type="number" step="0.01" id="wheel_retail_price" name="retail_price" value="{{ form_data.retail_price if form_data and active_tab == 'wheel' else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="wheel_image_file">รูปภาพ (เลือกอัปโหลดใหม่)</label>
+            <input type="file" id="wheel_image_file" name="image_file" accept="image/png, image/jpeg, image/gif">
+            {% if form_data.image_filename and active_tab == 'wheel' %}
+                <p>รูปภาพปัจจุบัน: <img src="{{ form_data.image_filename }}" alt="Current Wheel Image" style="max-width: 150px; margin-top: 10px;"></p>
+                <input type="hidden" name="existing_image_url" value="{{ form_data.image_filename }}">
+            {% endif %}
+        </div>
+        
+        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> เพิ่มแม็ก</button>
+    </form>
+</div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = document.querySelectorAll('.tab-content');
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTab = urlParams.get('tab') || 'tire';
+        const scannedBarcode = urlParams.get('scanned_barcode') || '';
 
-        function switchTab(tabId) {
-            tabContents.forEach(content => {
-                content.classList.remove('active');
-                if (content.id === tabId) {
-                    content.classList.add('active');
-                }
-            });
-            tabButtons.forEach(button => {
+        // Switch to the correct tab on load
+        document.querySelectorAll('.tab-button').forEach(button => {
+            if (button.dataset.tab === activeTab) {
+                button.classList.add('active');
+            } else {
                 button.classList.remove('active');
-                if (button.dataset.tab === tabId) {
-                    button.classList.add('active');
-                }
-            });
-            history.pushState(null, '', `?tab=${tabId}`);
-        }
-
-        tabButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const tabId = this.dataset.tab;
-                switchTab(tabId);
-            });
+            }
+        });
+        document.querySelectorAll('.tab-content').forEach(content => {
+            if (content.id === `add${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`) {
+                content.classList.add('active');
+            } else {
+                content.classList.remove('active');
+            }
         });
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const activeTabFromUrl = urlParams.get('tab');
-        const flaskActiveTab = "{{ active_tab }}"; 
-
-        if (flaskActiveTab && flaskActiveTab !== 'None') { 
-            switchTab(flaskActiveTab);
-        } else if (activeTabFromUrl) {
-            switchTab(activeTabFromUrl);
-        } else {
-            switchTab('tire'); 
+        // Set scanned barcode if present
+        if (scannedBarcode) {
+            if (activeTab === 'tire') {
+                document.getElementById('tire_barcode_id_for_add').value = scannedBarcode;
+            } else if (activeTab === 'wheel') {
+                document.getElementById('wheel_barcode_id_for_add').value = scannedBarcode;
+            }
         }
+
+        // Tab switching logic
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const targetTabId = this.dataset.tab;
+                
+                // Update URL parameter
+                urlParams.set('tab', targetTabId);
+                history.pushState(null, '', `?${urlParams.toString()}`);
+
+                // Update active classes
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(`add${targetTabId.charAt(0).toUpperCase() + targetTabId.slice(1)}`).classList.add('active');
+
+                // Set autofocus for barcode input on tab switch if it has content
+                const barcodeInputId = (targetTabId === 'tire' ? 'tire_barcode_id_for_add' : 'wheel_barcode_id_for_add');
+                document.getElementById(barcodeInputId).focus();
+            });
+        });
     });
 </script>
+
 {% endblock %}
