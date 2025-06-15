@@ -1959,6 +1959,88 @@ def api_scan_item_lookup():
         "action_required": "link_new_barcode", # บอก Frontend ให้เปิด Modal เชื่อมโยง
         "scanned_barcode": scanned_barcode_string # ส่ง Barcode ที่สแกนกลับไปด้วย
     }), 404
+    
+@app.route('/api/process_stock_transaction', methods=['POST'])
+@login_required
+def api_process_stock_transaction():
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "message": "ไม่มีข้อมูลส่งมา"}), 400
+
+    transaction_type = data.get('type') # 'IN' or 'OUT'
+    items_to_process = data.get('items', [])
+    notes = data.get('notes', '') # รับ notes จาก Frontend
+    user_id = current_user.id if current_user.is_authenticated else None
+
+    if transaction_type not in ['IN', 'OUT']:
+        return jsonify({"success": False, "message": "ประเภทการทำรายการไม่ถูกต้อง (ต้องเป็น IN หรือ OUT)"}), 400
+    if not items_to_process:
+        return jsonify({"success": False, "message": "ไม่มีรายการสินค้าให้ทำรายการ"}), 400
+
+    conn = get_db()
+    # ใช้ try...except บล็อกเพื่อให้แน่ใจว่ามีการ rollback transaction ถ้าเกิดข้อผิดพลาด
+    try:
+        # เริ่มต้น transaction (สำหรับ psycopg2 จะจัดการโดยอัตโนมัติเมื่อใช้ cursor, สำหรับ SQLite อาจต้องใช้ conn.begin() หากต้องการ Transaction แยกย่อย)
+        # conn.autocommit = False # ถ้าใช้ psycopg2 และต้องการควบคุม transaction เอง
+        
+        # สำหรับ SQLite ที่ไม่มี explicit begin() ต้องมั่นใจว่าการ execute แต่ละครั้งอยู่ใน scope ที่ต้องการ
+        # ในที่นี้ เราจะให้ Flask จัดการ conn.commit() หรือ conn.rollback() ท้ายสุด
+        
+        for item in items_to_process:
+            item_id = item.get('id')
+            item_type = item.get('item_type')
+            quantity_change = item.get('quantity') # ใช้ quantity_change เพื่อสื่อถึงจำนวนที่เปลี่ยน
+
+            # ตรวจสอบข้อมูลพื้นฐาน
+            if not item_id or not item_type or not quantity_change or not isinstance(quantity_change, int) or quantity_change <= 0:
+                # ถ้าข้อมูลไม่สมบูรณ์ ให้ rollback ทันที
+                conn.rollback() 
+                return jsonify({"success": False, "message": f"ข้อมูลสินค้าไม่สมบูรณ์สำหรับรายการ ID: {item_id}"}), 400
+
+            # ดึงสต็อกปัจจุบันเพื่อตรวจสอบ
+            current_qty = 0
+            db_item = None
+            if item_type == 'tire':
+                db_item = database.get_tire(conn, item_id)
+            elif item_type == 'wheel':
+                db_item = database.get_wheel(conn, item_id)
+            else:
+                conn.rollback()
+                return jsonify({"success": False, "message": f"ประเภทสินค้าไม่ถูกต้อง: {item_type}"}), 400
+            
+            if not db_item:
+                conn.rollback()
+                return jsonify({"success": False, "message": f"ไม่พบสินค้า ID {item_id} ในฐานข้อมูล"}), 404
+            
+            current_qty = db_item['quantity']
+
+            new_qty = current_qty
+            if transaction_type == 'IN':
+                new_qty += quantity_change
+            elif transaction_type == 'OUT':
+                if current_qty < quantity_change:
+                    conn.rollback() # สำคัญ: Rollback หากสต็อกไม่พอ
+                    return jsonify({"success": False, "message": f"สต็อกไม่พอสำหรับ {db_item['brand'].title()} {db_item['model'].title()} (มีอยู่: {current_qty}, ต้องการ: {quantity_change})"}), 400
+                new_qty -= quantity_change
+            
+            # อัปเดตสต็อกหลักในตาราง tires/wheels
+            if item_type == 'tire':
+                database.update_tire_quantity(conn, item_id, new_qty)
+            elif item_type == 'wheel':
+                database.update_wheel_quantity(conn, item_id, new_qty)
+            
+            # บันทึกการเคลื่อนไหวในตาราง tire_movements/wheel_movements
+            if item_type == 'tire':
+                database.add_tire_movement(conn, item_id, transaction_type, quantity_change, new_qty, notes, None, user_id)
+            elif item_type == 'wheel':
+                database.add_wheel_movement(conn, item_id, transaction_type, quantity_change, new_qty, notes, None, user_id)
+
+        conn.commit() # ถ้าทุกรายการใน loop สำเร็จ ให้ commit transaction
+        return jsonify({"success": True, "message": f"ทำรายการ {transaction_type} สำเร็จสำหรับ {len(items_to_process)} รายการ"}), 200
+
+    except Exception as e:
+        conn.rollback() # หากเกิดข้อผิดพลาดใดๆ ให้ rollback transaction ทั้งหมด
+        return jsonify({"success": False, "message": f"เกิดข้อผิดพลาดในการทำรายการ ระบบทำการย้อนกลับข้อมูล: {str(e)}"}), 500
 
 # --- Main entry point ---
 if __name__ == '__main__':
