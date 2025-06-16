@@ -151,7 +151,7 @@
         display: none;
     }
     #qr-reader__scan_region {
-        border: 4px solid var(--primary-color); /* เพิ่มขอบให้เห็นชัดเจน */
+        border: 2px solid var(--primary-color); /* เพิ่มขอบให้เห็นชัดเจน */
     }
     #qr-reader video {
         width: 100% !important;
@@ -174,6 +174,7 @@
         <button id="startScanBtn" class="btn btn-primary"><i class="fas fa-camera"></i> เปิดกล้องสแกน</button>
         <button id="stopScanBtn" class="btn btn-secondary" style="display:none;"><i class="fas fa-stop-circle"></i> ปิดกล้องสแกน</button>
     </div>
+    <div id="qr-reader"></div>
     <div id="qr-reader-results" style="text-align: center; margin-top: 10px;"></div>
     {# ------------------------------------------------ #}
 
@@ -353,7 +354,7 @@
         { facingMode: "environment" },
         {
             fps: 10,
-            qrbox: {width: 200, height: 50} // กำหนดขนาดของกล่องสแกน
+            qrbox: {width: 250, height: 100} // กำหนดขนาดของกล่องสแกน
         },
         barcode => {
             console.log("Scanned barcode:", barcode);
