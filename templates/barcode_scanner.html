@@ -163,6 +163,7 @@
 </style>
 
 <div class="barcode-scan-section">
+	<audio id="scanSuccessSound" src="https://cdn.freesound.org/previews/148/148694_2512692-lq.mp3" preload="auto"></audio>
     <h2>ตัดสต็อกด้วยบาร์โค้ด</h2>
 
     <div class="form-group">
@@ -204,8 +205,7 @@
     <div class="action-buttons">
         <button id="processInBtn" class="btn btn-success">รับเข้าสต็อก</button>
         <button id="processOutBtn" class="btn btn-danger">จ่ายออกสต็อก</button>
-        <button id="clearAllBtn" class="btn btn-secondary">ล้างรายการทั้งหมด</button>
-    </div>
+        </div>
 </div>
 
 {# Modal สำหรับเชื่อมโยงบาร์โค้ด #}
@@ -239,7 +239,7 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         console.log("--- DOMContentLoaded event fired ---");
-
+		const scanSuccessSound = document.getElementById('scanSuccessSound');
         const barcodeInput = document.getElementById('barcodeInput');
         const scanStatus = document.getElementById('scanStatus');
         const scannedItemsTableBody = document.querySelector('#scannedItemsTable tbody');
@@ -274,7 +274,7 @@
         let scannedItems = {};
         let currentTimeout = null; // Used for input debounce (physical scanner)
         let isProcessingScan = false; // Flag to prevent rapid processing from camera scan
-        const SCAN_COOLDOWN_TIME = 1500; // 1.5 วินาที Cooldown Time (ปรับได้ตามความเหมาะสม)
+        const SCAN_COOLDOWN_TIME = 3000; // 1.5 วินาที Cooldown Time (ปรับได้ตามความเหมาะสม)
         let lastScannedBarcode = ''; // Keep track of the last scanned barcode from camera
         let lastScanTime = 0; // Keep track of when the last barcode was processed from camera
 
@@ -284,6 +284,36 @@
             scanStatus.className = `flash-message flash-${type}`;
             scanStatus.style.display = 'block';
             setTimeout(() => { scanStatus.textContent = ''; scanStatus.style.display = 'none'; }, 3000);
+        }
+		
+		// --- ฟังก์ชันใหม่สำหรับเล่นเสียง/สั่น ---
+        function playScanFeedback() {
+            // ตรวจสอบว่าเบราว์เซอร์รองรับ Vibration API หรือไม่
+            if ("vibrate" in navigator) {
+                // ถ้าปิดเสียง ให้สั่นแทน
+                // คุณอาจจะต้องมีปุ่ม/checkbox สำหรับผู้ใช้ในการเลือกเปิด/ปิดเสียง
+                // ในตัวอย่างนี้ สมมติว่ามีตัวแปร isSoundEnabled ที่ควบคุมอยู่
+                // หรือจะใช้ logic ง่ายๆ เช่น ถ้าเล่นเสียงไม่ได้ ให้สั่น
+                if (scanSuccessSound && scanSuccessSound.paused) { // ถ้าเสียงถูก pause หรือไม่มีเสียง
+                    navigator.vibrate(200); // สั่น 200 มิลลิวินาที
+                    console.log("Device vibrated.");
+                } else if (scanSuccessSound) {
+                    scanSuccessSound.play().catch(e => {
+                        console.warn("Could not play sound, attempting to vibrate:", e);
+                        navigator.vibrate(200); // สั่นหากเล่นเสียงไม่ได้
+                    });
+                } else {
+                    // หากไม่มี element เสียงเลย ให้สั่นอย่างเดียว
+                    navigator.vibrate(200);
+                }
+            } else if (scanSuccessSound) {
+                 // ถ้าไม่รองรับการสั่น ให้เล่นเสียงอย่างเดียว
+                 scanSuccessSound.play().catch(e => {
+                    console.warn("Could not play sound:", e);
+                 });
+            } else {
+                console.log("No audio element or vibration support for feedback.");
+            }
         }
 
         // Function to render scanned items table
@@ -449,6 +479,7 @@
                             }
                             showStatus(`สแกน ${item_data.brand.charAt(0).toUpperCase() + item_data.brand.slice(1)} ${item_data.model.charAt(0).toUpperCase() + item_data.model.slice(1)} สำเร็จ!`, 'success');
                             renderScannedItems();
+							playScanFeedback();
                         } else {
                             showStatus('ข้อมูลไม่สมบูรณ์จากเซิร์ฟเวอร์', 'danger');
                         }
@@ -465,6 +496,7 @@
                     isProcessingScan = false; // รีเซ็ต flag หากเกิดข้อผิดพลาด
                     console.error('Error in fetch lookup:', error);
                     showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
+					// playScanFeedback();
                 });
         }
         // ------------------------------------------------------------------
