@@ -216,8 +216,8 @@
 {# ------------------------------------------------- #}
 
 <script>
-    console.log("=== barcode_scanner.html: Script parsing started ==="); // Debug: Very first log
-    
+    console.log("=== barcode_scanner.html: Script parsing started ==="); // Debug 1
+
     document.addEventListener('DOMContentLoaded', function() {
         console.log("--- DOMContentLoaded event fired ---"); // Debug 2
 
@@ -251,6 +251,7 @@
             console.error("DEBUG: Missing critical HTML elements for camera scan. Check IDs in HTML."); // Debug: More specific error for missing elements
             showStatus("เกิดข้อผิดพลาด: ไม่พบ Element สำหรับกล้องสแกน", 'danger');
         }
+
 
         let scannedItems = {};
         let currentTimeout = null;
