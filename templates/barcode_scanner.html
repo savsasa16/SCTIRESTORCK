@@ -239,10 +239,13 @@
 {# ------------------------------------------------- #}
 
 <script>
-    console.log("=== barcode_scanner.html: Script parsing started ===");
+    console.log("=== barcode_scanner.html: Script parsing started ==="); // Debug 1
+
+    // แก้ไข: ย้ายการประกาศ scannedItems ออกมานอก DOMContentLoaded
+    let scannedItems = {}; // ประกาศตัวแปรนี้ที่ Global Scope
 
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("--- DOMContentLoaded event fired ---");
+        console.log("--- DOMContentLoaded event fired ---"); // Debug 2
 
         const barcodeInput = document.getElementById('barcodeInput');
         const scanStatus = document.getElementById('scanStatus');
@@ -272,15 +275,15 @@
         const scanSuccessSound = document.getElementById('scanSuccessSound'); 
         let currentTimeout = null; // Used for input debounce (physical scanner)
         let isProcessingScan = false; // Flag to prevent rapid processing from camera scan
-        const SCAN_COOLDOWN_TIME = 3000; // 1.5 วินาที Cooldown Time (ปรับได้ตามความเหมาะสม)
+        const SCAN_COOLDOWN_TIME = 1500; // 1.5 วินาที Cooldown Time (ปรับได้ตามความเหมาะสม, เดิม 3000ms อาจจะนานไป)
         let lastScannedBarcode = ''; // Keep track of the last scanned barcode from camera
         let lastScanTime = 0; // Keep track of when the last barcode was processed from camera
         // ------------------------------------------
 
-        console.log("Elements fetched. startScanBtn:", startScanBtn, "qrReaderDiv:", qrReaderDiv);
+        console.log("Elements fetched. startScanBtn:", startScanBtn, "qrReaderDiv:", qrReaderDiv); // Debug 3
 
         if (!startScanBtn || !qrReaderDiv) {
-            console.error("DEBUG: Missing critical HTML elements for camera scan. Check IDs in HTML.");
+            console.error("DEBUG: Missing critical HTML elements for camera scan. Check IDs in HTML."); // Debug: More specific error for missing elements
             showStatus("เกิดข้อผิดพลาด: ไม่พบ Element สำหรับกล้องสแกน", 'danger');
         }
         
@@ -440,15 +443,17 @@
             console.log("processScannedBarcode called with:", barcode);
 
             // สำหรับ Physical Scanner (barcodeInput)
-            if (barcodeInput.value !== '') { // ถ้ามาจากช่อง input แสดงว่าเป็น physical scanner
+            // เช็คว่าการเรียกมาจาก input field จริงๆ (ไม่ได้มาจาก camera callback)
+            // โดยการเช็คว่า barcodeInput มี focus หรือมีค่า
+            if (document.activeElement === barcodeInput || (barcodeInput.value && barcode === barcodeInput.value)) { 
                 if (currentTimeout) {
                     clearTimeout(currentTimeout);
                 }
                 currentTimeout = setTimeout(() => {
                     fetchAndProcess(barcode);
+                    barcodeInput.value = ''; // เคลียร์ค่า input หลังประมวลผล (สำหรับ physical scanner)
                 }, 100); // Debounce for physical scanner
-            } else { // ถ้ามาจากกล้อง
-                 // กล้องมี debounce ใน callback แล้ว ไม่ต้องมี setTimeout ซ้ำ
+            } else { // ถ้ามาจากกล้อง (ไม่มี setTimeout เพราะจัดการ debounce ใน callback ของ html5QrCode.start แล้ว)
                  fetchAndProcess(barcode);
             }
         }
@@ -482,6 +487,7 @@
                             playScanFeedback(); // <-- เรียกใช้ฟังก์ชัน Feedback เมื่อสำเร็จ
                         } else {
                             showStatus('ข้อมูลไม่สมบูรณ์จากเซิร์ฟเวอร์', 'danger');
+                            playScanFeedback(); // Feedback สำหรับกรณีข้อมูลไม่สมบูรณ์
                         }
                     } else {
                         showStatus(data.message, 'danger');
@@ -489,7 +495,7 @@
                             modalScannedBarcodeSpan.textContent = data.scanned_barcode;
                             linkBarcodeModal.style.display = 'block';
                             linkBarcodeModal.dataset.scannedBarcode = data.scanned_barcode; 
-                            playScanFeedback(); // อาจจะเล่นเสียง/สั่นเตือนเมื่อบาร์โค้ดไม่รู้จักด้วย
+                            playScanFeedback(); // Feedback เมื่อบาร์โค้ดไม่รู้จัก
                         }
                     }
                 })
@@ -497,7 +503,7 @@
                     isProcessingScan = false; // รีเซ็ต flag หากเกิดข้อผิดพลาด
                     console.error('Error in fetch lookup:', error);
                     showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
-                    // playScanFeedback(); // อาจจะเล่นเสียง/สั่นเตือนเมื่อเกิด error ด้วย
+                    playScanFeedback(); // Feedback เมื่อเกิด error
                 });
         }
         // ------------------------------------------------------------------
@@ -507,11 +513,9 @@
             if (e.key === 'Enter') {
                 e.preventDefault(); // Prevent form submission
                 const barcode = this.value.trim();
-                this.value = ''; // Clear input field
-
+                // this.value = ''; // ย้ายไปใน setTimeout ของ physical scanner เพื่อให้ clear หลัง debounce
                 if (barcode) {
-                    // ใช้ processScannedBarcode ซึ่งมี debounce สำหรับ physical scanner อยู่แล้ว
-                    processScannedBarcode(barcode); 
+                    processScannedBarcode(barcode); // เรียกใช้ฟังก์ชันประมวลผลรวม
                 }
             }
         });
@@ -574,6 +578,7 @@
         processOutBtn.addEventListener('click', () => processTransaction('OUT'));
 
         renderScannedItems(); // Initial render
+        // renderScannedItems(); // ลบการเรียกซ้ำนี้ออก
 
         // --- Modal related JavaScript ---
         closeButton.addEventListener('click', () => {
