@@ -217,48 +217,6 @@
 
 <script>
     console.log("=== barcode_scanner.html: Script parsing started ==="); // Debug 1
-	
-	
-	startScanBtn.addEventListener('click', () => {
-    qrReaderDiv.style.display = 'block';
-    stopScanBtn.style.display = 'inline-block';
-    startScanBtn.style.display = 'none';
-
-    html5QrCode = new Html5Qrcode("qr-reader");
-    html5QrCode.start(
-        { facingMode: "environment" },
-        {
-            fps: 10,
-            qrbox: 250
-        },
-        barcode => {
-            console.log("Scanned barcode:", barcode);
-            processScannedBarcode(barcode); // ใช้ฟังก์ชันที่มีอยู่แล้ว
-        },
-        errorMessage => {
-            // แสดงเฉพาะถ้าต้องการ debug
-            // console.warn(`QR code scan error: ${errorMessage}`);
-        }
-    ).catch(err => {
-        console.error("Failed to start scanner:", err);
-        showStatus("ไม่สามารถเปิดกล้องได้: " + err, 'danger');
-    });
-});
-
-stopScanBtn.addEventListener('click', () => {
-    if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-            html5QrCode.clear();
-            qrReaderDiv.style.display = 'none';
-            stopScanBtn.style.display = 'none';
-            startScanBtn.style.display = 'inline-block';
-        }).catch(err => {
-            console.error("Failed to stop scanner:", err);
-            showStatus("ไม่สามารถปิดกล้องได้: " + err, 'danger');
-        });
-    }
-});
-
 
     document.addEventListener('DOMContentLoaded', function() {
         console.log("--- DOMContentLoaded event fired ---"); // Debug 2
@@ -320,7 +278,6 @@ stopScanBtn.addEventListener('click', () => {
                 if (item.type === 'tire') {
                     spec_info = item.size;
                 } else if (item.type === 'wheel') {
-                    // แก้ไขตรงนี้: ลบ 'span class="math-inline"' และ backslash ออก
                     spec_info = `${item.diameter || ''}x${item.width || ''} ${item.pcd || ''} ${item.et ? item.et : ''}`;
                 }
 
@@ -336,7 +293,7 @@ stopScanBtn.addEventListener('click', () => {
                     <td>
                         <button class="btn btn-danger btn-sm remove-item-btn" data-barcode-id="${barcode_id}"><i class="fas fa-times"></i></button>
                     </td>
-                `; // <--- แก้ไขตรงนี้: ลบ 'span class="math-inline"' และ backslash ออกใน innerHTML ด้วย
+                `;
                 scannedItemsTableBody.appendChild(row);
             }
 
