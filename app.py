@@ -618,10 +618,7 @@ def edit_tire(tire_id):
         return redirect(url_for('index', tab='tires'))
 
     all_promotions = database.get_all_promotions(conn, include_inactive=True)
-    
     tire_barcodes = database.get_barcodes_for_tire(conn, tire_id)
-    
-    print(f"DEBUG: tire_id={tire_id}, Fetched tire_barcodes: {tire_barcodes}")
 
     if request.method == 'POST':
         brand = request.form['brand'].strip().lower()
@@ -672,7 +669,7 @@ def edit_tire(tire_id):
                 else:
                     flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูลยาง: {e}', 'danger')
 
-    return render_template('edit_tire.html', tire=tire, current_year=current_year, all_promotions=all_promotions)
+    return render_template('edit_tire.html', tire=tire, current_year=current_year, all_promotions=all_promotions, tire_barcodes=tire_barcodes)
     
 @app.route('/api/tire/<int:tire_id>/barcodes', methods=['POST', 'DELETE'])
 @login_required
@@ -843,7 +840,7 @@ def edit_wheel(wheel_id):
                 else:
                     flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูลแม็ก: {e}', 'danger')
 
-    return render_template('edit_wheel.html', wheel=wheel, current_year=current_year)
+    return render_template('edit_wheel.html', wheel=wheel, current_year=current_year, wheel_barcodes=wheel_barcodes)
 
 @app.route('/api/wheel/<int:wheel_id>/barcodes', methods=['POST', 'DELETE'])
 @login_required
