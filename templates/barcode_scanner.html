@@ -142,16 +142,16 @@
         cursor: pointer;
     }
 
-    /* สไตล์สำหรับปรับขนาดกล้อง */
+    /* สไตล์สำหรับปรับขนาดกล้องให้ responsive */
     #qr-reader {
-    width: 100%; /* ให้ใช้ความกว้างเต็มพื้นที่ของ container */
-    max-width: 450px; /* จำกัดความกว้างสูงสุดตามที่คุณต้องการ */
-    aspect-ratio: 450 / 250; /* รักษาสัดส่วน 450px กว้าง ต่อ 250px สูง */
-    height: auto; /* ให้ความสูงปรับตาม aspect-ratio */
-    overflow: hidden;
-    margin: 0 auto;
-    /* display: none; */ /* ยังคงซ่อนไว้ก่อน */
-}
+        width: 100%; /* ให้ใช้ความกว้างเต็มพื้นที่ของ container */
+        max-width: 450px; /* จำกัดความกว้างสูงสุดตามที่คุณต้องการ */
+        aspect-ratio: 450 / 250; /* รักษาสัดส่วน 450px กว้าง ต่อ 250px สูง */
+        height: auto; /* ให้ความสูงปรับตาม aspect-ratio */
+        overflow: hidden; /* ซ่อนส่วนเกิน */
+        margin: 0 auto;
+        display: none; /* ซ่อนไว้ก่อน */
+    }
     #qr-reader__scan_region {
         border: 2px solid var(--primary-color); /* เพิ่มขอบให้เห็นชัดเจน */
     }
@@ -163,7 +163,6 @@
 </style>
 
 <div class="barcode-scan-section">
-	<audio id="scanSuccessSound" src="https://cdn.freesound.org/previews/148/148694_2512692-lq.mp3" preload="auto"></audio>
     <h2>ตัดสต็อกด้วยบาร์โค้ด</h2>
 
     <div class="form-group">
@@ -177,7 +176,7 @@
         <button id="startScanBtn" class="btn btn-primary"><i class="fas fa-camera"></i> เปิดกล้องสแกน</button>
         <button id="stopScanBtn" class="btn btn-secondary" style="display:none;"><i class="fas fa-stop-circle"></i> ปิดกล้องสแกน</button>
     </div>
-    <div id="qr-reader"></div>
+    <div id="qr-reader"></div> {# แก้ไขตรงนี้: ลบ inline style ออก #}
     <div id="qr-reader-results" style="text-align: center; margin-top: 10px;"></div>
     {# ------------------------------------------------ #}
 
@@ -205,7 +204,8 @@
     <div class="action-buttons">
         <button id="processInBtn" class="btn btn-success">รับเข้าสต็อก</button>
         <button id="processOutBtn" class="btn btn-danger">จ่ายออกสต็อก</button>
-        </div>
+        <button id="clearAllBtn" class="btn btn-secondary">ล้างรายการทั้งหมด</button>
+    </div>
 </div>
 
 {# Modal สำหรับเชื่อมโยงบาร์โค้ด #}
@@ -230,6 +230,10 @@
     </div>
 </div>
 
+{# --- เพิ่ม Audio element สำหรับเสียงแจ้งเตือน --- #}
+<audio id="scanSuccessSound" src="https://cdn.freesound.org/previews/148/148694_2512692-lq.mp3" preload="auto"></audio>
+{# --------------------------------------------- #}
+
 {# --- เพิ่ม Script Library ของ html5-qrcode ที่นี่ --- #}
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 {# ------------------------------------------------- #}
@@ -239,7 +243,7 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         console.log("--- DOMContentLoaded event fired ---");
-		const scanSuccessSound = document.getElementById('scanSuccessSound');
+
         const barcodeInput = document.getElementById('barcodeInput');
         const scanStatus = document.getElementById('scanStatus');
         const scannedItemsTableBody = document.querySelector('#scannedItemsTable tbody');
@@ -264,20 +268,22 @@
         let html5QrCode = null; // Instance for Html5Qrcode
         // -----------------------------
 
+        // --- Audio/Vibration Elements and Flags ---
+        const scanSuccessSound = document.getElementById('scanSuccessSound'); 
+        let currentTimeout = null; // Used for input debounce (physical scanner)
+        let isProcessingScan = false; // Flag to prevent rapid processing from camera scan
+        const SCAN_COOLDOWN_TIME = 3000; // 1.5 วินาที Cooldown Time (ปรับได้ตามความเหมาะสม)
+        let lastScannedBarcode = ''; // Keep track of the last scanned barcode from camera
+        let lastScanTime = 0; // Keep track of when the last barcode was processed from camera
+        // ------------------------------------------
+
         console.log("Elements fetched. startScanBtn:", startScanBtn, "qrReaderDiv:", qrReaderDiv);
 
         if (!startScanBtn || !qrReaderDiv) {
             console.error("DEBUG: Missing critical HTML elements for camera scan. Check IDs in HTML.");
             showStatus("เกิดข้อผิดพลาด: ไม่พบ Element สำหรับกล้องสแกน", 'danger');
         }
-
-        let scannedItems = {};
-        let currentTimeout = null; // Used for input debounce (physical scanner)
-        let isProcessingScan = false; // Flag to prevent rapid processing from camera scan
-        const SCAN_COOLDOWN_TIME = 3000; // 1.5 วินาที Cooldown Time (ปรับได้ตามความเหมาะสม)
-        let lastScannedBarcode = ''; // Keep track of the last scanned barcode from camera
-        let lastScanTime = 0; // Keep track of when the last barcode was processed from camera
-
+        
         // Function to display messages
         function showStatus(message, type = 'info') {
             scanStatus.textContent = message;
@@ -285,25 +291,19 @@
             scanStatus.style.display = 'block';
             setTimeout(() => { scanStatus.textContent = ''; scanStatus.style.display = 'none'; }, 3000);
         }
-		
-		// --- ฟังก์ชันใหม่สำหรับเล่นเสียง/สั่น ---
+
+        // --- ฟังก์ชันใหม่สำหรับเล่นเสียง/สั่น ---
         function playScanFeedback() {
             // ตรวจสอบว่าเบราว์เซอร์รองรับ Vibration API หรือไม่
             if ("vibrate" in navigator) {
-                // ถ้าปิดเสียง ให้สั่นแทน
-                // คุณอาจจะต้องมีปุ่ม/checkbox สำหรับผู้ใช้ในการเลือกเปิด/ปิดเสียง
-                // ในตัวอย่างนี้ สมมติว่ามีตัวแปร isSoundEnabled ที่ควบคุมอยู่
-                // หรือจะใช้ logic ง่ายๆ เช่น ถ้าเล่นเสียงไม่ได้ ให้สั่น
-                if (scanSuccessSound && scanSuccessSound.paused) { // ถ้าเสียงถูก pause หรือไม่มีเสียง
-                    navigator.vibrate(200); // สั่น 200 มิลลิวินาที
-                    console.log("Device vibrated.");
-                } else if (scanSuccessSound) {
+                // พยายามเล่นเสียงก่อน
+                if (scanSuccessSound) {
                     scanSuccessSound.play().catch(e => {
                         console.warn("Could not play sound, attempting to vibrate:", e);
-                        navigator.vibrate(200); // สั่นหากเล่นเสียงไม่ได้
+                        navigator.vibrate(200); // สั่น 200 มิลลิวินาที หากเล่นเสียงไม่ได้
                     });
                 } else {
-                    // หากไม่มี element เสียงเลย ให้สั่นอย่างเดียว
+                    // หากไม่มี element เสียง ให้สั่นอย่างเดียว
                     navigator.vibrate(200);
                 }
             } else if (scanSuccessSound) {
@@ -315,6 +315,7 @@
                 console.log("No audio element or vibration support for feedback.");
             }
         }
+        // ------------------------------------
 
         // Function to render scanned items table
         function renderScannedItems() {
@@ -389,14 +390,13 @@
                 { facingMode: "environment" },
                 {
                     fps: 10,
-                    qrbox: {width: 450, height: 250} // กำหนดขนาดของกล่องสแกนตามที่คุณปรับล่าสุด
+                    qrbox: {width: 450, height: 250} // กำหนดขนาดของกล่องสแกน
                 },
                 (decodedText, decodedResult) => { // decodedText คือ barcode ที่สแกนได้
                     // นี่คือจุดสำคัญ: เพิ่ม Debounce Logic สำหรับกล้อง
                     const currentTime = new Date().getTime();
                     // ตรวจสอบว่าบาร์โค้ดเหมือนเดิมหรือไม่ และผ่านช่วง Cooldown หรือยัง
                     if (decodedText === lastScannedBarcode && (currentTime - lastScanTime) < SCAN_COOLDOWN_TIME) {
-                        // ไม่ต้องทำอะไร ถ้าบาร์โค้ดซ้ำและยังอยู่ในช่วง Cooldown
                         console.log("Ignored duplicate scan within cooldown period:", decodedText);
                         return; 
                     }
@@ -479,7 +479,7 @@
                             }
                             showStatus(`สแกน ${item_data.brand.charAt(0).toUpperCase() + item_data.brand.slice(1)} ${item_data.model.charAt(0).toUpperCase() + item_data.model.slice(1)} สำเร็จ!`, 'success');
                             renderScannedItems();
-							playScanFeedback();
+                            playScanFeedback(); // <-- เรียกใช้ฟังก์ชัน Feedback เมื่อสำเร็จ
                         } else {
                             showStatus('ข้อมูลไม่สมบูรณ์จากเซิร์ฟเวอร์', 'danger');
                         }
@@ -489,6 +489,7 @@
                             modalScannedBarcodeSpan.textContent = data.scanned_barcode;
                             linkBarcodeModal.style.display = 'block';
                             linkBarcodeModal.dataset.scannedBarcode = data.scanned_barcode; 
+                            playScanFeedback(); // อาจจะเล่นเสียง/สั่นเตือนเมื่อบาร์โค้ดไม่รู้จักด้วย
                         }
                     }
                 })
@@ -496,7 +497,7 @@
                     isProcessingScan = false; // รีเซ็ต flag หากเกิดข้อผิดพลาด
                     console.error('Error in fetch lookup:', error);
                     showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
-					// playScanFeedback();
+                    // playScanFeedback(); // อาจจะเล่นเสียง/สั่นเตือนเมื่อเกิด error ด้วย
                 });
         }
         // ------------------------------------------------------------------
