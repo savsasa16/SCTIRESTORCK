@@ -212,7 +212,7 @@
 <div id="linkBarcodeModal" class="modal">
     <div class="modal-content">
         <span class="close-button">&times;</span>
-        <h4>บาร์โค้ดไม่รู้จัก: <span id="modalScannedBarcode"></span></h4>
+        <h4>ไม่มีบาร์โค้ดนี้ในระบบ: <span id="modalScannedBarcode"></span></h4>
         <p>กรุณาเลือกว่าต้องการเพิ่มสินค้าใหม่ หรือเชื่อมโยงบาร์โค้ดนี้กับสินค้าที่มีอยู่</p>
         
         <div class="form-group">
@@ -275,7 +275,7 @@
         const scanSuccessSound = document.getElementById('scanSuccessSound'); 
         let currentTimeout = null; // Used for input debounce (physical scanner)
         let isProcessingScan = false; // Flag to prevent rapid processing from camera scan
-        const SCAN_COOLDOWN_TIME = 1500; // 1.5 วินาที Cooldown Time (ปรับได้ตามความเหมาะสม, เดิม 3000ms อาจจะนานไป)
+        const SCAN_COOLDOWN_TIME = 3000; // 1.5 วินาที Cooldown Time (ปรับได้ตามความเหมาะสม, เดิม 3000ms อาจจะนานไป)
         let lastScannedBarcode = ''; // Keep track of the last scanned barcode from camera
         let lastScanTime = 0; // Keep track of when the last barcode was processed from camera
         // ------------------------------------------
