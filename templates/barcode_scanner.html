@@ -216,10 +216,10 @@
 {# ------------------------------------------------- #}
 
 <script>
-    console.log("Script loaded, DOMContentLoaded listener is about to run."); // Debug 1
-
+    console.log("=== barcode_scanner.html: Script parsing started ==="); // Debug: Very first log
+    
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("DOMContentLoaded event fired."); // Debug 2
+        console.log("--- DOMContentLoaded event fired ---"); // Debug 2
 
         const barcodeInput = document.getElementById('barcodeInput');
         const scanStatus = document.getElementById('scanStatus');
@@ -247,11 +247,10 @@
 
         console.log("Elements fetched. startScanBtn:", startScanBtn, "qrReaderDiv:", qrReaderDiv); // Debug 3
 
-        // เพิ่มการตรวจสอบว่า element มีอยู่จริงหรือไม่ (หากยังไม่แสดง)
         if (!startScanBtn || !qrReaderDiv) {
-            console.error("DEBUG: Missing critical HTML elements for camera scan. Check IDs.");
+            console.error("DEBUG: Missing critical HTML elements for camera scan. Check IDs in HTML."); // Debug: More specific error for missing elements
+            showStatus("เกิดข้อผิดพลาด: ไม่พบ Element สำหรับกล้องสแกน", 'danger');
         }
-
 
         let scannedItems = {};
         let currentTimeout = null;
