@@ -411,6 +411,10 @@ def add_item():
             size = request.form['size'].strip()
             quantity = request.form['quantity']
 
+            # --- แก้ไขตรงนี้: Barcode ID เป็นทางเลือก (optional) ---
+            scanned_barcode_for_add = request.form.get('barcode_id_for_add', '').strip()
+            # ----------------------------------------------------
+
             cost_sc = request.form.get('cost_sc')
             price_per_item = request.form['price_per_item']
 
@@ -431,6 +435,16 @@ def add_item():
                 flash('กรุณากรอกข้อมูลยางให้ครบถ้วนในช่องที่มีเครื่องหมาย *', 'danger')
                 active_tab = 'tire'
                 return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
+            
+            # --- เพิ่ม/ปรับการตรวจสอบ Barcode ID ที่กรอกมา (ถ้ามี) ---
+            if scanned_barcode_for_add: # ตรวจสอบเฉพาะถ้ามีการกรอก Barcode ID
+                existing_barcode_tire_id = database.get_tire_id_by_barcode(conn, scanned_barcode_for_add)
+                existing_barcode_wheel_id = database.get_wheel_id_by_barcode(conn, scanned_barcode_for_add)
+                if existing_barcode_tire_id or existing_barcode_wheel_id:
+                    flash(f"Barcode ID '{scanned_barcode_for_add}' มีอยู่ในระบบแล้ว. ไม่สามารถใช้ซ้ำได้.", 'danger')
+                    active_tab = 'tire'
+                    return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
+            # --------------------------------------------------------
 
             try:
                 quantity = int(quantity)
@@ -444,25 +458,46 @@ def add_item():
                 
                 year_of_manufacture = year_of_manufacture.strip() if year_of_manufacture and year_of_manufacture.strip() else None
 
-                database.add_tire(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, 
-                                  wholesale_price1, wholesale_price2, price_per_item, 
-                                  promotion_id_db, 
-                                  year_of_manufacture,
-                                  user_id=current_user_id)
-                flash('เพิ่มยางใหม่สำเร็จ!', 'success')
+                cursor = conn.cursor()
+                if "psycopg2" in str(type(conn)):
+                    cursor.execute("SELECT id FROM tires WHERE brand = %s AND model = %s AND size = %s", (brand, model, size))
+                else:
+                    cursor.execute("SELECT id FROM tires WHERE brand = ? AND model = ? AND size = ?", (brand, model, size))
+                
+                existing_tire = cursor.fetchone()
+
+                if existing_tire:
+                    flash(f'ยาง {brand.title()} รุ่น {model.title()} เบอร์ {size} มีอยู่ในระบบแล้ว หากต้องการแก้ไข กรุณาไปที่หน้าสต็อก', 'warning')
+                else:
+                    new_tire_id = database.add_tire(conn, brand, model, size, quantity,
+                                                    cost_sc, cost_dunlop, cost_online,
+                                                    wholesale_price1, wholesale_price2,
+                                                    price_per_item, promotion_id_db,
+                                                    year_of_manufacture,
+                                                    user_id=current_user_id)
+                    # --- เพิ่มตรงนี้: บันทึก Barcode ID สำหรับยาง (เฉพาะถ้ามีการกรอก) ---
+                    if scanned_barcode_for_add:
+                        database.add_tire_barcode(conn, new_tire_id, scanned_barcode_for_add, is_primary=True)
+                    # -------------------------------------------------------------------
+                    database.add_tire_movement(conn, new_tire_id, 'IN', quantity, quantity, "Initial Stock (Manual Add)", None, user_id=current_user.id)
+                    conn.commit()
+                    flash(f'เพิ่มยาง {brand.title()} รุ่น {model.title()} เบอร์ {size} จำนวน {quantity} เส้น สำเร็จ!', 'success')
                 return redirect(url_for('add_item', tab='tire'))
 
             except ValueError:
+                conn.rollback()
                 flash('ข้อมูลตัวเลขไม่ถูกต้อง กรุณาตรวจสอบ', 'danger')
                 active_tab = 'tire'
                 return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
             except (sqlite3.IntegrityError, Exception) as e:
+                conn.rollback()
                 if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
-                    flash(f'ยางยี่ห้อ {brand} รุ่น {model} เบอร์ {size} มีอยู่ในระบบแล้ว หากต้องการแก้ไข กรุณาไปที่หน้าสต็อก', 'warning')
+                    flash(f'เกิดข้อผิดพลาด: ข้อมูลซ้ำซ้อนในระบบ หรือ Barcode ID นี้มีอยู่แล้ว. รายละเอียด: {e}', 'warning')
                 else:
                     flash(f'เกิดข้อผิดพลาดในการเพิ่มยาง: {e}', 'danger')
                 active_tab = 'tire'
                 return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
+
 
         elif submit_type == 'add_wheel':
             brand = request.form['brand'].strip().lower()
@@ -471,6 +506,10 @@ def add_item():
             pcd = request.form['pcd'].strip()
             width = request.form['width']
             quantity = request.form['quantity']
+
+            # --- แก้ไขตรงนี้: Barcode ID เป็นทางเลือก (optional) ---
+            scanned_barcode_for_add = request.form.get('barcode_id_for_add', '').strip()
+            # ----------------------------------------------------
 
             cost = request.form.get('cost')
             retail_price = request.form['retail_price']
@@ -485,6 +524,16 @@ def add_item():
                 flash('กรุณากรอกข้อมูลแม็กให้ครบถ้วนในช่องที่มีเครื่องหมาย *', 'danger')
                 active_tab = 'wheel'
                 return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
+            
+            # --- เพิ่ม/ปรับการตรวจสอบ Barcode ID ที่กรอกมา (ถ้ามี) ---
+            if scanned_barcode_for_add: # ตรวจสอบเฉพาะถ้ามีการกรอก Barcode ID
+                existing_barcode_tire_id = database.get_tire_id_by_barcode(conn, scanned_barcode_for_add)
+                existing_barcode_wheel_id = database.get_wheel_id_by_barcode(conn, scanned_barcode_for_add)
+                if existing_barcode_tire_id or existing_barcode_wheel_id:
+                    flash(f"Barcode ID '{scanned_barcode_for_add}' มีอยู่ในระบบแล้ว. ไม่สามารถใช้ซ้ำได้.", 'danger')
+                    active_tab = 'wheel'
+                    return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
+            # --------------------------------------------------------
 
             try:
                 diameter = float(diameter)
@@ -515,17 +564,38 @@ def add_item():
                         active_tab = 'wheel'
                         return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
                 
-                database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url, user_id=current_user_id)
-                flash('เพิ่มแม็กใหม่สำเร็จ!', 'success')
-                return redirect(url_for('add_item', tab='wheel'))
+                cursor = conn.cursor()
+                if "psycopg2" in str(type(conn)):
+                    cursor.execute("SELECT id FROM wheels WHERE brand = %s AND model = %s AND diameter = %s AND width = %s AND pcd = %s AND et = %s", 
+                                   (brand, model, diameter, width, pcd, et))
+                else:
+                    cursor.execute("SELECT id FROM wheels WHERE brand = ? AND model = ? AND diameter = ? AND width = ? AND pcd = ? AND et = ?", 
+                                   (brand, model, diameter, width, pcd, et))
+                
+                existing_wheel = cursor.fetchone()
 
+                if existing_wheel:
+                    flash(f'แม็ก {brand.title()} ลาย {model.title()} ขนาด {diameter}x{width} มีอยู่ในระบบแล้ว', 'warning')
+                else:
+                    new_wheel_id = database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, 
+                                                    quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, uploaded_image_url)
+                    # --- เพิ่มตรงนี้: บันทึก Barcode ID สำหรับแม็ก (เฉพาะถ้ามีการกรอก) ---
+                    if scanned_barcode_for_add:
+                        database.add_wheel_barcode(conn, new_wheel_id, scanned_barcode_for_add, is_primary=True)
+                    # -----------------------------------------------------------------
+                    database.add_wheel_movement(conn, new_wheel_id, 'IN', quantity, quantity, "Initial Stock (Manual Add)", None, user_id=current_user.id)
+                    conn.commit()
+                    flash(f'เพิ่มแม็ก {brand.title()} ลาย {model.title()} จำนวน {quantity} วง สำเร็จ!', 'success')
+                return redirect(url_for('index', tab='wheels'))
             except ValueError:
+                conn.rollback()
                 flash('ข้อมูลตัวเลขไม่ถูกต้อง กรุณาตรวจสอบ', 'danger')
                 active_tab = 'wheel'
                 return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
             except (sqlite3.IntegrityError, Exception) as e:
+                conn.rollback()
                 if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
-                    flash(f'แม็กยี่ห้อ {brand} ลาย {model} ขอบ {diameter} รู {pcd} กว้าง {width} มีอยู่ในระบบแล้ว หากต้องการแก้ไข กรุณาไปที่หน้าสต็อก', 'warning')
+                    flash(f'เกิดข้อผิดพลาด: ข้อมูลซ้ำซ้อนในระบบ หรือ Barcode ID นี้มีอยู่แล้ว. รายละเอียด: {e}', 'warning')
                 else:
                     flash(f'เกิดข้อผิดพลาดในการเพิ่มแม็ก: {e}', 'danger')
                 active_tab = 'wheel'
@@ -548,6 +618,7 @@ def edit_tire(tire_id):
         return redirect(url_for('index', tab='tires'))
 
     all_promotions = database.get_all_promotions(conn, include_inactive=True)
+    tire_barcodes = database.get_barcodes_for_tire(conn, tire_id)
 
     if request.method == 'POST':
         brand = request.form['brand'].strip().lower()
@@ -599,6 +670,59 @@ def edit_tire(tire_id):
                     flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูลยาง: {e}', 'danger')
 
     return render_template('edit_tire.html', tire=tire, current_year=current_year, all_promotions=all_promotions)
+    
+@app.route('/api/tire/<int:tire_id>/barcodes', methods=['POST', 'DELETE'])
+@login_required
+def api_manage_tire_barcodes(tire_id):
+    if not current_user.can_edit():
+        return jsonify({"success": False, "message": "คุณไม่มีสิทธิ์ในการจัดการ Barcode ID"}), 403
+
+    conn = get_db()
+    data = request.get_json()
+    barcode_string = data.get('barcode_string', '').strip()
+
+    if not barcode_string:
+        return jsonify({"success": False, "message": "ไม่พบบาร์โค้ด"}), 400
+
+    try:
+        if request.method == 'POST':
+            # เพิ่ม Barcode ID ใหม่
+            # ตรวจสอบว่า Barcode ID นี้มีอยู่ในระบบแล้วหรือไม่ (ไม่ว่าจะผูกกับยาง/แม็กอื่นหรือไม่)
+            existing_tire_id_by_barcode = database.get_tire_id_by_barcode(conn, barcode_string)
+            existing_wheel_id_by_barcode = database.get_wheel_id_by_barcode(conn, barcode_string)
+
+            if existing_tire_id_by_barcode:
+                # ถ้า Barcode ผูกกับยางตัวอื่นที่ไม่ใช่ tire_id ปัจจุบัน
+                if existing_tire_id_by_barcode != tire_id:
+                    conn.rollback()
+                    return jsonify({"success": False, "message": f"บาร์โค้ด '{barcode_string}' ถูกเชื่อมโยงกับยาง (ID: {existing_tire_id_by_barcode}) แล้ว"}), 409
+                # ถ้า Barcode ผูกกับ tire_id ปัจจุบันอยู่แล้ว (พยายามเพิ่มซ้ำ)
+                else:
+                    # ถือว่าสำเร็จ ไม่ต้องทำอะไรอีก
+                    return jsonify({"success": True, "message": f"บาร์โค้ด '{barcode_string}' ถูกเชื่อมโยงกับยางนี้อยู่แล้ว"}), 200
+            
+            # ถ้า Barcode ผูกกับแม็กตัวอื่น
+            if existing_wheel_id_by_barcode:
+                conn.rollback()
+                return jsonify({"success": False, "message": f"บาร์โค้ด '{barcode_string}' ถูกเชื่อมโยงกับแม็ก (ID: {existing_wheel_id_by_barcode}) แล้ว"}), 409
+
+            # ถ้า Barcode ยังไม่ถูกใช้เลย -> เพิ่มใหม่
+            database.add_tire_barcode(conn, tire_id, barcode_string, is_primary=False) # is_primary = False สำหรับ Barcode ที่เพิ่มจากหน้า Edit
+            conn.commit()
+            return jsonify({"success": True, "message": "เพิ่ม Barcode สำเร็จ!"}), 200
+
+        elif request.method == 'DELETE':
+            # ลบ Barcode ID
+            database.delete_tire_barcode(conn, barcode_string)
+            conn.commit()
+            return jsonify({"success": True, "message": "ลบ Barcode สำเร็จ!"}), 200
+            
+    except Exception as e:
+        conn.rollback()
+        # กรณี UNIQUE constraint failed อาจถูกจับใน add_tire_barcode ถ้าไม่มี ON CONFLICT
+        if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
+             return jsonify({"success": False, "message": f"บาร์โค้ด '{barcode_string}' มีอยู่ในระบบแล้ว"}), 409
+        return jsonify({"success": False, "message": f"เกิดข้อผิดพลาดในการจัดการ Barcode ID: {str(e)}"}), 500
 
 @app.route('/delete_tire/<int:tire_id>', methods=('POST',))
 @login_required
@@ -651,7 +775,9 @@ def edit_wheel(wheel_id):
     if wheel is None:
         flash('ไม่พบแม็กที่ระบุ', 'danger')
         return redirect(url_for('index', tab='wheels'))
-
+    
+    wheel_barcodes = database.get_barcodes_for_wheel(conn, wheel_id)
+    
     if request.method == 'POST':
         brand = request.form['brand'].strip()
         model = request.form['model'].strip()
@@ -715,6 +841,54 @@ def edit_wheel(wheel_id):
                     flash(f'เกิดข้อผิดพลาดในการแก้ไขข้อมูลแม็ก: {e}', 'danger')
 
     return render_template('edit_wheel.html', wheel=wheel, current_year=current_year)
+
+@app.route('/api/wheel/<int:wheel_id>/barcodes', methods=['POST', 'DELETE'])
+@login_required
+def api_manage_wheel_barcodes(wheel_id):
+    if not current_user.can_edit():
+        return jsonify({"success": False, "message": "คุณไม่มีสิทธิ์ในการจัดการ Barcode ID"}), 403
+
+    conn = get_db()
+    data = request.get_json()
+    barcode_string = data.get('barcode_string', '').strip()
+
+    if not barcode_string:
+        return jsonify({"success": False, "message": "ไม่พบบาร์โค้ด"}), 400
+
+    try:
+        if request.method == 'POST':
+            # เพิ่ม Barcode ID ใหม่
+            existing_tire_id_by_barcode = database.get_tire_id_by_barcode(conn, barcode_string)
+            existing_wheel_id_by_barcode = database.get_wheel_id_by_barcode(conn, barcode_string)
+
+            # ถ้า Barcode ผูกกับแม็กตัวอื่นที่ไม่ใช่ wheel_id ปัจจุบัน
+            if existing_wheel_id_by_barcode: # This line always true if it finds any wheel
+                if existing_wheel_id_by_barcode != wheel_id:
+                    conn.rollback()
+                    return jsonify({"success": False, "message": f"บาร์โค้ด '{barcode_string}' ถูกเชื่อมโยงกับแม็กอื่น (ID: {existing_wheel_id_by_barcode}) แล้ว"}), 409
+                # ถ้า Barcode ผูกกับ wheel_id ปัจจุบันอยู่แล้ว (พยายามเพิ่มซ้ำ)
+                else:
+                    return jsonify({"success": True, "message": f"บาร์โค้ด '{barcode_string}' ถูกเชื่อมโยงกับแม็กนี้อยู่แล้ว"}), 200
+            
+            # ถ้า Barcode ผูกกับยางตัวอื่น
+            if existing_tire_id_by_barcode:
+                conn.rollback()
+                return jsonify({"success": False, "message": f"บาร์โค้ด '{barcode_string}' ถูกเชื่อมโยงกับยาง (ID: {existing_tire_id_by_barcode}) แล้ว"}), 409
+            
+            # ถ้า Barcode ยังไม่ถูกใช้เลย -> เพิ่มใหม่
+            database.add_wheel_barcode(conn, wheel_id, barcode_string, is_primary=False) # is_primary = False สำหรับ Barcode ที่เพิ่มจากหน้า Edit
+            conn.commit()
+            return jsonify({"success": True, "message": "เพิ่ม Barcode ID สำเร็จ!"}), 200
+
+        elif request.method == 'DELETE':
+            # ลบ Barcode ID
+            database.delete_wheel_barcode(conn, barcode_string)
+            conn.commit()
+            return jsonify({"success": True, "message": "ลบ Barcode ID สำเร็จ!"}), 200
+            
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "message": f"เกิดข้อผิดพลาดในการจัดการ Barcode ID: {str(e)}"}), 500
 
 @app.route('/delete_wheel/<int:wheel_id>', methods=('POST',))
 @login_required
@@ -1509,8 +1683,6 @@ def export_tires_action():
 
     return send_file(output, download_name='tire_stock.xlsx', as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
-@app.route('/import_tires_action', methods=('POST',))
-@login_required
 def import_tires_action():
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการนำเข้าข้อมูลยาง', 'danger')
@@ -1533,9 +1705,11 @@ def import_tires_action():
             updated_count = 0
             error_rows = []
 
+            # --- ตรวจสอบคอลัมน์ Barcode ID ใน Excel ---
             expected_tire_cols = [
                 'ยี่ห้อ', 'รุ่นยาง', 'เบอร์ยาง', 'สต็อก', 'ทุน SC', 'ทุน Dunlop', 'ทุน Online',
-                'ราคาขายส่ง 1', 'ราคาขายส่ง 2', 'ราคาต่อเส้น', 'ID โปรโมชัน', 'ปีผลิต' 
+                'ราคาขายส่ง 1', 'ราคาขายส่ง 2', 'ราคาต่อเส้น', 'ID โปรโมชัน', 'ปีผลิต',
+                'Barcode ID' # <-- คอลัมน์นี้ยังจำเป็นสำหรับการ Import
             ]
             
             if not all(col in df.columns for col in expected_tire_cols):
@@ -1548,13 +1722,19 @@ def import_tires_action():
                     brand = str(row.get('ยี่ห้อ', '')).strip().lower()
                     model = str(row.get('รุ่นยาง', '')).strip().lower()
                     size = str(row.get('เบอร์ยาง', '')).strip()
+
+                    # --- รับ Barcode ID จาก Excel (ยังคงเป็น Required) ---
+                    barcode_id_from_excel = str(row.get('Barcode ID', '')).strip()
+                    if not barcode_id_from_excel:
+                        raise ValueError("คอลัมน์ 'Barcode ID' ไม่สามารถเว้นว่างได้สำหรับยางในการนำเข้า Excel")
+                    # -----------------------------------------------------
                     
                     if not brand or not model or not size:
                         raise ValueError("ข้อมูล 'ยี่ห้อ', 'รุ่นยาง', หรือ 'เบอร์ยาง' ไม่สามารถเว้นว่างได้")
 
                     quantity = int(row['สต็อก']) if pd.notna(row['สต็อก']) else 0
                     price_per_item = float(row['ราคาต่อเส้น']) if pd.notna(row['ราคาต่อเส้น']) else 0.0
-                    
+
                     cost_sc_raw = row.get('ทุน SC')
                     cost_dunlop_raw = row.get('ทุน Dunlop')
                     cost_online_raw = row.get('ทุน Online')
@@ -1568,23 +1748,43 @@ def import_tires_action():
                     wholesale_price1 = float(wholesale_price1_raw) if pd.notna(wholesale_price1_raw) else None
                     wholesale_price2 = float(wholesale_price2_raw) if pd.notna(wholesale_price2_raw) else None
                     
+                    year_of_manufacture = None 
+                    if pd.notna(year_of_manufacture_raw):
+                        try:
+                            year_of_manufacture = int(year_of_manufacture_raw)
+                        except ValueError:
+                            year_of_manufacture = str(year_of_manufacture_raw).strip()
+                            if year_of_manufacture == 'nan':
+                                year_of_manufacture = None
+
                     promotion_id = int(row.get('ID โปรโมชัน')) if pd.notna(row.get('ID โปรโมชัน')) else None
                     
-                    year_of_manufacture = str(year_of_manufacture_raw).strip() if pd.notna(year_of_manufacture_raw) else None
-                    if year_of_manufacture == 'nan': # กรณีที่ excel อ่าน nan เป็น string 'nan'
-                        year_of_manufacture = None
-                    
                     cursor = conn.cursor()
-                    if "psycopg2" in str(type(conn)):
-                        cursor.execute("SELECT id, quantity FROM tires WHERE brand = %s AND model = %s AND size = %s", (brand, model, size))
-                    else:
-                        cursor.execute("SELECT id, quantity FROM tires WHERE brand = ? AND model = ? AND size = ?", (brand, model, size))
-                    existing_tire = cursor.fetchone()
+                    
+                    # ปรับการค้นหา Tire ที่มีอยู่แล้ว ให้ใช้ Barcode ID ก่อน
+                    tire_id_from_barcode = database.get_tire_id_by_barcode(conn, barcode_id_from_excel)
+                    existing_tire = None
+                    if tire_id_from_barcode:
+                        if "psycopg2" in str(type(conn)):
+                            cursor.execute("SELECT id, quantity FROM tires WHERE id = %s", (tire_id_from_barcode,))
+                        else:
+                            cursor.execute("SELECT id, quantity FROM tires WHERE id = ?", (tire_id_from_barcode,))
+                        existing_tire = cursor.fetchone()
+                    
+                    # ถ้าไม่เจอด้วย Barcode ID ให้ลองค้นหาด้วย Brand, Model, Size (เป็น Fallback)
+                    if not existing_tire:
+                         if "psycopg2" in str(type(conn)):
+                            cursor.execute("SELECT id, quantity FROM tires WHERE brand = %s AND model = %s AND size = %s", (brand, model, size))
+                         else:
+                            cursor.execute("SELECT id, quantity FROM tires WHERE brand = ? AND model = ? AND size = ?", (brand, model, size))
+                         existing_tire = cursor.fetchone()
 
                     if existing_tire:
                         tire_id = existing_tire['id']
                         database.update_tire_import(conn, tire_id, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, 
                                                     promotion_id, year_of_manufacture)
+                        # อัปเดต Barcode ID ด้วย ถ้ามีการอัปเดตหลัก (หรือยืนยันว่า Barcode ID ยังอยู่)
+                        database.add_tire_barcode(conn, tire_id, barcode_id_from_excel, is_primary=True) 
                         updated_count += 1
                         
                         old_quantity = existing_tire['quantity']
@@ -1595,7 +1795,9 @@ def import_tires_action():
                         
                     else:
                         new_tire_id = database.add_tire_import(conn, brand, model, size, quantity, cost_sc, cost_dunlop, cost_online, wholesale_price1, wholesale_price2, price_per_item, 
-                                                               promotion_id, year_of_manufacture)
+                                                                promotion_id, year_of_manufacture)
+                        # บันทึก Barcode ID สำหรับยางที่เพิ่มใหม่
+                        database.add_tire_barcode(conn, new_tire_id, barcode_id_from_excel, is_primary=True)
                         database.add_tire_movement(conn, new_tire_id, 'IN', quantity, quantity, "Import from Excel (initial stock)", None, user_id=current_user.id)
                         imported_count += 1
                 except Exception as row_e:
@@ -1664,8 +1866,6 @@ def export_wheels_action():
 
     return send_file(output, download_name='wheel_stock.xlsx', as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
-@app.route('/import_wheels_action', methods=('POST',))
-@login_required
 def import_wheels_action():
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการนำเข้าข้อมูลแม็ก', 'danger')
@@ -1688,9 +1888,11 @@ def import_wheels_action():
             updated_count = 0
             error_rows = []
 
+            # --- ตรวจสอบคอลัมน์ Barcode ID ใน Excel ---
             expected_wheel_cols = [
                 'ยี่ห้อ', 'ลาย', 'ขอบ', 'รู', 'กว้าง', 'ET', 'สี', 'สต็อก',
-                'ทุน', 'ทุน Online', 'ราคาขายส่ง 1', 'ราคาขายส่ง 2', 'ราคาขายปลีก', 'ไฟล์รูปภาพ'
+                'ทุน', 'ทุน Online', 'ราคาขายส่ง 1', 'ราคาขายส่ง 2', 'ราคาขายปลีก', 'ไฟล์รูปภาพ',
+                'Barcode ID' # <-- คอลัมน์นี้ยังจำเป็นสำหรับการ Import
             ]
             if not all(col in df.columns for col in expected_wheel_cols):
                 missing_cols = [col for col in expected_wheel_cols if col not in df.columns]
@@ -1704,6 +1906,12 @@ def import_wheels_action():
                     model = str(row.get('ลาย', '')).strip().lower()
                     pcd = str(row.get('รู', '')).strip()
 
+                    # --- รับ Barcode ID จาก Excel (ยังคงเป็น Required) ---
+                    barcode_id_from_excel = str(row.get('Barcode ID', '')).strip()
+                    if not barcode_id_from_excel:
+                        raise ValueError("คอลัมน์ 'Barcode ID' ไม่สามารถเว้นว่างได้สำหรับแม็กในการนำเข้า Excel")
+                    # ---------------------------------------------------
+
                     if not brand or not model or not pcd:
                             raise ValueError("ข้อมูล 'ยี่ห้อ', 'ลาย', หรือ 'รู' ไม่สามารถเว้นว่างได้")
 
@@ -1712,7 +1920,7 @@ def import_wheels_action():
                     quantity = int(row['สต็อก']) if pd.notna(row['สต็อก']) else 0
                     cost = float(row['ทุน']) if pd.notna(row['ทุน']) else None
                     retail_price = float(row['ราคาขายปลีก']) if pd.notna(row['ราคาขายปลีก']) else 0.0
-                    
+
                     et_raw = row.get('ET')
                     color_raw = row.get('สี')
                     image_url_raw = row.get('ไฟล์รูปภาพ')
@@ -1720,25 +1928,40 @@ def import_wheels_action():
                     wholesale_price1_raw = row.get('ราคาขายส่ง 1')
                     wholesale_price2_raw = row.get('ราคาขายส่ง 2')
 
-                    et = int(et_raw) if pd.notna(et_raw) else None # ใช้ et_raw
-                    color = str(color_raw).strip() if pd.notna(color_raw) else None # ใช้ color_raw
-                    image_url = str(image_url_raw).strip() if pd.notna(image_url_raw) else None # ใช้ image_url_raw
-                    cost_online = float(cost_online_raw) if pd.notna(cost_online_raw) else None # ใช้ cost_online_raw
-                    wholesale_price1 = float(wholesale_price1_raw) if pd.notna(wholesale_price1_raw) else None # ใช้ wholesale_price1_raw
-                    wholesale_price2 = float(wholesale_price2_raw) if pd.notna(wholesale_price2_raw) else None # ใช้ wholesale_price2_raw
+                    et = int(et_raw) if pd.notna(et_raw) else None
+                    color = str(color_raw).strip() if pd.notna(color_raw) else None
+                    image_url = str(image_url_raw).strip() if pd.notna(image_url_raw) else None
+                    cost_online = float(cost_online_raw) if pd.notna(cost_online_raw) else None
+                    wholesale_price1 = float(wholesale_price1_raw) if pd.notna(wholesale_price1_raw) else None
+                    wholesale_price2 = float(wholesale_price2_raw) if pd.notna(wholesale_price2_raw) else None
                     
                     cursor = conn.cursor()
-                    if "psycopg2" in str(type(conn)):
-                        cursor.execute("SELECT id, quantity FROM wheels WHERE brand = %s AND model = %s AND diameter = %s AND pcd = %s AND width = %s AND (et IS %s OR et = %s) AND (color IS %s OR color = %s)", 
-                                                 (brand, model, diameter, pcd, width, et, et, color, color))
-                    else:
-                        cursor.execute("SELECT id, quantity FROM wheels WHERE brand = ? AND model = ? AND diameter = ? AND pcd = ? AND width = ? AND (et IS ? OR et = ?) AND (color IS ? OR color = ?)", 
-                                                 (brand, model, diameter, pcd, width, et, et, color, color))
-                    existing_wheel = cursor.fetchone()
 
+                    # ปรับการค้นหา Wheel ที่มีอยู่แล้ว ให้ใช้ Barcode ID ก่อน
+                    wheel_id_from_barcode = database.get_wheel_id_by_barcode(conn, barcode_id_from_excel)
+                    existing_wheel = None
+                    if wheel_id_from_barcode:
+                        if "psycopg2" in str(type(conn)):
+                            cursor.execute("SELECT id, quantity FROM wheels WHERE id = %s", (wheel_id_from_barcode,))
+                        else:
+                            cursor.execute("SELECT id, quantity FROM wheels WHERE id = ?", (wheel_id_from_barcode,))
+                        existing_wheel = cursor.fetchone()
+
+                    # ถ้าไม่เจอด้วย Barcode ID ให้ลองค้นหาด้วย Brand, Model, Diameter, PCD, Width (เป็น Fallback)
+                    if not existing_wheel:
+                        if "psycopg2" in str(type(conn)):
+                            cursor.execute("SELECT id, quantity FROM wheels WHERE brand = %s AND model = %s AND diameter = %s AND pcd = %s AND width = %s", 
+                                        (brand, model, diameter, pcd, width))
+                        else:
+                            cursor.execute("SELECT id, quantity FROM wheels WHERE brand = ? AND model = ? AND diameter = ? AND width = ? AND pcd = ? AND et = ?", 
+                                        (brand, model, diameter, pcd, width))
+                        existing_wheel = cursor.fetchone()
+                    
                     if existing_wheel:
                         wheel_id = existing_wheel['id']
                         database.update_wheel_import(conn, wheel_id, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
+                        # อัปเดต Barcode ID ด้วย ถ้ามีการอัปเดตหลัก (หรือยืนยันว่า Barcode ID ยังอยู่)
+                        database.add_wheel_barcode(conn, wheel_id, barcode_id_from_excel, is_primary=True)
                         updated_count += 1
                         
                         old_quantity = existing_wheel['quantity']
@@ -1746,8 +1969,11 @@ def import_wheels_action():
                             movement_type = 'IN' if quantity > old_quantity else 'OUT'
                             quantity_change_diff = abs(quantity - old_quantity)
                             database.add_wheel_movement(conn, wheel_id, movement_type, quantity_change_diff, quantity, "Import from Excel (Qty Update)", None, user_id=current_user.id)
+                        
                     else:
                         new_wheel_id = database.add_wheel_import(conn, brand, model, diameter, pcd, width, et, color, quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
+                        # บันทึก Barcode ID สำหรับแม็กที่เพิ่มใหม่
+                        database.add_wheel_barcode(conn, new_wheel_id, barcode_id_from_excel, is_primary=True)
                         database.add_wheel_movement(conn, new_wheel_id, 'IN', quantity, quantity, "Import from Excel (initial stock)", None, user_id=current_user.id)
                         imported_count += 1
                 except Exception as row_e:

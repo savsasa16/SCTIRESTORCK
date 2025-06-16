@@ -1273,6 +1273,26 @@ def add_wheel_barcode(conn, wheel_id, barcode_string, is_primary=False):
         cursor.execute("INSERT OR IGNORE INTO wheel_barcodes (wheel_id, barcode_string, is_primary_barcode) VALUES (?, ?, ?)",
                        (wheel_id, barcode_string, is_primary))
     # ไม่ต้อง conn.commit() ที่นี่
+    
+    def delete_tire_barcode(conn, barcode_string):
+    """
+    ลบ Barcode ID ที่ระบุออกจากตาราง tire_barcodes
+    """
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("DELETE FROM tire_barcodes WHERE barcode_string = %s", (barcode_string,))
+    else:
+        cursor.execute("DELETE FROM tire_barcodes WHERE barcode_string = ?", (barcode_string,))
+        
+def delete_wheel_barcode(conn, barcode_string):
+    """
+    ลบ Barcode ID ที่ระบุออกจากตาราง wheel_barcodes
+    """
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("DELETE FROM wheel_barcodes WHERE barcode_string = %s", (barcode_string,))
+    else:
+        cursor.execute("DELETE FROM wheel_barcodes WHERE barcode_string = ?", (barcode_string,))
 
 def get_wheel_id_by_barcode(conn, barcode_string):
     """
