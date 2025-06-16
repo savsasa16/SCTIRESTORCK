@@ -217,6 +217,48 @@
 
 <script>
     console.log("=== barcode_scanner.html: Script parsing started ==="); // Debug 1
+	
+	
+	startScanBtn.addEventListener('click', () => {
+    qrReaderDiv.style.display = 'block';
+    stopScanBtn.style.display = 'inline-block';
+    startScanBtn.style.display = 'none';
+
+    html5QrCode = new Html5Qrcode("qr-reader");
+    html5QrCode.start(
+        { facingMode: "environment" },
+        {
+            fps: 10,
+            qrbox: 250
+        },
+        barcode => {
+            console.log("Scanned barcode:", barcode);
+            processScannedBarcode(barcode); // ใช้ฟังก์ชันที่มีอยู่แล้ว
+        },
+        errorMessage => {
+            // แสดงเฉพาะถ้าต้องการ debug
+            // console.warn(`QR code scan error: ${errorMessage}`);
+        }
+    ).catch(err => {
+        console.error("Failed to start scanner:", err);
+        showStatus("ไม่สามารถเปิดกล้องได้: " + err, 'danger');
+    });
+});
+
+stopScanBtn.addEventListener('click', () => {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            qrReaderDiv.style.display = 'none';
+            stopScanBtn.style.display = 'none';
+            startScanBtn.style.display = 'inline-block';
+        }).catch(err => {
+            console.error("Failed to stop scanner:", err);
+            showStatus("ไม่สามารถปิดกล้องได้: " + err, 'danger');
+        });
+    }
+});
+
 
     document.addEventListener('DOMContentLoaded', function() {
         console.log("--- DOMContentLoaded event fired ---"); // Debug 2
