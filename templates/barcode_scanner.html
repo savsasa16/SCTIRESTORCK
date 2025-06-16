@@ -247,10 +247,11 @@
 
         console.log("Elements fetched. startScanBtn:", startScanBtn, "qrReaderDiv:", qrReaderDiv); // Debug 3
 
-        // เพิ่มการตรวจสอบว่า element มีอยู่จริงหรือไม่
+        // เพิ่มการตรวจสอบว่า element มีอยู่จริงหรือไม่ (หากยังไม่แสดง)
         if (!startScanBtn || !qrReaderDiv) {
-            console.error("DEBUG: Missing critical HTML elements for camera scan.");
+            console.error("DEBUG: Missing critical HTML elements for camera scan. Check IDs.");
         }
+
 
         let scannedItems = {};
         let currentTimeout = null;
