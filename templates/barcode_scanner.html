@@ -141,6 +141,23 @@
         border-radius: var(--border-radius);
         cursor: pointer;
     }
+
+    /* สไตล์สำหรับปรับขนาดกล้อง */
+    #qr-reader {
+        width: 200px !important; /* กำหนดความกว้าง */
+        height: 50px !important; /* กำหนดความสูง */
+        overflow: hidden; /* ซ่อนส่วนเกิน */
+        margin: 0 auto;
+        display: none;
+    }
+    #qr-reader__scan_region {
+        border: 2px solid var(--primary-color); /* เพิ่มขอบให้เห็นชัดเจน */
+    }
+    #qr-reader video {
+        width: 100% !important;
+        height: auto !important;
+        object-fit: cover; /* ครอบคลุมพื้นที่แต่รักษาสัดส่วน */
+    }
 </style>
 
 <div class="barcode-scan-section">
@@ -337,7 +354,7 @@
         { facingMode: "environment" },
         {
             fps: 10,
-            qrbox: 250
+            qrbox: {width: 200, height: 50} // กำหนดขนาดของกล่องสแกน
         },
         barcode => {
             console.log("Scanned barcode:", barcode);
