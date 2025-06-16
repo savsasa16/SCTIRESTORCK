@@ -1274,7 +1274,7 @@ def add_wheel_barcode(conn, wheel_id, barcode_string, is_primary=False):
                        (wheel_id, barcode_string, is_primary))
     # ไม่ต้อง conn.commit() ที่นี่
     
-    def delete_tire_barcode(conn, barcode_string):
+def delete_tire_barcode(conn, barcode_string):
     """
     ลบ Barcode ID ที่ระบุออกจากตาราง tire_barcodes
     """
