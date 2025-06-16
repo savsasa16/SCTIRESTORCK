@@ -278,6 +278,7 @@
                 if (item.type === 'tire') {
                     spec_info = item.size;
                 } else if (item.type === 'wheel') {
+                    // แก้ไขตรงนี้: ลบ 'span class="math-inline"' และ backslash ออก
                     spec_info = `${item.diameter || ''}x${item.width || ''} ${item.pcd || ''} ${item.et ? item.et : ''}`;
                 }
 
@@ -293,7 +294,7 @@
                     <td>
                         <button class="btn btn-danger btn-sm remove-item-btn" data-barcode-id="${barcode_id}"><i class="fas fa-times"></i></button>
                     </td>
-                `;
+                `; // <--- แก้ไขตรงนี้: ลบ 'span class="math-inline"' และ backslash ออกใน innerHTML ด้วย
                 scannedItemsTableBody.appendChild(row);
             }
 
@@ -462,7 +463,7 @@
 
         goToAddItemBtn.addEventListener('click', () => {
             const scannedBarcode = linkBarcodeModal.dataset.scannedBarcode;
-            window.location.href = `{{ url_for('add_item') }}?tab=tire&scanned_barcode=${scannedBarcode}`;
+            window.location.href = `/add_item?tab=tire&scanned_barcode=${scannedBarcode}`;
         });
 
         searchItemBtn.addEventListener('click', function() {
