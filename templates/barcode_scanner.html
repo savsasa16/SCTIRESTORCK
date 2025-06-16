@@ -144,12 +144,14 @@
 
     /* สไตล์สำหรับปรับขนาดกล้อง */
     #qr-reader {
-        width: 450px !important; /* กำหนดความกว้าง */
-        height: 250px !important; /* กำหนดความสูง */
-        overflow: hidden; /* ซ่อนส่วนเกิน */
-        margin: 0 auto;
-        display: none;
-    }
+    width: 100%; /* ให้ใช้ความกว้างเต็มพื้นที่ของ container */
+    max-width: 450px; /* จำกัดความกว้างสูงสุดตามที่คุณต้องการ */
+    aspect-ratio: 450 / 250; /* รักษาสัดส่วน 450px กว้าง ต่อ 250px สูง */
+    height: auto; /* ให้ความสูงปรับตาม aspect-ratio */
+    overflow: hidden;
+    margin: 0 auto;
+    /* display: none; */ /* ยังคงซ่อนไว้ก่อน */
+}
     #qr-reader__scan_region {
         border: 2px solid var(--primary-color); /* เพิ่มขอบให้เห็นชัดเจน */
     }
