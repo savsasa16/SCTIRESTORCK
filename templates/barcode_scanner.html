@@ -152,7 +152,7 @@
     </div>
     <div id="scanStatus" class="flash-message"></div>
 
-    {# --- เพิ่มตรงนี้: ส่วนสำหรับเปิด/ปิดกล้องสแกน --- #}
+    {# --- ส่วนสำหรับเปิด/ปิดกล้องสแกน --- #}
     <div style="text-align: center; margin-bottom: 20px;">
         <button id="startScanBtn" class="btn btn-primary"><i class="fas fa-camera"></i> เปิดกล้องสแกน</button>
         <button id="stopScanBtn" class="btn btn-secondary" style="display:none;"><i class="fas fa-stop-circle"></i> ปิดกล้องสแกน</button>
@@ -216,7 +216,11 @@
 {# ------------------------------------------------- #}
 
 <script>
+    console.log("Script loaded, DOMContentLoaded listener is about to run."); // Debug 1
+
     document.addEventListener('DOMContentLoaded', function() {
+        console.log("DOMContentLoaded event fired."); // Debug 2
+
         const barcodeInput = document.getElementById('barcodeInput');
         const scanStatus = document.getElementById('scanStatus');
         const scannedItemsTableBody = document.querySelector('#scannedItemsTable tbody');
@@ -241,15 +245,22 @@
         let html5QrCode = null; // Instance for Html5Qrcode
         // -----------------------------
 
-        let scannedItems = {}; // { barcode_id: { data: item_data, quantity_to_process: N } }
-        let currentTimeout = null; // for debouncing
+        console.log("Elements fetched. startScanBtn:", startScanBtn, "qrReaderDiv:", qrReaderDiv); // Debug 3
+
+        // เพิ่มการตรวจสอบว่า element มีอยู่จริงหรือไม่
+        if (!startScanBtn || !qrReaderDiv) {
+            console.error("DEBUG: Missing critical HTML elements for camera scan.");
+        }
+
+        let scannedItems = {};
+        let currentTimeout = null;
 
         // Function to display messages
         function showStatus(message, type = 'info') {
             scanStatus.textContent = message;
             scanStatus.className = `flash-message flash-${type}`;
-            scanStatus.style.display = 'block'; // Make sure it's visible
-            setTimeout(() => { scanStatus.textContent = ''; scanStatus.style.display = 'none'; }, 3000); // Clear after 3 seconds
+            scanStatus.style.display = 'block';
+            setTimeout(() => { scanStatus.textContent = ''; scanStatus.style.display = 'none'; }, 3000);
         }
 
         // Function to render scanned items table
@@ -317,6 +328,7 @@
 
         // --- ฟังก์ชันประมวลผลบาร์โค้ดที่สแกน (ใช้สำหรับทั้ง Input และกล้อง) ---
         function processScannedBarcode(barcode) {
+            console.log("processScannedBarcode called with:", barcode); // Debug 4
             if (currentTimeout) {
                 clearTimeout(currentTimeout);
             }
@@ -324,6 +336,7 @@
                 fetch(`/api/scan_item_lookup?barcode_id=${barcode}`)
                     .then(response => response.json())
                     .then(data => {
+                        console.log("Lookup API response:", data); // Debug 5
                         if (data.success) {
                             const item_data = data.item;
                             if (item_data.id) {
@@ -350,7 +363,7 @@
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
+                        console.error('Error in fetch lookup:', error); // Debug 6
                         showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
                     });
             }, 100); // Debounce to prevent multiple rapid scans
@@ -419,7 +432,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('Error in fetch transaction:', error); // Debug: More specific error
                 showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
             });
         }
@@ -448,9 +461,7 @@
 
         goToAddItemBtn.addEventListener('click', () => {
             const scannedBarcode = linkBarcodeModal.dataset.scannedBarcode;
-            // You might want to pass the barcode to the add_item page
             window.location.href = `{{ url_for('add_item') }}?tab=tire&scanned_barcode=${scannedBarcode}`;
-            // Or maybe a specific add_tire_page if you separate them
         });
 
         searchItemBtn.addEventListener('click', function() {
@@ -460,8 +471,6 @@
                 return;
             }
             
-            // Fetch items from your existing search API (e.g., from index page, but modified for API use)
-            // This is a placeholder. You might need a new API endpoint like /api/search_items_for_link
             fetch(`/api/search_items_for_link?query=${query}`)
                 .then(response => response.json())
                 .then(data => {
@@ -490,7 +499,6 @@
                         });
                         searchItemResultsDiv.appendChild(resultsList);
 
-                        // Add event listeners for the "ผูกบาร์โค้ดนี้" buttons
                         document.querySelectorAll('.link-selected-barcode-btn').forEach(button => {
                             button.addEventListener('click', function() {
                                 const itemId = this.dataset.itemId;
@@ -504,23 +512,23 @@
                                         scanned_barcode: barcodeToLink, 
                                         item_id: itemId, 
                                         item_type: itemType,
-                                        is_primary: false // Or true if this is designated as primary
+                                        is_primary: false
                                     })
                                 })
                                 .then(response => response.json())
                                 .then(linkData => {
                                     if (linkData.success) {
                                         showStatus(linkData.message, 'success');
-                                        linkBarcodeModal.style.display = 'none'; // Close modal
-                                        searchItemResultsDiv.innerHTML = ''; // Clear results
-                                        searchItemBarcodeInput.value = ''; // Clear input
-                                        barcodeInput.focus(); // Focus main input
+                                        linkBarcodeModal.style.display = 'none';
+                                        searchItemResultsDiv.innerHTML = '';
+                                        searchItemBarcodeInput.value = '';
+                                        barcodeInput.focus();
                                     } else {
                                         searchItemResultsDiv.innerHTML = `<p class="flash-danger">${linkData.message}</p>`;
                                     }
                                 })
                                 .catch(error => {
-                                    console.error('Error linking barcode:', error);
+                                    console.error('Error in link barcode API:', error); // Debug: More specific error
                                     searchItemResultsDiv.innerHTML = '<p class="flash-danger">เกิดข้อผิดพลาดในการเชื่อมโยงบาร์โค้ด</p>';
                                 });
                             });
@@ -531,7 +539,7 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error searching items:', error);
+                    console.error('Error in search items API:', error); // Debug: More specific error
                     searchItemResultsDiv.innerHTML = '<p class="flash-danger">เกิดข้อผิดพลาดในการค้นหาสินค้า</p>';
                 });
         });
