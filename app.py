@@ -618,7 +618,10 @@ def edit_tire(tire_id):
         return redirect(url_for('index', tab='tires'))
 
     all_promotions = database.get_all_promotions(conn, include_inactive=True)
+    
     tire_barcodes = database.get_barcodes_for_tire(conn, tire_id)
+    
+    print(f"DEBUG: tire_id={tire_id}, Fetched tire_barcodes: {tire_barcodes}")
 
     if request.method == 'POST':
         brand = request.form['brand'].strip().lower()
