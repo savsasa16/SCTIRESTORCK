@@ -232,6 +232,7 @@
 
 {# --- เพิ่ม Audio element สำหรับเสียงแจ้งเตือน --- #}
 <audio id="scanSuccessSound" src="https://cdn.freesound.org/previews/148/148694_2512692-lq.mp3" preload="auto"></audio>
+<audio id="scanErrorSound" src="https://cdn.freesound.org/previews/516/516905_4864041-lq.mp3" preload="auto"></audio>
 {# --------------------------------------------- #}
 
 {# --- เพิ่ม Script Library ของ html5-qrcode ที่นี่ --- #}
@@ -239,13 +240,13 @@
 {# ------------------------------------------------- #}
 
 <script>
-    console.log("=== barcode_scanner.html: Script parsing started ==="); // Debug 1
+    console.log("=== barcode_scanner.html: Script parsing started ===");
 
-    // แก้ไข: ย้ายการประกาศ scannedItems ออกมานอก DOMContentLoaded
+    // แก้ไข 1: ย้ายการประกาศ scannedItems ออกมานอก DOMContentLoaded
     let scannedItems = {}; // ประกาศตัวแปรนี้ที่ Global Scope
 
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("--- DOMContentLoaded event fired ---"); // Debug 2
+        console.log("--- DOMContentLoaded event fired ---");
 
         const barcodeInput = document.getElementById('barcodeInput');
         const scanStatus = document.getElementById('scanStatus');
@@ -272,7 +273,8 @@
         // -----------------------------
 
         // --- Audio/Vibration Elements and Flags ---
-        const scanSuccessSound = document.getElementById('scanSuccessSound'); 
+        const scanSuccessSound = document.getElementById('scanSuccessSound');
+		const scanErrorSound = document.getElementById('scanErrorSound');
         let currentTimeout = null; // Used for input debounce (physical scanner)
         let isProcessingScan = false; // Flag to prevent rapid processing from camera scan
         const SCAN_COOLDOWN_TIME = 1500; // 1.5 วินาที Cooldown Time (ปรับได้ตามความเหมาะสม, เดิม 3000ms อาจจะนานไป)
@@ -280,10 +282,10 @@
         let lastScanTime = 0; // Keep track of when the last barcode was processed from camera
         // ------------------------------------------
 
-        console.log("Elements fetched. startScanBtn:", startScanBtn, "qrReaderDiv:", qrReaderDiv); // Debug 3
+        console.log("Elements fetched. startScanBtn:", startScanBtn, "qrReaderDiv:", qrReaderDiv);
 
         if (!startScanBtn || !qrReaderDiv) {
-            console.error("DEBUG: Missing critical HTML elements for camera scan. Check IDs in HTML."); // Debug: More specific error for missing elements
+            console.error("DEBUG: Missing critical HTML elements for camera scan. Check IDs in HTML.");
             showStatus("เกิดข้อผิดพลาด: ไม่พบ Element สำหรับกล้องสแกน", 'danger');
         }
         
@@ -295,24 +297,23 @@
             setTimeout(() => { scanStatus.textContent = ''; scanStatus.style.display = 'none'; }, 3000);
         }
 
-        // --- ฟังก์ชันใหม่สำหรับเล่นเสียง/สั่น ---
-        function playScanFeedback() {
-            // ตรวจสอบว่าเบราว์เซอร์รองรับ Vibration API หรือไม่
+        // --- ฟังก์ชันสำหรับเล่นเสียง/สั่น ---
+        function playScanFeedback(isSuccess = true) {
+            const soundToPlay = isSuccess ? scanSuccessSound : scanErrorSound;
             if ("vibrate" in navigator) {
-                // พยายามเล่นเสียงก่อน
-                if (scanSuccessSound) {
-                    scanSuccessSound.play().catch(e => {
+                if (soundToPlay) {
+                    soundToPlay.currentTime = 0; // รีเซ็ตเสียงไปที่เริ่มต้น
+					soundToPlay.play().catch(e => {
                         console.warn("Could not play sound, attempting to vibrate:", e);
-                        navigator.vibrate(200); // สั่น 200 มิลลิวินาที หากเล่นเสียงไม่ได้
+                        navigator.vibrate(isSuccess ? 200 : [100, 50, 100]); // สั่นสั้นๆ เมื่อสำเร็จ, สั่นแบบ "buzzer" เมื่อผิดพลาด
                     });
                 } else {
-                    // หากไม่มี element เสียง ให้สั่นอย่างเดียว
-                    navigator.vibrate(200);
+                    navigator.vibrate(isSuccess ? 200 : [100, 50, 100]);
                 }
-            } else if (scanSuccessSound) {
-                 // ถ้าไม่รองรับการสั่น ให้เล่นเสียงอย่างเดียว
-                 scanSuccessSound.play().catch(e => {
-                    console.warn("Could not play sound:", e);
+            } else if (soundToPlay) {
+                 soundToPlay.currentTime = 0;
+                 soundToPlay.play().catch(e => {
+					console.warn("Could not play sound:", e);
                  });
             } else {
                 console.log("No audio element or vibration support for feedback.");
@@ -393,7 +394,12 @@
                 { facingMode: "environment" },
                 {
                     fps: 10,
-                    qrbox: {width: 450, height: 250} // กำหนดขนาดของกล่องสแกน
+                    qrbox: {width: 450, height: 250}, // กำหนดขนาดของกล่องสแกน
+                    formatsToSupport: [ // เพิ่ม formatsToSupport ตรงนี้
+                        Html5QrcodeSupportedFormats.CODE_128,
+                        Html5QrcodeSupportedFormats.EAN_13,
+                        // เพิ่ม format อื่นๆ ที่คุณใช้
+                    ]
                 },
                 (decodedText, decodedResult) => { // decodedText คือ barcode ที่สแกนได้
                     // นี่คือจุดสำคัญ: เพิ่ม Debounce Logic สำหรับกล้อง
@@ -418,6 +424,7 @@
             ).catch(err => {
                 console.error("Failed to start scanner:", err);
                 showStatus("ไม่สามารถเปิดกล้องได้: " + err, 'danger');
+                playScanFeedback(false); // Feedback เมื่อเปิดกล้องไม่ได้
             });
         });
 
@@ -434,6 +441,7 @@
                 }).catch(err => {
                     console.error("Failed to stop scanner:", err);
                     showStatus("ไม่สามารถปิดกล้องได้: " + err, 'danger');
+                    playScanFeedback(false); // Feedback เมื่อปิดกล้องไม่ได้
                 });
             }
         });
@@ -442,9 +450,14 @@
         function processScannedBarcode(barcode) {
             console.log("processScannedBarcode called with:", barcode);
 
+            // แก้ไข 2: ย้ายการ validate บาร์โค้ดมาไว้ด้านบนสุด
+            if (barcode.length < 5 || barcode.length > 20 || !/^[a-zA-Z0-9]+$/.test(barcode)) {
+                showStatus("บาร์โค้ดไม่ถูกต้องหรือสแกนไม่สมบูรณ์ กรุณาลองใหม่", 'warning');
+                playScanFeedback(false);
+                return; // หยุดการประมวลผลทันทีหากบาร์โค้ดไม่ถูกต้อง
+            }
+
             // สำหรับ Physical Scanner (barcodeInput)
-            // เช็คว่าการเรียกมาจาก input field จริงๆ (ไม่ได้มาจาก camera callback)
-            // โดยการเช็คว่า barcodeInput มี focus หรือมีค่า
             if (document.activeElement === barcodeInput || (barcodeInput.value && barcode === barcodeInput.value)) { 
                 if (currentTimeout) {
                     clearTimeout(currentTimeout);
@@ -484,18 +497,21 @@
                             }
                             showStatus(`สแกน ${item_data.brand.charAt(0).toUpperCase() + item_data.brand.slice(1)} ${item_data.model.charAt(0).toUpperCase() + item_data.model.slice(1)} สำเร็จ!`, 'success');
                             renderScannedItems();
-                            playScanFeedback(); // <-- เรียกใช้ฟังก์ชัน Feedback เมื่อสำเร็จ
+                            playScanFeedback(true); // <-- เรียกใช้ฟังก์ชัน Feedback เมื่อสำเร็จ
                         } else {
                             showStatus('ข้อมูลไม่สมบูรณ์จากเซิร์ฟเวอร์', 'danger');
-                            playScanFeedback(); // Feedback สำหรับกรณีข้อมูลไม่สมบูรณ์
+                            playScanFeedback(false); // Feedback สำหรับกรณีข้อมูลไม่สมบูรณ์
                         }
                     } else {
                         showStatus(data.message, 'danger');
+                        // แก้ไข 3: ทำให้ Modal เปิดเฉพาะเมื่อ action_required เป็น 'link_new_barcode'
                         if (data.action_required === 'link_new_barcode' && data.scanned_barcode) {
                             modalScannedBarcodeSpan.textContent = data.scanned_barcode;
                             linkBarcodeModal.style.display = 'block';
                             linkBarcodeModal.dataset.scannedBarcode = data.scanned_barcode; 
-                            playScanFeedback(); // Feedback เมื่อบาร์โค้ดไม่รู้จัก
+                            playScanFeedback(false); // Feedback เมื่อบาร์โค้ดไม่รู้จัก
+                        } else { // กรณีอื่นที่สแกนไม่สำเร็จ แต่ไม่ใช่ link_new_barcode
+                            playScanFeedback(false);
                         }
                     }
                 })
@@ -503,7 +519,7 @@
                     isProcessingScan = false; // รีเซ็ต flag หากเกิดข้อผิดพลาด
                     console.error('Error in fetch lookup:', error);
                     showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
-                    playScanFeedback(); // Feedback เมื่อเกิด error
+                    playScanFeedback(false); // Feedback เมื่อเกิด error
                 });
         }
         // ------------------------------------------------------------------
@@ -578,7 +594,6 @@
         processOutBtn.addEventListener('click', () => processTransaction('OUT'));
 
         renderScannedItems(); // Initial render
-        // renderScannedItems(); // ลบการเรียกซ้ำนี้ออก
 
         // --- Modal related JavaScript ---
         closeButton.addEventListener('click', () => {
