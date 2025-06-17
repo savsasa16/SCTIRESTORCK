@@ -32,7 +32,7 @@
             <a href="{{ url_for('index') }}"><i class="fas fa-warehouse"></i> สต็อกสินค้า</a>
             <a href="{{ url_for('add_item') }}"><i class="fas fa-plus-circle"></i> เพิ่มสินค้า</a>
             <a href="{{ url_for('stock_movement') }}"><i class="fas fa-exchange-alt"></i> รับเข้า/จ่ายออก</a>
-            <a href="{{ url_for('barcode_scanner') }}"><i class="fas fa-barcode"></i> ตัดสต๊อกด้วยบาร์โค้ด</a>
+            <a href="{{ url_for('barcode_scanner_page') }}"><i class="fas fa-barcode"></i> ตัดสต๊อกด้วยบาร์โค้ด</a>
             {% if current_user.is_authenticated and current_user.username == 'admin' %}
             <a href="{{ url_for('promotions') }}"><i class="fas fa-tags"></i> จัดการโปรโมชัน</a>
                 {% endif %}
