@@ -518,8 +518,24 @@ def add_item():
             cost_online = request.form.get('cost_online')
             wholesale_price1 = request.form.get('wholesale_price1')
             wholesale_price2 = request.form.get('wholesale_price2')
-            image_file = request.files.get('image_file')
-
+            
+            image_file = request.files.get('image_file') 
+            image_url = None
+            
+            if image_file and image_file.filename != '':
+                if allowed_image_file(image_file.filename):
+                    try:
+                        upload_result = cloudinary.uploader.upload(image_file)
+                        image_url = upload_result['secure_url']
+                        except Exception as e:
+                            flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพไปยังเซิฟเวอร์: {e}', 'danger')
+                            active_tab = 'wheel'
+                            return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
+                    else:
+                        flash('ชนิดไฟล์รูปภาพไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
+                        active_tab = 'wheel'
+                        return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
+            
             if not brand or not model or not pcd or not diameter or not width or not quantity or not retail_price:
                 flash('กรุณากรอกข้อมูลแม็กให้ครบถ้วนในช่องที่มีเครื่องหมาย *', 'danger')
                 active_tab = 'wheel'
@@ -556,7 +572,7 @@ def add_item():
                             image_url = upload_result['secure_url']
                             
                         except Exception as e:
-                            flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพไปยัง Cloudinary: {e}', 'danger')
+                            flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพไปยังเซิฟเวอร์: {e}', 'danger')
                             active_tab = 'wheel'
                             return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
                     else:
