@@ -173,8 +173,8 @@
 
     {# --- ส่วนสำหรับเปิด/ปิดกล้องสแกน --- #}
     <div style="text-align: center; margin-bottom: 20px;">
-        <button id="startScanBtn" class="btn btn-primary"><i class="fas fa-camera"></i> เปิดกล้องสแกน</button>
-        <button id="stopScanBtn" class="btn btn-secondary" style="display:none;"><i class="fas fa-stop-circle"></i> ปิดกล้องสแกน</button>
+        <button id="startScanBtn" class="btn btn-primary"><i class="fas fa-camera"></i> แสกนผ่านโทรศัพท์</button>
+        <button id="stopScanBtn" class="btn btn-secondary" style="display:none;"><i class="fas fa-stop-circle"></i> ปิดกล้อง</button>
     </div>
     <div id="qr-reader"></div> {# แก้ไขตรงนี้: ลบ inline style ออก #}
     <div id="qr-reader-results" style="text-align: center; margin-top: 10px;"></div>
@@ -204,7 +204,7 @@
     {# --- เพิ่มช่องหมายเหตุสำหรับ Transaction --- #}
     <div class="form-group" style="margin-top: 20px;">
         <label for="transactionNotes">หมายเหตุ (ถ้ามี):</label>
-        <textarea id="transactionNotes" class="form-control" rows="3" placeholder="เช่น การรับสินค้าจากซัพพลายเออร์ A / การจ่ายสินค้าให้ลูกค้า B"></textarea>
+        <textarea id="transactionNotes" class="form-control" rows="3" placeholder="เช่น ขายหน้าร้าน,ค้าส่งร้าน... / ขายออนไลน์"></textarea>
     </div>
     {# ----------------------------------------- #}
     
@@ -219,7 +219,7 @@
 <div id="linkBarcodeModal" class="modal">
     <div class="modal-content">
         <span class="close-button">&times;</span>
-        <h4>บาร์โค้ดไม่รู้จัก: <span id="modalScannedBarcode"></span></h4>
+        <h4>ไม่มีบาร์โค้ดนี้ในระบบ: <span id="modalScannedBarcode"></span></h4>
         <p>กรุณาเลือกว่าต้องการเพิ่มสินค้าใหม่ หรือเชื่อมโยงบาร์โค้ดนี้กับสินค้าที่มีอยู่</p>
         
         <div class="form-group">
@@ -250,7 +250,7 @@
     console.log("=== barcode_scanner.html: Script parsing started ===");
 
     // แก้ไข 1: ย้ายการประกาศ scannedItems ออกมานอก DOMContentLoaded
-    let scannedItems = {}; // ประกาศตัวแปรนี้ที่ Global Scope เพื่อให้ renderScannedItems เข้าถึงได้ตั้งแต่แรก
+    let scannedItems = {}; // ประกาศตัวแปรนี้ที่ Global Scope
 
     document.addEventListener('DOMContentLoaded', function() {
         console.log("--- DOMContentLoaded event fired ---");
@@ -261,7 +261,8 @@
         const processInBtn = document.getElementById('processInBtn');
         const processOutBtn = document.getElementById('processOutBtn');
         const clearAllBtn = document.getElementById('clearAllBtn');
-        const transactionNotesInput = document.getElementById('transactionNotes'); // <-- ดึง element หมายเหตุ
+        // เพิ่ม: ดึง element ของช่องหมายเหตุ (คุณมีใน HTML แล้ว!)
+        const transactionNotesInput = document.getElementById('transactionNotes'); // <-- บรรทัดนี้ถูกต้องแล้ว
 
         // Modal elements
         const linkBarcodeModal = document.getElementById('linkBarcodeModal');
@@ -282,7 +283,7 @@
 
         // --- Audio/Vibration Elements and Flags ---
         const scanSuccessSound = document.getElementById('scanSuccessSound');
-		const scanErrorSound = document.getElementById('scanErrorSound');
+		const scanErrorSound = document.getElementById('scanErrorSound'); // <-- ดึง element เสียง Error
         let currentTimeout = null; // Used for input debounce (physical scanner)
         let isProcessingScan = false; // Flag to prevent rapid processing from camera scan
         const SCAN_COOLDOWN_TIME = 1500; // 1.5 วินาที Cooldown Time (ปรับตามความเหมาะสม)
@@ -305,10 +306,11 @@
             setTimeout(() => { scanStatus.textContent = ''; scanStatus.style.display = 'none'; }, 3000);
         }
 
-        // --- ฟังก์ชันสำหรับเล่นเสียง/สั่น ---
+        // --- ฟังก์ชันสำหรับเล่นเสียง/สั่น (ปรับปรุงให้ใช้ isSuccess parameter) ---
         function playScanFeedback(isSuccess = true) {
             const soundToPlay = isSuccess ? scanSuccessSound : scanErrorSound;
             if ("vibrate" in navigator) {
+                // พยายามเล่นเสียงก่อน
                 if (soundToPlay) {
                     soundToPlay.currentTime = 0; // รีเซ็ตเสียงไปที่เริ่มต้น
 					soundToPlay.play().catch(e => {
@@ -316,9 +318,11 @@
                         navigator.vibrate(isSuccess ? 200 : [100, 50, 100]); // สั่นสั้นๆ เมื่อสำเร็จ, สั่นแบบ "buzzer" เมื่อผิดพลาด
                     });
                 } else {
+                    // หากไม่มี element เสียง ให้สั่นอย่างเดียว
                     navigator.vibrate(isSuccess ? 200 : [100, 50, 100]);
                 }
             } else if (soundToPlay) {
+                 // ถ้าไม่รองรับการสั่น ให้เล่นเสียงอย่างเดียว
                  soundToPlay.currentTime = 0;
                  soundToPlay.play().catch(e => {
 					console.warn("Could not play sound:", e);
@@ -406,6 +410,7 @@
                     formatsToSupport: [ // เพิ่ม formatsToSupport ตรงนี้
                         Html5QrcodeSupportedFormats.CODE_128,
                         Html5QrcodeSupportedFormats.EAN_13,
+                        Html5QrcodeSupportedFormats.QR_CODE, // เพิ่ม QR_CODE หากใช้
                         // เพิ่ม format อื่นๆ ที่คุณใช้
                     ]
                 },
@@ -574,6 +579,7 @@
                 });
             }
 
+            // ดึงค่าหมายเหตุจากช่อง input
             const notes = transactionNotesInput ? transactionNotesInput.value.trim() : ''; // <-- ดึงค่าหมายเหตุ
 
             fetch('/api/process_stock_transaction', {
