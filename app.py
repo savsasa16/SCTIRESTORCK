@@ -2212,10 +2212,10 @@ def api_process_stock_transaction():
         # สำหรับ SQLite ที่ไม่มี explicit begin() ต้องมั่นใจว่าการ execute แต่ละครั้งอยู่ใน scope ที่ต้องการ
         # ในที่นี้ เราจะให้ Flask จัดการ conn.commit() หรือ conn.rollback() ท้ายสุด
         
-        for item in items_to_process:
-            item_id = item.get('id')
-            item_type = item.get('item_type')
-            quantity_change = item.get('quantity') # ใช้ quantity_change เพื่อสื่อถึงจำนวนที่เปลี่ยน
+        for item_data in items_to_process:
+            item_id = item_data.get('id')
+            item_type = item_data.get('item_type')
+            quantity_change = item_data.get('quantity') # ใช้ quantity_change เพื่อสื่อถึงจำนวนที่เปลี่ยน
 
             # ตรวจสอบข้อมูลพื้นฐาน
             if not item_id or not item_type or not quantity_change or not isinstance(quantity_change, int) or quantity_change <= 0:

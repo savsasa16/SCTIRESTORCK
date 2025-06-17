@@ -200,6 +200,13 @@
             </tbody>
         </table>
     </div>
+
+    {# --- เพิ่มช่องหมายเหตุสำหรับ Transaction --- #}
+    <div class="form-group" style="margin-top: 20px;">
+        <label for="transactionNotes">หมายเหตุ (ถ้ามี):</label>
+        <textarea id="transactionNotes" class="form-control" rows="3" placeholder="เช่น การรับสินค้าจากซัพพลายเออร์ A / การจ่ายสินค้าให้ลูกค้า B"></textarea>
+    </div>
+    {# ----------------------------------------- #}
     
     <div class="action-buttons">
         <button id="processInBtn" class="btn btn-success">รับเข้าสต็อก</button>
@@ -212,7 +219,7 @@
 <div id="linkBarcodeModal" class="modal">
     <div class="modal-content">
         <span class="close-button">&times;</span>
-        <h4>ไม่มีบาร์โค้ดนี้ในระบบ: <span id="modalScannedBarcode"></span></h4>
+        <h4>บาร์โค้ดไม่รู้จัก: <span id="modalScannedBarcode"></span></h4>
         <p>กรุณาเลือกว่าต้องการเพิ่มสินค้าใหม่ หรือเชื่อมโยงบาร์โค้ดนี้กับสินค้าที่มีอยู่</p>
         
         <div class="form-group">
@@ -243,7 +250,7 @@
     console.log("=== barcode_scanner.html: Script parsing started ===");
 
     // แก้ไข 1: ย้ายการประกาศ scannedItems ออกมานอก DOMContentLoaded
-    let scannedItems = {}; // ประกาศตัวแปรนี้ที่ Global Scope
+    let scannedItems = {}; // ประกาศตัวแปรนี้ที่ Global Scope เพื่อให้ renderScannedItems เข้าถึงได้ตั้งแต่แรก
 
     document.addEventListener('DOMContentLoaded', function() {
         console.log("--- DOMContentLoaded event fired ---");
@@ -254,6 +261,7 @@
         const processInBtn = document.getElementById('processInBtn');
         const processOutBtn = document.getElementById('processOutBtn');
         const clearAllBtn = document.getElementById('clearAllBtn');
+        const transactionNotesInput = document.getElementById('transactionNotes'); // <-- ดึง element หมายเหตุ
 
         // Modal elements
         const linkBarcodeModal = document.getElementById('linkBarcodeModal');
@@ -277,7 +285,7 @@
 		const scanErrorSound = document.getElementById('scanErrorSound');
         let currentTimeout = null; // Used for input debounce (physical scanner)
         let isProcessingScan = false; // Flag to prevent rapid processing from camera scan
-        const SCAN_COOLDOWN_TIME = 3000; // 1.5 วินาที Cooldown Time (ปรับได้ตามความเหมาะสม, เดิม 3000ms อาจจะนานไป)
+        const SCAN_COOLDOWN_TIME = 1500; // 1.5 วินาที Cooldown Time (ปรับตามความเหมาะสม)
         let lastScannedBarcode = ''; // Keep track of the last scanned barcode from camera
         let lastScanTime = 0; // Keep track of when the last barcode was processed from camera
         // ------------------------------------------
@@ -450,7 +458,7 @@
         function processScannedBarcode(barcode) {
             console.log("processScannedBarcode called with:", barcode);
 
-            // แก้ไข 2: ย้ายการ validate บาร์โค้ดมาไว้ด้านบนสุด
+            // แก้ไข 4: ย้ายการ validate บาร์โค้ดมาไว้ด้านบนสุด
             if (barcode.length < 5 || barcode.length > 20 || !/^[a-zA-Z0-9]+$/.test(barcode)) {
                 showStatus("บาร์โค้ดไม่ถูกต้องหรือสแกนไม่สมบูรณ์ กรุณาลองใหม่", 'warning');
                 playScanFeedback(false);
@@ -504,7 +512,7 @@
                         }
                     } else {
                         showStatus(data.message, 'danger');
-                        // แก้ไข 3: ทำให้ Modal เปิดเฉพาะเมื่อ action_required เป็น 'link_new_barcode'
+                        // แก้ไข 5: ทำให้ Modal เปิดเฉพาะเมื่อ action_required เป็น 'link_new_barcode'
                         if (data.action_required === 'link_new_barcode' && data.scanned_barcode) {
                             modalScannedBarcodeSpan.textContent = data.scanned_barcode;
                             linkBarcodeModal.style.display = 'block';
@@ -542,6 +550,9 @@
                 scannedItems = {};
                 renderScannedItems();
                 showStatus('รายการถูกล้างแล้ว', 'info');
+                if (transactionNotesInput) { // เคลียร์ช่องหมายเหตุด้วย
+                    transactionNotesInput.value = '';
+                }
             }
         });
 
@@ -563,6 +574,8 @@
                 });
             }
 
+            const notes = transactionNotesInput ? transactionNotesInput.value.trim() : ''; // <-- ดึงค่าหมายเหตุ
+
             fetch('/api/process_stock_transaction', {
                 method: 'POST',
                 headers: {
@@ -571,7 +584,7 @@
                 body: JSON.stringify({
                     type: type,
                     items: itemsToProcess,
-                    notes: `Barcode scan ${type === 'IN' ? 'เข้า' : 'ออก'} @ ${new Date().toLocaleString('th-TH')}` // Optional notes
+                    notes: notes // <-- ส่ง notes ไปยัง Backend
                 })
             })
             .then(response => response.json())
@@ -580,6 +593,9 @@
                     showStatus(data.message, 'success');
                     scannedItems = {}; // Clear items on success
                     renderScannedItems();
+                    if (transactionNotesInput) {
+                        transactionNotesInput.value = ''; // เคลียร์ช่องหมายเหตุหลังทำรายการสำเร็จ
+                    }
                 } else {
                     showStatus(data.message, 'danger');
                 }

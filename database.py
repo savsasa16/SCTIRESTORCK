@@ -868,6 +868,14 @@ def update_tire_quantity(conn, tire_id, new_quantity):
     else:
         cursor.execute("UPDATE tires SET quantity = ? WHERE id = ?", (new_quantity, tire_id))
     conn.commit()
+    
+def update_wheel_quantity(conn, wheel_id, new_quantity):
+    cursor = conn.cursor()
+    if "psycopg2" in str(type(conn)):
+        cursor.execute("UPDATE wheels SET quantity = %s WHERE id = %s", (new_quantity, wheel_id))
+    else:
+        cursor.execute("UPDATE wheels SET quantity = ? WHERE id = ?", (new_quantity, wheel_id))
+    conn.commit()
 
 def add_tire_movement(conn, tire_id, move_type, quantity_change, remaining_quantity, notes, image_filename=None, user_id=None):
     timestamp = get_bkk_time().isoformat()
