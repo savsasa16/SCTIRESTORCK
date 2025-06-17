@@ -507,9 +507,7 @@ def add_item():
             width = request.form['width']
             quantity = request.form['quantity']
 
-            # --- แก้ไขตรงนี้: Barcode ID เป็นทางเลือก (optional) ---
             scanned_barcode_for_add = request.form.get('barcode_id_for_add', '').strip()
-            # ----------------------------------------------------
 
             cost = request.form.get('cost')
             retail_price = request.form['retail_price']
@@ -520,24 +518,66 @@ def add_item():
             wholesale_price2 = request.form.get('wholesale_price2')
             
             image_file = request.files.get('image_file') 
-            image_url = None
+            image_url = None # กำหนดค่าเริ่มต้น
             
             if image_file and image_file.filename != '':
                 if allowed_image_file(image_file.filename):
-                    try:
+                    try: # <--- เริ่มต้น try block สำหรับการอัปโหลด Cloudinary
                         upload_result = cloudinary.uploader.upload(image_file)
                         image_url = upload_result['secure_url']
-                        except Exception as e:
-                            flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพไปยังเซิฟเวอร์: {e}', 'danger')
-                            active_tab = 'wheel'
-                            return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
-                    else:
-                        flash('ชนิดไฟล์รูปภาพไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
+                    except Exception as e: # <--- except block ที่จับ error จาก Cloudinary upload
+                        flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพไปยังเซิฟเวอร์: {e}', 'danger')
                         active_tab = 'wheel'
                         return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
-            
+                else: # <--- else block ของ if allowed_image_file
+                    flash('ชนิดไฟล์รูปภาพไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
+                    active_tab = 'wheel'
+                    return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
+            # ไม่มี else: ตรงนี้แล้ว เพราะเป็นโครงสร้าง try-except-else ที่ใช้กับ try/except เท่านั้น
+
+            # ... (โค้ดต่อจากการจัดการรูปภาพ: validation ของ form fields, ตรวจสอบ barcode) ...
             if not brand or not model or not pcd or not diameter or not width or not quantity or not retail_price:
                 flash('กรุณากรอกข้อมูลแม็กให้ครบถ้วนในช่องที่มีเครื่องหมาย *', 'danger')
+                active_tab = 'wheel'
+                return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
+            
+            # ... (ต่อด้วยการตรวจสอบ Barcode ID และ try/except หลักของ add_wheel) ...
+            try: # <--- นี่คือ try block หลักสำหรับ logic การเพิ่มแม็กทั้งหมด
+                diameter = float(diameter)
+                width = float(width)
+                quantity = int(quantity)
+                retail_price = float(retail_price)
+
+                cost = float(cost) if cost and cost.strip() else None
+                et = int(et) if et and et.strip() else None
+                cost_online = float(cost_online) if cost_online and cost_online.strip() else None
+                wholesale_price1 = float(wholesale_price1) if wholesale_price1 and wholesale_price1.strip() else None
+                wholesale_price2 = float(wholesale_price2) if wholesale_price2 and wholesale_price2.strip() else None
+                
+                # ... (โค้ด cursor.execute สำหรับตรวจสอบ existing_wheel) ...
+                
+                if existing_wheel:
+                    flash(f'แม็ก {brand.title()} ลาย {model.title()} ขนาด {diameter}x{width} มีอยู่ในระบบแล้ว', 'warning')
+                else:
+                    new_wheel_id = database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, 
+                                                    quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
+                    if scanned_barcode_for_add:
+                        database.add_wheel_barcode(conn, new_wheel_id, scanned_barcode_for_add, is_primary=True)
+                    database.add_wheel_movement(conn, new_wheel_id, 'IN', quantity, quantity, "Initial Stock (Manual Add)", None, user_id=current_user.id)
+                    conn.commit()
+                    flash(f'เพิ่มแม็ก {brand.title()} ลาย {model.title()} จำนวน {quantity} วง สำเร็จ!', 'success')
+                return redirect(url_for('index', tab='wheels'))
+            except ValueError:
+                conn.rollback()
+                flash('ข้อมูลตัวเลขไม่ถูกต้อง กรุณาตรวจสอบ', 'danger')
+                active_tab = 'wheel'
+                return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
+            except (sqlite3.IntegrityError, Exception) as e:
+                conn.rollback()
+                if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
+                    flash(f'เกิดข้อผิดพลาด: ข้อมูลซ้ำซ้อนในระบบ หรือ Barcode ID นี้มีอยู่แล้ว. รายละเอียด: {e}', 'warning')
+                else:
+                    flash(f'เกิดข้อผิดพลาดในการเพิ่มแม็ก: {e}', 'danger')
                 active_tab = 'wheel'
                 return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
             
