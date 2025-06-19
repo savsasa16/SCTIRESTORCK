@@ -87,12 +87,15 @@
         cursor: pointer;
         transition: background-color 0.3s ease;
     }
-    .action-buttons .btn-success { background-color: var(--success-color); color: white; border: none; }
+    /* === ลบ CSS ส่วนปุ่มออกไปจากตรงนี้ทั้งหมด === */
+    /* มันกำลังขัดแย้งกับการกำหนดค่าใน style.css */
+    /* .action-buttons .btn-success { background-color: var(--success-color); color: white; border: none; }
     .action-buttons .btn-success:hover { background-color: var(--success-dark); }
     .action-buttons .btn-danger { background-color: var(--danger-color); color: white; border: none; }
     .action-buttons .btn-danger:hover { background-color: var(--danger-dark); }
     .action-buttons .btn-secondary { background-color: var(--secondary-color); color: white; border: none; }
-    .action-buttons .btn-secondary:hover { background-color: var(--secondary-dark); }
+    .action-buttons .btn-secondary:hover { background-color: var(--secondary-dark); } */
+
 
     /* Modal styles */
     .modal {
@@ -406,13 +409,14 @@
 
             html5QrCode = new Html5Qrcode("qr-reader");
             html5QrCode.start(
-                { facingMode: "environment" }, // <--- พารามิเตอร์แรกมีแค่ Key เดียวคือ facingMode
+                { facingMode: "environment" }, // <--- พารามิเตอร์แรก: มีแค่ Key เดียวคือ facingMode
                 { // <--- นี่คือพารามิเตอร์ที่สอง (config object)
                     fps: 10,
                     qrbox: {width: 250, height: 150}, // กำหนดขนาดของกล่องสแกน (ใช้ค่าที่คุณทดสอบแล้วว่ากล้องเปิด)
                     formatsToSupport: [ 
                         Html5QrcodeSupportedFormats.CODE_128,
                         Html5QrcodeSupportedFormats.EAN_13,
+                        // Html5QrcodeSupportedFormats.QR_CODE, // หากใช้ให้ลบ
                     ],
                     videoConstraints: { // <--- ย้าย videoConstraints มาไว้ในพารามิเตอร์ที่สองนี้
                         aspectRatio: currentAspectRatio,
@@ -612,9 +616,9 @@
                 }
             })
             .catch(error => {
-                    console.error('Error in fetch transaction:', error);
-                    showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
-                });
+                console.error('Error in fetch transaction:', error);
+                showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
+            });
         }
 
         processInBtn.addEventListener('click', () => processTransaction('IN'));
