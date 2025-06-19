@@ -406,22 +406,19 @@
 
             html5QrCode = new Html5Qrcode("qr-reader");
             html5QrCode.start(
-                { 
-                    facingMode: "environment",
-		    aspectRatio: currentAspectRatio,
-                    videoConstraints: { // <--- แก้ไข: ย้าย videoConstraints มานี่
-                        aspectRatio: currentAspectRatio,
-                        width: { ideal: 640 }, // ลองกำหนด resolution ที่เหมาะสม
-                        height: { ideal: 480 }
-                    }
-                },
-                {
+                { facingMode: "environment" }, // <--- พารามิเตอร์แรกมีแค่ Key เดียวคือ facingMode
+                { // <--- นี่คือพารามิเตอร์ที่สอง (config object)
                     fps: 10,
                     qrbox: {width: 250, height: 150}, // กำหนดขนาดของกล่องสแกน (ใช้ค่าที่คุณทดสอบแล้วว่ากล้องเปิด)
                     formatsToSupport: [ 
                         Html5QrcodeSupportedFormats.CODE_128,
                         Html5QrcodeSupportedFormats.EAN_13,
-                    ]
+                    ],
+                    videoConstraints: { // <--- ย้าย videoConstraints มาไว้ในพารามิเตอร์ที่สองนี้
+                        aspectRatio: currentAspectRatio,
+                        width: { ideal: 640 }, 
+                        height: { ideal: 480 }
+                    }
                 },
                 (decodedText, decodedResult) => { // decodedText คือ barcode ที่สแกนได้
                     // นี่คือจุดสำคัญ: เพิ่ม Debounce Logic สำหรับกล้อง
@@ -472,7 +469,7 @@
         function processScannedBarcode(barcode) {
             console.log("processScannedBarcode called with:", barcode);
 
-            // แก้ไข: ย้ายการ validate บาร์โค้ดมาไว้ด้านบนสุด (ทำแล้ว)
+            // แก้ไข: ย้ายการ validate บาร์โค้ดมาไว้ด้านบนสุด
             if (barcode.length < 5 || barcode.length > 20 || !/^[a-zA-Z0-9]+$/.test(barcode)) {
                 showStatus("บาร์โค้ดไม่ถูกต้องหรือสแกนไม่สมบูรณ์ กรุณาลองใหม่", 'warning');
                 playScanFeedback(false);
@@ -615,9 +612,9 @@
                 }
             })
             .catch(error => {
-                console.error('Error in fetch transaction:', error);
-                showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
-            });
+                    console.error('Error in fetch transaction:', error);
+                    showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
+                });
         }
 
         processInBtn.addEventListener('click', () => processTransaction('IN'));
@@ -727,7 +724,5 @@
                 });
         });
     });
-	
-	
 </script>
 {% endblock %}
