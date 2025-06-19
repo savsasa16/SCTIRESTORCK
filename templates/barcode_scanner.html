@@ -204,7 +204,7 @@
         </table>
     </div>
 
-    {# --- เพิ่มช่องหมายเหตุสำหรับ Transaction (แก้ไข: เพิ่มกลับมาแล้ว!) --- #}
+    {# --- เพิ่มช่องหมายเหตุสำหรับ Transaction --- #}
     <div class="form-group" style="margin-top: 20px;">
         <label for="transactionNotes">หมายเหตุ (ถ้ามี):</label>
         <textarea id="transactionNotes" class="form-control" rows="3" placeholder="เช่น ขายหน้าร้าน,ค้าส่งร้าน... / ขายออนไลน์"></textarea>
@@ -416,7 +416,7 @@
                     formatsToSupport: [ 
                         Html5QrcodeSupportedFormats.CODE_128,
                         Html5QrcodeSupportedFormats.EAN_13,
-                        // Html5QrcodeSupportedFormats.QR_CODE, // หากใช้ให้ลบ
+                        // ลบ QR_CODE ออกไปอย่างถาวร
                     ],
                     videoConstraints: { // <--- ย้าย videoConstraints มาไว้ในพารามิเตอร์ที่สองนี้
                         aspectRatio: currentAspectRatio,
@@ -565,7 +565,7 @@
                 scannedItems = {};
                 renderScannedItems();
                 showStatus('รายการถูกล้างแล้ว', 'info');
-                if (transactionNotesInput) { // เคลียร์ช่องหมายเหตุด้วย (ทำแล้ว)
+                if (transactionNotesInput) { // เคลียร์ช่องหมายเหตุด้วย
                     transactionNotesInput.value = '';
                 }
             }
@@ -589,7 +589,7 @@
                 });
             }
 
-            const notes = transactionNotesInput ? transactionNotesInput.value.trim() : ''; // <-- ดึงค่าหมายเหตุ (ทำแล้ว)
+            const notes = transactionNotesInput ? transactionNotesInput.value.trim() : ''; // <-- ดึงค่าหมายเหตุ
 
             fetch('/api/process_stock_transaction', {
                 method: 'POST',
@@ -599,7 +599,7 @@
                 body: JSON.stringify({
                     type: type,
                     items: itemsToProcess,
-                    notes: notes // <-- ส่ง notes ไปยัง Backend (ทำแล้ว)
+                    notes: notes // <-- ส่ง notes ไปยัง Backend
                 })
             })
             .then(response => response.json())
@@ -608,8 +608,8 @@
                     showStatus(data.message, 'success');
                     scannedItems = {}; // Clear items on success
                     renderScannedItems();
-                    if (transactionNotesInput) { // เคลียร์ช่องหมายเหตุหลังทำรายการสำเร็จ (ทำแล้ว)
-                        transactionNotesInput.value = '';
+                    if (transactionNotesInput) {
+                        transactionNotesInput.value = ''; // เคลียร์ช่องหมายเหตุหลังทำรายการสำเร็จ
                     }
                 } else {
                     showStatus(data.message, 'danger');
