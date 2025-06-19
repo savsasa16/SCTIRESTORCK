@@ -408,6 +408,7 @@
             html5QrCode.start(
                 { 
                     facingMode: "environment",
+		    aspectRatio: currentAspectRatio,
                     videoConstraints: { // <--- แก้ไข: ย้าย videoConstraints มานี่
                         aspectRatio: currentAspectRatio,
                         width: { ideal: 640 }, // ลองกำหนด resolution ที่เหมาะสม
