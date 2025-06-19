@@ -170,7 +170,7 @@
         <button id="startScanBtn" class="btn btn-primary"><i class="fas fa-camera"></i> แสกนผ่านโทรศัพท์</button>
         <button id="stopScanBtn" class="btn btn-secondary" style="display:none;"><i class="fas fa-stop-circle"></i> ปิดกล้อง</button>
     </div>
-    <div id="qr-reader"></div>
+    <div id="qr-reader"></div> {# แก้ไขตรงนี้: ลบ inline style ออก #}
     <div id="qr-reader-results" style="text-align: center; margin-top: 10px;"></div>
     {# ------------------------------------------------ #}
 
@@ -243,6 +243,7 @@
 <script>
     console.log("=== barcode_scanner.html: Script parsing started ===");
 
+    // แก้ไข 1: ย้ายการประกาศ scannedItems ออกมานอก DOMContentLoaded
     let scannedItems = {}; // ประกาศตัวแปรนี้ที่ Global Scope
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -254,7 +255,8 @@
         const processInBtn = document.getElementById('processInBtn');
         const processOutBtn = document.getElementById('processOutBtn');
         const clearAllBtn = document.getElementById('clearAllBtn');
-        const transactionNotesInput = document.getElementById('transactionNotes');
+        // เพิ่ม: ดึง element ของช่องหมายเหตุ (คุณมีใน HTML แล้ว!)
+        const transactionNotesInput = document.getElementById('transactionNotes'); // <-- บรรทัดนี้ถูกต้องแล้ว
 
         // Modal elements
         const linkBarcodeModal = document.getElementById('linkBarcodeModal');
@@ -275,7 +277,7 @@
 
         // --- Audio/Vibration Elements and Flags ---
         const scanSuccessSound = document.getElementById('scanSuccessSound');
-        const scanErrorSound = document.getElementById('scanErrorSound');
+		const scanErrorSound = document.getElementById('scanErrorSound'); // <-- ดึง element เสียง Error
         let currentTimeout = null; // Used for input debounce (physical scanner)
         let isProcessingScan = false; // Flag to prevent rapid processing from camera scan
         const SCAN_COOLDOWN_TIME = 1500; // 1.5 วินาที Cooldown Time (ปรับตามความเหมาะสม)
@@ -305,7 +307,7 @@
                 // พยายามเล่นเสียงก่อน
                 if (soundToPlay) {
                     soundToPlay.currentTime = 0; // รีเซ็ตเสียงไปที่เริ่มต้น
-                    soundToPlay.play().catch(e => {
+					soundToPlay.play().catch(e => {
                         console.warn("Could not play sound, attempting to vibrate:", e);
                         navigator.vibrate(isSuccess ? 200 : [100, 50, 100]); // สั่นสั้นๆ เมื่อสำเร็จ, สั่นแบบ "buzzer" เมื่อผิดพลาด
                     });
@@ -314,11 +316,11 @@
                     navigator.vibrate(isSuccess ? 200 : [100, 50, 100]);
                 }
             } else if (soundToPlay) {
-                    // ถ้าไม่รองรับการสั่น ให้เล่นเสียงอย่างเดียว
-                    soundToPlay.currentTime = 0;
-                    soundToPlay.play().catch(e => {
-                    console.warn("Could not play sound:", e);
-                   });
+                 // ถ้าไม่รองรับการสั่น ให้เล่นเสียงอย่างเดียว
+                 soundToPlay.currentTime = 0;
+                 soundToPlay.play().catch(e => {
+					console.warn("Could not play sound:", e);
+                 });
             } else {
                 console.log("No audio element or vibration support for feedback.");
             }
@@ -359,9 +361,9 @@
             }
 
             if (!hasItems) {
-                   const noItemsRow = document.createElement('tr');
-                   noItemsRow.innerHTML = `<td colspan="7" class="text-center">ยังไม่มีรายการที่สแกน</td>`;
-                   scannedItemsTableBody.appendChild(noItemsRow);
+                 const noItemsRow = document.createElement('tr');
+                 noItemsRow.innerHTML = `<td colspan="7" class="text-center">ยังไม่มีรายการที่สแกน</td>`;
+                 scannedItemsTableBody.appendChild(noItemsRow);
             }
 
             // Add event listeners for quantity changes and remove buttons
@@ -387,110 +389,48 @@
 
             barcodeInput.focus(); // Keep focus on barcode input, useful for physical scanners
         }
-        
-        // --- START CAMERA SCANNER LOGIC ---
-        startScanBtn.addEventListener('click', () => {
+		
+		startScanBtn.addEventListener('click', () => {
             qrReaderDiv.style.display = 'block';
             stopScanBtn.style.display = 'inline-block';
             startScanBtn.style.display = 'none';
 
-            // Calculate aspectRatio (might vary slightly depending on device orientation)
-            // A common aspect ratio for cameras is 4:3 or 16:9.
-            // Using window.innerWidth / window.innerHeight or fixed values like 16/9
-            // might give better results than outerHeight/outerWidth which includes browser UI.
-            const preferredAspectRatio = 4 / 3; // Or 16 / 9; experiment to find what works best for most devices.
-
-            if (html5QrCode) {
-                html5QrCode.clear(); // Ensure any previous instance is cleared
-                html5QrCode = null;
-            }
             html5QrCode = new Html5Qrcode("qr-reader");
-
-            Html5Qrcode.getCameras().then(devices => {
-                if (devices && devices.length) {
-                    console.log("Available camera devices:", devices);
-                    let rearCameraId = null;
-                    // Try to find a camera labeled "back" or "environment"
-                    const backCamera = devices.find(device => 
-                        device.label.toLowerCase().includes('back') || 
-                        device.label.toLowerCase().includes('environment') || 
-                        device.label.toLowerCase().includes('rear')
-                    );
-
-                    if (backCamera) {
-                        rearCameraId = backCamera.id;
-                        console.log("Selected rear camera:", backCamera.label, backCamera.id);
-                    } else if (devices.length > 1) {
-                        // Fallback: If no explicit label, try the last device (often the back camera)
-                        rearCameraId = devices[devices.length - 1].id;
-                        console.warn("Could not find explicit rear camera, defaulting to last device:", devices[devices.length - 1].label, rearCameraId);
-                    } else {
-                        // Only one camera, use it.
-                        rearCameraId = devices[0].id;
-                        console.warn("Only one camera found, using it:", devices[0].label, rearCameraId);
+            html5QrCode.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: {width: 450, height: 250}, // กำหนดขนาดของกล่องสแกน
+                    formatsToSupport: [ // เพิ่ม formatsToSupport ตรงนี้
+                        Html5QrcodeSupportedFormats.CODE_128,
+                        Html5QrcodeSupportedFormats.EAN_13,
+                        // เพิ่ม format อื่นๆ
+                    ]
+                },
+                (decodedText, decodedResult) => { // decodedText คือ barcode ที่สแกนได้
+                    // นี่คือจุดสำคัญ: เพิ่ม Debounce Logic สำหรับกล้อง
+                    const currentTime = new Date().getTime();
+                    // ตรวจสอบว่าบาร์โค้ดเหมือนเดิมหรือไม่ และผ่านช่วง Cooldown หรือยัง
+                    if (decodedText === lastScannedBarcode && (currentTime - lastScanTime) < SCAN_COOLDOWN_TIME) {
+                        console.log("Ignored duplicate scan within cooldown period:", decodedText);
+                        return; 
                     }
 
-                    if (rearCameraId) {
-                        html5QrCode.start(
-                            rearCameraId, // Use the specific camera ID
-                            { // Configuration object
-                                fps: 10,
-                                qrbox: {width: 250, height: 150},
-                                formatsToSupport: [
-                                    Html5QrcodeSupportedFormats.CODE_128,
-                                    Html5QrcodeSupportedFormats.EAN_13,
-                                ],
-                                videoConstraints: { // Request optimal video settings
-                                    facingMode: { ideal: "environment" }, // Still good to include this as an ideal
-                                   // width: { ideal: 1280 }, // Try higher resolution for better scanning
-                                   // height: { ideal: 720 },
-                                   // aspectRatio: preferredAspectRatio
-                                }
-                            },
-                            (decodedText, decodedResult) => { // decodedText คือ barcode ที่สแกนได้
-                                const currentTime = new Date().getTime();
-                                if (decodedText === lastScannedBarcode && (currentTime - lastScanTime) < SCAN_COOLDOWN_TIME) {
-                                    console.log("Ignored duplicate scan within cooldown period:", decodedText);
-                                    return;
-                                }
+                    // อัปเดตค่าสำหรับ Cooldown
+                    lastScannedBarcode = decodedText;
+                    lastScanTime = currentTime;
 
-                                lastScannedBarcode = decodedText;
-                                lastScanTime = currentTime;
-                                processScannedBarcode(decodedText);
-                            },
-                            errorMessage => {
-                                // console.warn(`QR code scan error: ${errorMessage}`); // Uncomment for detailed debug
-                            }
-                        ).catch(err => {
-                            console.error("Failed to start scanner:", err);
-                            showStatus("ไม่สามารถเปิดกล้องได้: " + err + ". ตรวจสอบการอนุญาตกล้องบนอุปกรณ์", 'danger');
-                            playScanFeedback(false);
-                            // Hide camera view and show start button on error
-                            qrReaderDiv.style.display = 'none';
-                            stopScanBtn.style.display = 'none';
-                            startScanBtn.style.display = 'inline-block';
-                        });
-                    } else {
-                        showStatus("ไม่พบกล้องที่เหมาะสม (หลัง) ในอุปกรณ์นี้", 'warning');
-                        playScanFeedback(false);
-                        qrReaderDiv.style.display = 'none';
-                        stopScanBtn.style.display = 'none';
-                        startScanBtn.style.display = 'inline-block';
-                    }
-                } else {
-                    showStatus("ไม่พบอุปกรณ์กล้องในระบบ", 'danger');
-                    playScanFeedback(false);
-                    qrReaderDiv.style.display = 'none';
-                    stopScanBtn.style.display = 'none';
-                    startScanBtn.style.display = 'inline-block';
+                    // เรียกใช้ฟังก์ชันประมวลผลบาร์โค้ด
+                    processScannedBarcode(decodedText);
+                },
+                errorMessage => {
+                    // แสดงเฉพาะถ้าต้องการ debug
+                    // console.warn(`QR code scan error: ${errorMessage}`);
                 }
-            }).catch(err => {
-                console.error("Error getting camera devices:", err);
-                showStatus("ไม่สามารถเข้าถึงข้อมูลกล้องได้: " + err, 'danger');
-                playScanFeedback(false);
-                qrReaderDiv.style.display = 'none';
-                stopScanBtn.style.display = 'none';
-                startScanBtn.style.display = 'inline-block';
+            ).catch(err => {
+                console.error("Failed to start scanner:", err);
+                showStatus("ไม่สามารถเปิดกล้องได้: " + err, 'danger');
+                playScanFeedback(false); // Feedback เมื่อเปิดกล้องไม่ได้
             });
         });
 
@@ -501,52 +441,54 @@
                     qrReaderDiv.style.display = 'none';
                     stopScanBtn.style.display = 'none';
                     startScanBtn.style.display = 'inline-block';
+                    // Reset cooldown flags when stopping the camera
                     lastScannedBarcode = '';
                     lastScanTime = 0;
                 }).catch(err => {
                     console.error("Failed to stop scanner:", err);
                     showStatus("ไม่สามารถปิดกล้องได้: " + err, 'danger');
-                    playScanFeedback(false);
+                    playScanFeedback(false); // Feedback เมื่อปิดกล้องไม่ได้
                 });
             }
         });
-        // --- END CAMERA SCANNER LOGIC ---
 
         // --- ฟังก์ชันประมวลผลบาร์โค้ดที่สแกน (ใช้สำหรับทั้ง Input และกล้อง) ---
         function processScannedBarcode(barcode) {
             console.log("processScannedBarcode called with:", barcode);
 
+            // แก้ไข 4: ย้ายการ validate บาร์โค้ดมาไว้ด้านบนสุด
             if (barcode.length < 5 || barcode.length > 20 || !/^[a-zA-Z0-9]+$/.test(barcode)) {
                 showStatus("บาร์โค้ดไม่ถูกต้องหรือสแกนไม่สมบูรณ์ กรุณาลองใหม่", 'warning');
                 playScanFeedback(false);
-                return;
+                return; // หยุดการประมวลผลทันทีหากบาร์โค้ดไม่ถูกต้อง
             }
 
-            // For Physical Scanner (barcodeInput)
-            if (document.activeElement === barcodeInput || (barcodeInput.value && barcode === barcodeInput.value)) {
+            // สำหรับ Physical Scanner (barcodeInput)
+            if (document.activeElement === barcodeInput || (barcodeInput.value && barcode === barcodeInput.value)) { 
                 if (currentTimeout) {
                     clearTimeout(currentTimeout);
                 }
                 currentTimeout = setTimeout(() => {
                     fetchAndProcess(barcode);
-                    barcodeInput.value = ''; // Clear input after processing
+                    barcodeInput.value = ''; // เคลียร์ค่า input หลังประมวลผล (สำหรับ physical scanner)
                 }, 100); // Debounce for physical scanner
-            } else { // If from camera
-                fetchAndProcess(barcode);
+            } else { // ถ้ามาจากกล้อง (ไม่มี setTimeout เพราะจัดการ debounce ใน callback ของ html5QrCode.start แล้ว)
+                 fetchAndProcess(barcode);
             }
         }
 
         function fetchAndProcess(barcode) {
+            // เพิ่ม flag เพื่อป้องกันการเรียกซ้อนกันในกรณีที่ network ช้า
             if (isProcessingScan) {
                 console.log("Already processing a scan, ignoring:", barcode);
                 return;
             }
-            isProcessingScan = true;
+            isProcessingScan = true; // ตั้งค่า flag ว่ากำลังประมวลผล
 
             fetch(`/api/scan_item_lookup?barcode_id=${barcode}`)
                 .then(response => response.json())
                 .then(data => {
-                    isProcessingScan = false;
+                    isProcessingScan = false; // รีเซ็ต flag เมื่อประมวลผลเสร็จ
                     console.log("Lookup API response:", data);
                     if (data.success) {
                         const item_data = data.item;
@@ -561,28 +503,29 @@
                             }
                             showStatus(`สแกน ${item_data.brand.charAt(0).toUpperCase() + item_data.brand.slice(1)} ${item_data.model.charAt(0).toUpperCase() + item_data.model.slice(1)} สำเร็จ!`, 'success');
                             renderScannedItems();
-                            playScanFeedback(true);
+                            playScanFeedback(true); // <-- เรียกใช้ฟังก์ชัน Feedback เมื่อสำเร็จ
                         } else {
                             showStatus('ข้อมูลไม่สมบูรณ์จากเซิร์ฟเวอร์', 'danger');
-                            playScanFeedback(false);
+                            playScanFeedback(false); // Feedback สำหรับกรณีข้อมูลไม่สมบูรณ์
                         }
                     } else {
                         showStatus(data.message, 'danger');
+                        // แก้ไข 5: ทำให้ Modal เปิดเฉพาะเมื่อ action_required เป็น 'link_new_barcode'
                         if (data.action_required === 'link_new_barcode' && data.scanned_barcode) {
                             modalScannedBarcodeSpan.textContent = data.scanned_barcode;
                             linkBarcodeModal.style.display = 'block';
-                            linkBarcodeModal.dataset.scannedBarcode = data.scanned_barcode;
-                            playScanFeedback(false);
-                        } else {
+                            linkBarcodeModal.dataset.scannedBarcode = data.scanned_barcode; 
+                            playScanFeedback(false); // Feedback เมื่อบาร์โค้ดไม่รู้จัก
+                        } else { // กรณีอื่นที่สแกนไม่สำเร็จ แต่ไม่ใช่ link_new_barcode
                             playScanFeedback(false);
                         }
                     }
                 })
                 .catch(error => {
-                    isProcessingScan = false;
+                    isProcessingScan = false; // รีเซ็ต flag หากเกิดข้อผิดพลาด
                     console.error('Error in fetch lookup:', error);
                     showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
-                    playScanFeedback(false);
+                    playScanFeedback(false); // Feedback เมื่อเกิด error
                 });
         }
         // ------------------------------------------------------------------
@@ -592,8 +535,9 @@
             if (e.key === 'Enter') {
                 e.preventDefault(); // Prevent form submission
                 const barcode = this.value.trim();
+                // this.value = ''; // ย้ายไปใน setTimeout ของ physical scanner เพื่อให้ clear หลัง debounce
                 if (barcode) {
-                    processScannedBarcode(barcode);
+                    processScannedBarcode(barcode); // เรียกใช้ฟังก์ชันประมวลผลรวม
                 }
             }
         });
@@ -604,7 +548,7 @@
                 scannedItems = {};
                 renderScannedItems();
                 showStatus('รายการถูกล้างแล้ว', 'info');
-                if (transactionNotesInput) {
+                if (transactionNotesInput) { // เคลียร์ช่องหมายเหตุด้วย
                     transactionNotesInput.value = '';
                 }
             }
@@ -622,13 +566,14 @@
                 const item = scannedItems[barcode_id].data;
                 const quantity = scannedItems[barcode_id].quantity_to_process;
                 itemsToProcess.push({
-                    id: item.id,
-                    item_type: item.type,
+                    id: item.id, // This is the actual DB ID/Barcode ID
+                    item_type: item.type, // 'tire' or 'wheel'
                     quantity: quantity
                 });
             }
 
-            const notes = transactionNotesInput ? transactionNotesInput.value.trim() : '';
+            // ดึงค่าหมายเหตุจากช่อง input
+            const notes = transactionNotesInput ? transactionNotesInput.value.trim() : ''; // <-- ดึงค่าหมายเหตุ
 
             fetch('/api/process_stock_transaction', {
                 method: 'POST',
@@ -638,17 +583,17 @@
                 body: JSON.stringify({
                     type: type,
                     items: itemsToProcess,
-                    notes: notes
+                    notes: notes // <-- ส่ง notes ไปยัง Backend
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     showStatus(data.message, 'success');
-                    scannedItems = {};
+                    scannedItems = {}; // Clear items on success
                     renderScannedItems();
                     if (transactionNotesInput) {
-                        transactionNotesInput.value = '';
+                        transactionNotesInput.value = ''; // เคลียร์ช่องหมายเหตุหลังทำรายการสำเร็จ
                     }
                 } else {
                     showStatus(data.message, 'danger');
