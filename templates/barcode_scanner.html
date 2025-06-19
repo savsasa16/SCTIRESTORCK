@@ -393,10 +393,14 @@
             qrReaderDiv.style.display = 'block';
             stopScanBtn.style.display = 'inline-block';
             startScanBtn.style.display = 'none';
+	    
+	    const currentAspectRatio = window.outerHeight / window.outerWidth;
 
             html5QrCode = new Html5Qrcode("qr-reader");
             html5QrCode.start(
-                { facingMode: "environment" },
+                { facingMode: "environment",
+		 aspectRatio: currentAspectRatio,
+		},
                 {
                     fps: 10,
                     qrbox: {width: 450, height: 250}, // กำหนดขนาดของกล่องสแกน
