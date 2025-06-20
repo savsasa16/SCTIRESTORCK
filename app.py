@@ -478,8 +478,7 @@ def add_item():
                     # --- เพิ่มตรงนี้: บันทึก Barcode ID สำหรับยาง (เฉพาะถ้ามีการกรอก) ---
                     if scanned_barcode_for_add:
                         database.add_tire_barcode(conn, new_tire_id, scanned_barcode_for_add, is_primary=True)
-                    # -------------------------------------------------------------------
-                    database.add_tire_movement(conn, new_tire_id, 'IN', quantity, quantity, "Initial Stock (Manual Add)", None, user_id=current_user.id)
+                    # -------------------------------------------------------------------                    
                     conn.commit()
                     flash(f'เพิ่มยาง {brand.title()} รุ่น {model.title()} เบอร์ {size} จำนวน {quantity} เส้น สำเร็จ!', 'success')
                 return redirect(url_for('add_item', tab='tire'))
