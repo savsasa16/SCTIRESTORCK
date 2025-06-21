@@ -1772,7 +1772,7 @@ def summary_stock_report():
         final_qty = initial_qty + in_qty - out_qty
 
         item_data = {
-            'tire_id': tire_id,  # ADDED tire_id here
+            'tire_id': tire_id,  # ADDED tire_id here to fix KeyError
             'brand': brand,
             'model': data['model'],
             'size': data['size'],
@@ -1787,30 +1787,28 @@ def summary_stock_report():
         tire_brand_totals_for_summary_report[brand]['IN'] += in_qty
         tire_brand_totals_for_summary_report[brand]['OUT'] += out_qty
     
-    # Add items that had initial stock but no movements in the range
-    moved_tire_ids_in_range = {data['tire_id'] for data in item_range_summary.values()} # Efficient set of moved IDs
-    for tire_id_from_initial_quantities, initial_qty in tire_initial_quantities.items():
-        if initial_qty > 0 and tire_id_from_initial_quantities not in moved_tire_ids_in_range:
-            tire_info = database.get_tire(conn, tire_id_from_initial_quantities)
-            if tire_info and not tire_info['is_deleted']:
-                brand = tire_info['brand']
-                # Add to detailed report for display
-                tires_by_brand_for_summary_report[brand].append({
-                    'tire_id': tire_id_from_initial_quantities, # Also add tire_id here
-                    'brand': brand,
-                    'model': tire_info['model'],
-                    'size': tire_info['size'],
-                    'initial_quantity': initial_qty,
-                    'IN': 0,
-                    'OUT': 0,
-                    'final_quantity': initial_qty # If no movement, final is same as initial
-                })
-                # For brands that only had initial stock and no movements, their IN/OUT are 0
-                # But their final_quantity_sum still needs to reflect the initial quantity.
-                # This will be handled in the final `final_quantity_sum` calculation loop below.
+    # START OF REMOVED BLOCK as per user's request: "ถ้าไม่มีการเคลื่อนไหวก็ไม่ต้องโชว์สิ"
+    # moved_tire_ids_in_range = {data['tire_id'] for data in item_range_summary.values()}
+    # for tire_id_from_initial_quantities, initial_qty in tire_initial_quantities.items():
+    #     if initial_qty > 0 and tire_id_from_initial_quantities not in moved_tire_ids_in_range:
+    #         tire_info = database.get_tire(conn, tire_id_from_initial_quantities)
+    #         if tire_info and not tire_info['is_deleted']:
+    #             brand = tire_info['brand']
+    #             # Add to detailed report for display
+    #             tires_by_brand_for_summary_report[brand].append({
+    #                 'tire_id': tire_id_from_initial_quantities,
+    #                 'brand': brand,
+    #                 'model': tire_info['model'],
+    #                 'size': tire_info['size'],
+    #                 'initial_quantity': initial_qty,
+    #                 'IN': 0,
+    #                 'OUT': 0,
+    #                 'final_quantity': initial_qty # If no movement, final is same as initial
+    #             })
+    # END OF REMOVED BLOCK
 
     # Calculate final_quantity_sum for each brand in tire_brand_totals_for_summary_report
-    # This sums the final_quantity of all items belonging to that brand (which includes items with no movement during the period)
+    # This sums the final_quantity of all items belonging to that brand (which now only includes items with movement if the above block is removed)
     for brand in tire_brand_totals_for_summary_report.keys():
         total_final_for_brand = 0
         if brand in tires_by_brand_for_summary_report: # Ensure the brand has items in the detailed report
@@ -1906,7 +1904,7 @@ def summary_stock_report():
         final_qty = initial_qty + in_qty - out_qty
 
         item_data = {
-            'wheel_id': wheel_id, # ADDED wheel_id here
+            'wheel_id': wheel_id, # ADDED wheel_id here to fix KeyError
             'brand': brand,
             'model': data['model'],
             'diameter': data['diameter'],
@@ -1922,24 +1920,26 @@ def summary_stock_report():
         wheel_brand_totals_for_summary_report[brand]['IN'] += in_qty
         wheel_brand_totals_for_summary_report[brand]['OUT'] += out_qty
 
-    moved_wheel_ids_in_range = {data['wheel_id'] for data in item_range_summary_wheels.values()} # Efficient set of moved IDs
-    for wheel_id_from_initial_quantities, initial_qty in wheel_initial_quantities.items():
-        if initial_qty > 0 and wheel_id_from_initial_quantities not in moved_wheel_ids_in_range:
-            wheel_info = database.get_wheel(conn, wheel_id_from_initial_quantities)
-            if wheel_info and not wheel_info['is_deleted']:
-                brand = wheel_info['brand']
-                wheels_by_brand_for_summary_report[brand].append({
-                    'wheel_id': wheel_id_from_initial_quantities, # Also add wheel_id here
-                    'brand': brand,
-                    'model': wheel_info['model'],
-                    'diameter': wheel_info['diameter'],
-                    'pcd': wheel_info['pcd'],
-                    'width': wheel_info['width'],
-                    'initial_quantity': initial_qty,
-                    'IN': 0,
-                    'OUT': 0,
-                    'final_quantity': initial_qty
-                })
+    # START OF REMOVED BLOCK as per user's request: "ถ้าไม่มีการเคลื่อนไหวก็ไม่ต้องโชว์สิ"
+    # moved_wheel_ids_in_range = {data['wheel_id'] for data in item_range_summary_wheels.values()}
+    # for wheel_id_from_initial_quantities, initial_qty in wheel_initial_quantities.items():
+    #     if initial_qty > 0 and wheel_id_from_initial_quantities not in moved_wheel_ids_in_range:
+    #         wheel_info = database.get_wheel(conn, wheel_id_from_initial_quantities)
+    #         if wheel_info and not wheel_info['is_deleted']:
+    #             brand = wheel_info['brand']
+    #             wheels_by_brand_for_summary_report[brand].append({
+    #                 'wheel_id': wheel_id_from_initial_quantities,
+    #                 'brand': brand,
+    #                 'model': wheel_info['model'],
+    #                 'diameter': wheel_info['diameter'],
+    #                 'pcd': wheel_info['pcd'],
+    #                 'width': wheel_info['width'],
+    #                 'initial_quantity': initial_qty,
+    #                 'IN': 0,
+    #                 'OUT': 0,
+    #                 'final_quantity': initial_qty
+    #             })
+    # END OF REMOVED BLOCK
     
     for brand in wheel_brand_totals_for_summary_report.keys():
         total_final_for_brand = 0
@@ -2777,7 +2777,7 @@ def api_link_barcode_to_item():
                 return jsonify({"success": True, "message": f"บาร์โค้ด '{scanned_barcode}' ถูกเชื่อมโยงกับสินค้านี้อยู่แล้ว"}), 200
             else:
                 # ถ้ามีอยู่แล้วแต่ผูกกับ item_id อื่น แสดงว่าซ้ำซ้อน
-                return jsonify({"success": False, "message": f"บาร์โค้ด '{scanned_barcode}' มีอยู่ในระบบแล้ว และถูกเชื่อมโยงกับสินค้าอื่น"}), 409
+                return jsonify({"success": False, "message": f"บาร์โค้ด '{scanned_barcode}' ถูกเชื่อมโยงกับสินค้าอื่น"}), 409
 
         # ถ้ายังไม่มีในระบบ ให้เพิ่มการเชื่อมโยงใหม่
         if item_type == 'tire':
