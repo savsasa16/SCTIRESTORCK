@@ -1696,135 +1696,419 @@ def summary_stock_report():
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
 
-    # Default to current month if no dates are provided
-    if not start_date_str or not end_date_str:
-        today = get_bkk_time().date()
-        first_day_of_month = today.replace(day=1)
-        start_date_obj = BKK_TZ.localize(datetime(first_day_of_month.year, first_day_of_month.month, first_day_of_month.day, 0, 0, 0))
-        end_date_obj = BKK_TZ.localize(datetime(today.year, today.month, today.day, 23, 59, 59, 999999))
-        display_range_str = f"จากวันที่ {start_date_obj.strftime('%d %b %Y')} ถึงวันที่ {end_date_obj.strftime('%d %b %Y')}"
+    today_bkk = get_bkk_time().date()
+
+    if not start_date_str and not end_date_str:
+        # Default to last 7 days if no dates are provided
+        end_date_obj = today_bkk
+        start_date_obj = today_bkk - timedelta(days=6)
+        start_date_str = start_date_obj.strftime('%Y-%m-%d')
+        end_date_str = end_date_obj.strftime('%Y-%m-%d')
+    elif not start_date_str:
+        # If only end_date is provided, default start_date to 7 days before end_date
+        try:
+            end_date_obj = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            start_date_obj = end_date_obj - timedelta(days=6)
+            start_date_str = start_date_obj.strftime('%Y-%m-%d')
+        except ValueError:
+            flash("รูปแบบวันที่สิ้นสุดไม่ถูกต้อง กรุณาใช้ YYYY-MM-DD", "danger")
+            end_date_obj = today_bkk
+            start_date_obj = today_bkk - timedelta(days=6)
+            start_date_str = start_date_obj.strftime('%Y-%m-%d')
+            end_date_str = end_date_obj.strftime('%Y-%m-%d')
+    elif not end_date_str:
+        # If only start_date is provided, default end_date to today
+        try:
+            start_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date_obj = today_bkk
+            end_date_str = end_date_obj.strftime('%Y-%m-%d')
+        except ValueError:
+            flash("รูปแบบวันที่เริ่มต้นไม่ถูกต้อง กรุณาใช้ YYYY-MM-DD", "danger")
+            end_date_obj = today_bkk
+            start_date_obj = today_bkk - timedelta(days=6)
+            start_date_str = start_date_obj.strftime('%Y-%m-%d')
+            end_date_str = end_date_obj.strftime('%Y-%m-%d')
     else:
         try:
-            start_date_obj = BKK_TZ.localize(datetime.strptime(start_date_str, '%Y-%m-%d')).replace(hour=0, minute=0, second=0, microsecond=0)
-            end_date_obj = BKK_TZ.localize(datetime.strptime(end_date_str, '%Y-%m-%d')).replace(hour=23, minute=59, second=59, microsecond=999999)
-            
-            if start_date_obj > end_date_obj:
-                flash("วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด", "danger")
-                # Reset to default current month or handle error appropriately
-                today = get_bkk_time().date()
-                first_day_of_month = today.replace(day=1)
-                start_date_obj = BKK_TZ.localize(datetime(first_day_of_month.year, first_day_of_month.month, first_day_of_month.day, 0, 0, 0))
-                end_date_obj = BKK_TZ.localize(datetime(today.year, today.month, today.day, 23, 59, 59, 999999))
-                display_range_str = f"จากวันที่ {start_date_obj.strftime('%d %b %Y')} ถึงวันที่ {end_date_obj.strftime('%d %b %Y')}"
-            else:
-                display_range_str = f"จากวันที่ {start_date_obj.strftime('%d %b %Y')} ถึงวันที่ {end_date_obj.strftime('%d %b %Y')}"
+            start_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date_obj = datetime.strptime(end_date_str, '%Y-%m-%d').date()
         except ValueError:
             flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้ YYYY-MM-DD", "danger")
-            today = get_bkk_time().date()
-            first_day_of_month = today.replace(day=1)
-            start_date_obj = BKK_TZ.localize(datetime(first_day_of_month.year, first_day_of_month.month, first_day_of_month.day, 0, 0, 0))
-            end_date_obj = BKK_TZ.localize(datetime(today.year, today.month, today.day, 23, 59, 59, 999999))
-            display_range_str = f"จากวันที่ {start_date_obj.strftime('%d %b %Y')} ถึงวันที่ {end_date_obj.strftime('%d %b %Y')}"
+            end_date_obj = today_bkk
+            start_date_obj = today_bkk - timedelta(days=6)
+            start_date_str = start_date_obj.strftime('%Y-%m-%d')
+            end_date_str = end_date_obj.strftime('%Y-%m-%d')
 
-    start_of_period_iso = start_date_obj.isoformat()
-    end_of_period_iso = end_date_obj.isoformat()
+    if start_date_obj > end_date_obj:
+        flash("วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด", "danger")
+        start_date_obj = end_date_obj - timedelta(days=6)
+        start_date_str = start_date_obj.strftime('%Y-%m-%d')
 
-    # --- Tire Movements by Brand ---
-    tire_movements_query_sql = f"""
-        SELECT t.brand, tm.type, SUM(tm.quantity_change) AS total_quantity
+
+    display_range_str = f"{start_date_obj.strftime('%d %b %Y')} - {end_date_obj.strftime('%d %b %Y')}"
+
+    # Convert to BKK localized datetime objects for queries
+    start_datetime_obj = BKK_TZ.localize(datetime.combine(start_date_obj, datetime.min.time())).replace(hour=0, minute=0, second=0, microsecond=0)
+    end_datetime_obj = BKK_TZ.localize(datetime.combine(end_date_obj, datetime.max.time())).replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    start_iso = start_datetime_obj.isoformat()
+    end_iso = end_datetime_obj.isoformat()
+
+    # --- Tire Data Processing for Summary Report ---
+    cursor = conn.cursor()
+
+    # Fetch all tire movements within the specified range (inclusive)
+    tire_movements_in_range_query = f"""
+        SELECT tm.tire_id, tm.type, tm.quantity_change, t.brand, t.model, t.size
         FROM tire_movements tm
         JOIN tires t ON tm.tire_id = t.id
-        WHERE tm.timestamp BETWEEN %s AND %s
-        GROUP BY t.brand, tm.type
-        ORDER BY t.brand, tm.type;
+        WHERE tm.timestamp >= %s AND tm.timestamp <= %s
+        ORDER BY t.brand, t.model, t.size, tm.timestamp ASC
     """
     if "psycopg2" in str(type(conn)):
-        cursor = conn.cursor()
-        cursor.execute(tire_movements_query_sql, (start_of_period_iso, end_of_period_iso))
-    else: # SQLite
-        cursor = conn.execute(tire_movements_query_sql.replace('%s', '?'), (start_of_period_iso, end_of_period_iso))
-    
-    tire_movements_by_brand_raw = cursor.fetchall()
-    
-    tire_movements_by_brand = defaultdict(lambda: {'IN': 0, 'OUT': 0})
-    for row in tire_movements_by_brand_raw:
-        brand = row['brand']
-        move_type = row['type']
-        total_qty = row['total_quantity']
-        tire_movements_by_brand[brand][move_type] = total_qty
+        cursor.execute(tire_movements_in_range_query, (start_iso, end_iso))
+        tire_movements_raw_range = cursor.fetchall()
+    else:
+        tire_movements_raw_range = conn.execute(tire_movements_in_range_query.replace('%s', '?'), (start_iso, end_iso)).fetchall()
 
-    # --- Wheel Movements by Brand ---
-    wheel_movements_query_sql = f"""
-        SELECT w.brand, wm.type, SUM(wm.quantity_change) AS total_quantity
+    # Get all distinct tire IDs that had movements up to the END of the period
+    # and also all existing (non-deleted) tires for accurate 'initial' and 'final' quantities
+    all_involved_tire_ids = set()
+    for move in tire_movements_raw_range:
+        all_involved_tire_ids.add(move['tire_id'])
+    
+    existing_tires_query = f"""
+        SELECT id FROM tires WHERE is_deleted = FALSE
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(existing_tires_query)
+    else:
+        cursor.execute(existing_tires_query.replace('FALSE', '0'))
+    
+    for row in cursor.fetchall():
+        all_involved_tire_ids.add(row['id'])
+
+    # Calculate initial quantities for each tire at the START of the report range
+    tire_initial_quantities = defaultdict(int)
+    for tire_id in all_involved_tire_ids:
+        initial_qty_calc_query = f"""
+            SELECT type, quantity_change
+            FROM tire_movements
+            WHERE tire_id = %s AND timestamp < %s
+            ORDER BY timestamp ASC
+        """
+        if "psycopg2" in str(type(conn)):
+            cursor.execute(initial_qty_calc_query, (tire_id, start_iso))
+        else:
+            cursor.execute(initial_qty_calc_query.replace('%s', '?'), (tire_id, start_iso,))
+        
+        calculated_initial_qty = 0
+        for move in cursor.fetchall():
+            if move['type'] == 'IN':
+                calculated_initial_qty += move['quantity_change']
+            elif move['type'] == 'OUT':
+                calculated_initial_qty -= move['quantity_change']
+        tire_initial_quantities[tire_id] = calculated_initial_qty
+
+    # Process item-level movements for the range and aggregate for brand totals
+    tires_by_brand_for_summary_report = defaultdict(list)
+    tire_brand_totals_for_summary_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'final_quantity_sum': 0})
+    
+    item_range_summary = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'tire_id': None, 'brand': '', 'model': '', 'size': ''})
+
+    for movement in tire_movements_raw_range:
+        key = (movement['brand'], movement['model'], movement['size'])
+        tire_id = movement['tire_id']
+
+        item_range_summary[key]['tire_id'] = tire_id
+        item_range_summary[key]['brand'] = movement['brand']
+        item_range_summary[key]['model'] = movement['model']
+        item_range_summary[key]['size'] = movement['size']
+
+        if movement['type'] == 'IN':
+            item_range_summary[key]['IN'] += movement['quantity_change']
+        elif movement['type'] == 'OUT':
+            item_range_summary[key]['OUT'] += movement['quantity_change']
+    
+    # Populate tires_by_brand_for_summary_report and initial calculations for brand totals
+    sorted_item_range_summary_keys = sorted(item_range_summary.keys(), key=lambda x: (x[0], x[1], x[2]))
+
+    for key in sorted_item_range_summary_keys:
+        data = item_range_summary[key]
+        tire_id = data['tire_id']
+        brand = data['brand']
+
+        initial_qty = tire_initial_quantities[tire_id]
+        in_qty = data['IN']
+        out_qty = data['OUT']
+        final_qty = initial_qty + in_qty - out_qty
+
+        item_data = {
+            'brand': brand,
+            'model': data['model'],
+            'size': data['size'],
+            'initial_quantity': initial_qty,
+            'IN': in_qty,
+            'OUT': out_qty,
+            'final_quantity': final_qty
+        }
+        tires_by_brand_for_summary_report[brand].append(item_data)
+
+        # Update brand totals (IN and OUT for the period)
+        tire_brand_totals_for_summary_report[brand]['IN'] += in_qty
+        tire_brand_totals_for_summary_report[brand]['OUT'] += out_qty
+    
+    # Add items that had initial stock but no movements in the range
+    for tire_id, initial_qty in tire_initial_quantities.items():
+        # Check if this tire_id was processed in item_range_summary (meaning it had movements)
+        if initial_qty > 0 and not any(item_data['tire_id'] == tire_id for items_list in tires_by_brand_for_summary_report.values() for item_data in items_list):
+            tire_info = database.get_tire(conn, tire_id)
+            if tire_info and not tire_info['is_deleted']:
+                brand = tire_info['brand']
+                # Add to detailed report for display
+                tires_by_brand_for_summary_report[brand].append({
+                    'brand': brand,
+                    'model': tire_info['model'],
+                    'size': tire_info['size'],
+                    'initial_quantity': initial_qty,
+                    'IN': 0,
+                    'OUT': 0,
+                    'final_quantity': initial_qty # If no movement, final is same as initial
+                })
+                # For brands that only had initial stock and no movements, their IN/OUT are 0
+                # But their final_quantity_sum still needs to reflect the initial quantity.
+                # This will be handled in the final `final_quantity_sum` calculation loop below.
+
+    # Calculate final_quantity_sum for each brand in tire_brand_totals_for_summary_report
+    # This sums the final_quantity of all items belonging to that brand (which includes items with no movement during the period)
+    for brand in tire_brand_totals_for_summary_report.keys():
+        total_final_for_brand = 0
+        if brand in tires_by_brand_for_summary_report: # Ensure the brand has items in the detailed report
+            for item_data in tires_by_brand_for_summary_report[brand]:
+                total_final_for_brand += item_data['final_quantity']
+        tire_brand_totals_for_summary_report[brand]['final_quantity_sum'] = total_final_for_brand
+
+    # Sort the brand totals for presentation
+    sorted_tire_brand_totals = sorted(tire_brand_totals_for_summary_report.items(), key=lambda x: x[0])
+
+
+    # --- Wheel Data Processing for Summary Report (similar logic) ---
+    wheel_movements_in_range_query = f"""
+        SELECT wm.wheel_id, wm.type, wm.quantity_change, w.brand, w.model, w.diameter, w.pcd, w.width
         FROM wheel_movements wm
         JOIN wheels w ON wm.wheel_id = w.id
-        WHERE wm.timestamp BETWEEN %s AND %s
-        GROUP BY w.brand, wm.type
-        ORDER BY w.brand, wm.type;
+        WHERE wm.timestamp >= %s AND wm.timestamp <= %s
+        ORDER BY w.brand, w.model, w.diameter, wm.timestamp ASC
     """
     if "psycopg2" in str(type(conn)):
-        cursor.execute(wheel_movements_query_sql, (start_of_period_iso, end_of_period_iso))
-    else: # SQLite
-        cursor = conn.execute(wheel_movements_query_sql.replace('%s', '?'), (start_of_period_iso, end_of_period_iso))
-    
-    wheel_movements_by_brand_raw = cursor.fetchall()
-    
-    wheel_movements_by_brand = defaultdict(lambda: {'IN': 0, 'OUT': 0})
-    for row in wheel_movements_by_brand_raw:
-        brand = row['brand']
-        move_type = row['type']
-        total_qty = row['total_quantity']
-        wheel_movements_by_brand[brand][move_type] = total_qty
+        cursor.execute(wheel_movements_in_range_query, (start_iso, end_iso))
+        wheel_movements_raw_range = cursor.fetchall()
+    else:
+        wheel_movements_raw_range = conn.execute(wheel_movements_in_range_query.replace('%s', '?'), (start_iso, end_iso)).fetchall()
 
-    # --- Calculate overall totals for the summary section ---
-    overall_tire_in_period = sum(data['IN'] for data in tire_movements_by_brand.values())
-    overall_tire_out_period = sum(data['OUT'] for data in tire_movements_by_brand.values())
-    overall_wheel_in_period = sum(data['IN'] for data in wheel_movements_by_brand.values())
-    overall_wheel_out_period = sum(data['OUT'] for data in wheel_movements_by_brand.values())
+    all_involved_wheel_ids = set()
+    for move in wheel_movements_raw_range:
+        all_involved_wheel_ids.add(move['wheel_id'])
 
-    # Total initial stock (sum of all IN - all OUT up to start_of_period_iso)
-    query_overall_initial_tires = f"""
+    existing_wheels_query = f"""
+        SELECT id FROM wheels WHERE is_deleted = FALSE
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(existing_wheels_query)
+    else:
+        cursor.execute(existing_wheels_query.replace('FALSE', '0'))
+    
+    for row in cursor.fetchall():
+        all_involved_wheel_ids.add(row['id'])
+
+    wheel_initial_quantities = defaultdict(int)
+    for wheel_id in all_involved_wheel_ids:
+        initial_qty_calc_query = f"""
+            SELECT type, quantity_change
+            FROM wheel_movements
+            WHERE wheel_id = %s AND timestamp < %s
+            ORDER BY timestamp ASC
+        """
+        if "psycopg2" in str(type(conn)):
+            cursor.execute(initial_qty_calc_query, (wheel_id, start_iso))
+        else:
+            cursor.execute(initial_qty_calc_query.replace('%s', '?'), (wheel_id, start_iso,))
+        
+        calculated_initial_qty = 0
+        for move in cursor.fetchall():
+            if move['type'] == 'IN':
+                calculated_initial_qty += move['quantity_change']
+            elif move['type'] == 'OUT':
+                calculated_initial_qty -= move['quantity_change']
+        wheel_initial_quantities[wheel_id] = calculated_initial_qty
+
+    wheels_by_brand_for_summary_report = defaultdict(list)
+    wheel_brand_totals_for_summary_report = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'final_quantity_sum': 0})
+
+    item_range_summary_wheels = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'wheel_id': None, 'brand': '', 'model': '', 'diameter': None, 'pcd': '', 'width': None})
+
+    for movement in wheel_movements_raw_range:
+        key = (movement['brand'], movement['model'], movement['diameter'], movement['pcd'], movement['width'])
+        wheel_id = movement['wheel_id']
+
+        item_range_summary_wheels[key]['wheel_id'] = wheel_id
+        item_range_summary_wheels[key]['brand'] = movement['brand']
+        item_range_summary_wheels[key]['model'] = movement['model']
+        item_range_summary_wheels[key]['diameter'] = movement['diameter']
+        item_range_summary_wheels[key]['pcd'] = movement['pcd']
+        item_range_summary_wheels[key]['width'] = movement['width']
+
+        if movement['type'] == 'IN':
+            item_range_summary_wheels[key]['IN'] += movement['quantity_change']
+        elif movement['type'] == 'OUT':
+            item_range_summary_wheels[key]['OUT'] += movement['quantity_change']
+
+    sorted_item_range_summary_wheel_keys = sorted(item_range_summary_wheels.keys(), key=lambda x: (x[0], x[1], x[2], x[3], x[4]))
+
+    for key in sorted_item_range_summary_wheel_keys:
+        data = item_range_summary_wheels[key]
+        wheel_id = data['wheel_id']
+        brand = data['brand']
+
+        initial_qty = wheel_initial_quantities[wheel_id]
+        in_qty = data['IN']
+        out_qty = data['OUT']
+        final_qty = initial_qty + in_qty - out_qty
+
+        item_data = {
+            'brand': brand,
+            'model': data['model'],
+            'diameter': data['diameter'],
+            'pcd': data['pcd'],
+            'width': data['width'],
+            'initial_quantity': initial_qty,
+            'IN': in_qty,
+            'OUT': out_qty,
+            'final_quantity': final_qty
+        }
+        wheels_by_brand_for_summary_report[brand].append(item_data)
+
+        wheel_brand_totals_for_summary_report[brand]['IN'] += in_qty
+        wheel_brand_totals_for_summary_report[brand]['OUT'] += out_qty
+
+    for wheel_id, initial_qty in wheel_initial_quantities.items():
+        if initial_qty > 0 and not any(item_data['wheel_id'] == wheel_id for items_list in wheels_by_brand_for_summary_report.values() for item_data in items_list):
+            wheel_info = database.get_wheel(conn, wheel_id)
+            if wheel_info and not wheel_info['is_deleted']:
+                brand = wheel_info['brand']
+                wheels_by_brand_for_summary_report[brand].append({
+                    'brand': brand,
+                    'model': wheel_info['model'],
+                    'diameter': wheel_info['diameter'],
+                    'pcd': wheel_info['pcd'],
+                    'width': wheel_info['width'],
+                    'initial_quantity': initial_qty,
+                    'IN': 0,
+                    'OUT': 0,
+                    'final_quantity': initial_qty
+                })
+    
+    for brand in wheel_brand_totals_for_summary_report.keys():
+        total_final_for_brand = 0
+        if brand in wheels_by_brand_for_summary_report:
+            for item_data in wheels_by_brand_for_summary_report[brand]:
+                total_final_for_brand += item_data['final_quantity']
+        wheel_brand_totals_for_summary_report[brand]['final_quantity_sum'] = total_final_for_brand
+
+    sorted_wheel_brand_totals = sorted(wheel_brand_totals_for_summary_report.items(), key=lambda x: x[0])
+
+
+    # Overall totals for the entire range (These are already calculated correctly in original daily_stock_report)
+    overall_tire_initial_query = f"""
         SELECT SUM(CASE WHEN type = 'IN' THEN quantity_change ELSE -quantity_change END)
         FROM tire_movements
-        WHERE timestamp < %s;
+        WHERE timestamp < %s
     """
     if "psycopg2" in str(type(conn)):
-        cursor.execute(query_overall_initial_tires, (start_of_period_iso,))
+        cursor.execute(overall_tire_initial_query, (start_iso,))
     else:
-        cursor.execute(query_overall_initial_tires.replace('%s', '?'), (start_of_period_iso,))
+        cursor.execute(overall_tire_initial_query.replace('%s', '?'), (start_iso,))
     overall_tire_initial = cursor.fetchone()[0] or 0
 
-    query_overall_initial_wheels = f"""
+    overall_wheel_initial_query = f"""
         SELECT SUM(CASE WHEN type = 'IN' THEN quantity_change ELSE -quantity_change END)
         FROM wheel_movements
-        WHERE timestamp < %s;
+        WHERE timestamp < %s
     """
     if "psycopg2" in str(type(conn)):
-        cursor.execute(query_overall_initial_wheels, (start_of_period_iso,))
+        cursor.execute(overall_wheel_initial_query, (start_iso,))
     else:
-        cursor.execute(query_overall_initial_wheels.replace('%s', '?'), (start_of_period_iso,))
+        cursor.execute(overall_wheel_initial_query.replace('%s', '?'), (start_iso,))
     overall_wheel_initial = cursor.fetchone()[0] or 0
 
-    # Total final stock (initial + movements within period)
-    overall_tire_final = overall_tire_initial + overall_tire_in_period - overall_tire_out_period
-    overall_wheel_final = overall_wheel_initial + overall_wheel_in_period - overall_wheel_out_period
+    overall_tire_in_query = f"""
+        SELECT SUM(quantity_change) FROM tire_movements WHERE type = 'IN' AND timestamp >= %s AND timestamp <= %s
+    """
+    overall_tire_out_query = f"""
+        SELECT SUM(quantity_change) FROM tire_movements WHERE type = 'OUT' AND timestamp >= %s AND timestamp <= %s
+    """
+    overall_wheel_in_query = f"""
+        SELECT SUM(quantity_change) FROM wheel_movements WHERE type = 'IN' AND timestamp >= %s AND timestamp <= %s
+    """
+    overall_wheel_out_query = f"""
+        SELECT SUM(quantity_change) FROM wheel_movements WHERE type = 'OUT' AND timestamp >= %s AND timestamp <= %s
+    """
+
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(overall_tire_in_query, (start_iso, end_iso))
+        overall_tire_in = cursor.fetchone()[0] or 0
+        cursor.execute(overall_tire_out_query, (start_iso, end_iso))
+        overall_tire_out = cursor.fetchone()[0] or 0
+        cursor.execute(overall_wheel_in_query, (start_iso, end_iso))
+        overall_wheel_in = cursor.fetchone()[0] or 0
+        cursor.execute(overall_wheel_out_query, (start_iso, end_iso))
+        overall_wheel_out = cursor.fetchone()[0] or 0
+    else:
+        overall_tire_in = conn.execute(overall_tire_in_query.replace('%s', '?'), (start_iso, end_iso)).fetchone()[0] or 0
+        overall_tire_out = conn.execute(overall_tire_out_query.replace('%s', '?'), (start_iso, end_iso)).fetchone()[0] or 0
+        overall_wheel_in = conn.execute(overall_wheel_in_query.replace('%s', '?'), (start_iso, end_iso)).fetchone()[0] or 0
+        overall_wheel_out = conn.execute(overall_wheel_out_query.replace('%s', '?'), (start_iso, end_iso)).fetchone()[0] or 0
+    
+    # Overall final quantities based on current actual stock (from tires/wheels tables)
+    overall_tire_final_query = f"""
+        SELECT SUM(quantity) FROM tires WHERE is_deleted = FALSE
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(overall_tire_final_query)
+    else:
+        cursor.execute(overall_tire_final_query.replace('FALSE', '0'))
+    overall_tire_final = cursor.fetchone()[0] or 0
+
+    overall_wheel_final_query = f"""
+        SELECT SUM(quantity) FROM wheels WHERE is_deleted = FALSE
+    """
+    if "psycopg2" in str(type(conn)):
+        cursor.execute(overall_wheel_final_query)
+    else:
+        cursor.execute(overall_wheel_final_query.replace('FALSE', '0'))
+    overall_wheel_final = cursor.fetchone()[0] or 0
+
 
     return render_template('summary_stock_report.html',
-                           start_date_param=start_date_obj.strftime('%Y-%m-%d'),
-                           end_date_param=end_date_obj.strftime('%Y-%m-%d'),
+                           start_date_param=start_date_str,
+                           end_date_param=end_date_str,
                            display_range_str=display_range_str,
-                           tire_movements_by_brand=tire_movements_by_brand,
-                           wheel_movements_by_brand=wheel_movements_by_brand,
+                           
+                           tires_by_brand_for_summary_report=tires_by_brand_for_summary_report,
+                           wheels_by_brand_for_summary_report=wheels_by_brand_for_summary_report,
+                           
+                           tire_brand_totals_for_summary_report=sorted_tire_brand_totals,
+                           wheel_brand_totals_for_summary_report=sorted_wheel_brand_totals,
+
                            overall_tire_initial=overall_tire_initial,
-                           overall_tire_in=overall_tire_in_period,
-                           overall_tire_out=overall_tire_out_period,
+                           overall_tire_in=overall_tire_in,
+                           overall_tire_out=overall_tire_out,
                            overall_tire_final=overall_tire_final,
                            overall_wheel_initial=overall_wheel_initial,
-                           overall_wheel_in=overall_wheel_in_period,
-                           overall_wheel_out=overall_wheel_out_period,
+                           overall_wheel_in=overall_wheel_in,
+                           overall_wheel_out=overall_wheel_out,
                            overall_wheel_final=overall_wheel_final
                           )
-
 
 # --- Import/Export Routes ---
 @app.route('/export_import', methods=('GET', 'POST'))
