@@ -9,63 +9,40 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script> {# เพิ่มภาษาไทย #}
 
     <style>
-        /* CSS Variables - Ensure these are defined in your static/style.css or base.html */
-        :root {
-            --primary-color: #007bff; /* Blue */
-            --primary-dark: #0056b3; /* Darker Blue */
-            --success-color: #28a745; /* Green */
-            --danger-color: #dc3545; /* Red */
-            --warning-color: #ffc107; /* Orange/Yellow */
-            --info-color: #17a2b8; /* Cyan */
-            
-            --text-dark: #343a40; /* Dark Grey */
-            --text-light: #6c757d; /* Light Grey */
-            --text-muted: #adb5bd; /* Muted Grey */
-            --text-white: #ffffff; /* White */
-
-            --bg-white: #ffffff; /* White background */
-            --bg-light: #f8f9fa; /* Very Light Grey background */
-            --bg-stripe: #e9ecef; /* Slightly darker light grey for table stripes */
-            --bg-hover: #f1f1f1; /* Light grey for hover */
-            --bg-accent-light: #e0f2f7; /* Very light blue for subtle accents */
-            --bg-card-header: #f2f6f9; /* Light grey for card headers */
-
-            --border-color: #dee2e6; /* Light border grey */
-            --border-radius: 4px;
-            --border-radius-md: 8px;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-            --shadow-lg: 0 8px 25px rgba(0,0,0,0.15);
-        }
+        /*
+         * *** สำคัญ: Global CSS Variables (:root block) ถูกย้ายไปที่ style.css แล้ว ***
+         * ไม่ควรประกาศตัวแปรซ้ำในไฟล์นี้อีก
+         * การประกาศตัวแปรใดๆ ในนี้จะถือเป็น Local Override เท่านั้น
+         */
 
         body {
-            font-family: 'Prompt', sans-serif; /* Ensure consistent font */
-            background-color: var(--bg-light); /* Consistent page background */
+            font-family: 'Prompt', sans-serif;
+            background-color: var(--bg-light);
             color: var(--text-dark);
         }
 
         .container {
-            max-width: 1280px; /* Slightly wider container */
-            margin: 25px auto; /* More margin top/bottom */
-            padding: 30px; /* More padding */
+            max-width: 1280px;
+            margin: 25px auto;
+            padding: 30px;
             background-color: var(--bg-white);
             border-radius: var(--border-radius-md);
-            box-shadow: var(--shadow-lg); /* More prominent shadow */
+            box-shadow: var(--shadow-lg);
         }
 
         .page-header {
             color: var(--primary-dark);
             text-align: center;
-            margin-bottom: 40px; /* More space below */
-            font-size: 2.8em; /* Larger heading */
+            margin-bottom: 40px;
+            font-size: 2.8em;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1.5px;
             padding-bottom: 20px;
-            border-bottom: 3px solid var(--primary-color); /* Thicker underline */
+            border-bottom: 3px solid var(--primary-color);
             position: relative;
         }
-        .page-header::after { /* Small decorative element */
+        .page-header::after {
             content: '';
             position: absolute;
             bottom: -5px;
@@ -77,11 +54,10 @@
             border-radius: 50%;
         }
 
-        /* Date Selector Form - Integrated into header-like area */
         .report-controls-bar {
             display: flex;
             flex-wrap: wrap;
-            justify-content: space-between; /* Space out items */
+            justify-content: space-between;
             align-items: center;
             background-color: var(--bg-accent-light);
             padding: 15px 25px;
@@ -118,11 +94,11 @@
 
         .date-selector-form input[type="date"],
         .date-selector-form input[type="text"].flatpickr-input {
-            padding: 8px 12px; /* Slightly more padding for better touch/click */
+            padding: 8px 12px;
             border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
+            border-radius: var(--border-radius); /* Using var(--border-radius) for 4px */
             font-size: 0.9em;
-            width: 140px; /* Fixed width */
+            width: 140px;
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
             transition: all 0.3s ease;
         }
@@ -139,7 +115,7 @@
             background-color: var(--primary-color);
             color: var(--text-white);
             border: none;
-            border-radius: var(--border-radius);
+            border-radius: var(--border-radius); /* Using var(--border-radius) for 4px */
             cursor: pointer;
             font-size: 1em;
             font-weight: 600;
@@ -156,17 +132,37 @@
             font-size: 1em;
         }
 
+        .summary-period-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .summary-period-header h2 {
+            font-size: 2em;
+            color: var(--text-dark);
+            margin-bottom: 10px;
+            padding: 0;
+            border: none;
+        }
+
+        .summary-period-header h3 {
+            font-size: 1.5em;
+            color: var(--text-light);
+            margin: 0;
+            padding: 0;
+        }
+
         /* General Section Styling (Cards, Tables) */
         .section-card {
             background-color: var(--bg-white);
             border-radius: var(--border-radius-md);
-            box-shadow: var(--shadow-md);
-            margin-bottom: 40px; /* Space between sections */
-            overflow: hidden; /* Ensure rounded corners on content */
+            box-shadow: var(--shadow-md); /* Using var(--shadow-md) */
+            margin-bottom: 40px;
+            overflow: hidden;
         }
 
         .section-card-header {
-            background-color: var(--bg-card-header); /* Light grey header */
+            background-color: var(--bg-card-header);
             padding: 18px 25px;
             font-size: 1.5em;
             font-weight: 600;
@@ -181,7 +177,7 @@
         /* Overall Summary Cards (Main Totals) */
         .overall-summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Responsive grid */
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 20px;
         }
 
@@ -189,7 +185,7 @@
             background-color: var(--bg-white);
             padding: 20px;
             border-radius: var(--border-radius-md);
-            box-shadow: var(--shadow-sm);
+            box-shadow: var(--shadow-sm); /* Using var(--shadow-sm) */
             text-align: center;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
@@ -205,7 +201,7 @@
             text-transform: uppercase;
         }
         .summary-value-card .value-display {
-            font-size: 2.5em; /* Larger value */
+            font-size: 2.5em;
             font-weight: 700;
             color: var(--primary-color);
             line-height: 1.2;
@@ -238,7 +234,7 @@
             background-color: var(--bg-stripe);
         }
         .brand-summary-table tbody tr:hover {
-            background-color: var(--bg-hover);
+            background-color: var(--bg-hover); /* Using var(--bg-hover) */
         }
         .brand-summary-table td.text-right {
             text-align: right;
@@ -260,7 +256,7 @@
             border: 1px solid var(--border-color);
             padding: 10px 12px;
             text-align: left;
-            font-size: 0.85em; /* Slightly smaller for detail */
+            font-size: 0.85em;
         }
         .detailed-report-table th {
             background-color: var(--bg-light);
@@ -272,7 +268,7 @@
             background-color: var(--bg-stripe);
         }
         .detailed-report-table tbody tr:hover {
-            background-color: var(--bg-hover);
+            background-color: var(--bg-hover); /* Using var(--bg-hover) */
         }
         .detailed-report-table td.text-right {
             text-align: right;
@@ -293,7 +289,7 @@
             font-style: italic;
         }
 
-        /* Text colors */
+        /* Text colors (These are already defined in style.css or are common classes) */
         .text-success { color: var(--success-color); font-weight: bold; }
         .text-danger { color: var(--danger-color); font-weight: bold; }
         .text-primary { color: var(--primary-color); font-weight: bold; }
@@ -322,9 +318,7 @@
             .summary-info-card .value-display {
                 font-size: 2em;
             }
-            .brand-summary-grid { /* This class is no longer used, replaced by table */
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            }
+            /* .brand-summary-grid is no longer used for brand summary cards */
         }
 
         @media (max-width: 768px) {
@@ -336,7 +330,7 @@
             .date-selector-form input,
             .date-selector-form button {
                 width: 100%;
-                text-align: center; /* Center text for full width elements */
+                text-align: center;
             }
             .page-header {
                 font-size: 1.8em;
@@ -348,7 +342,7 @@
                 font-size: 1.1em;
             }
             .overall-summary-cards {
-                grid-template-columns: 1fr; /* Stack cards */
+                grid-template-columns: 1fr;
             }
             .brand-summary-table, .detailed-report-table {
                 display: block;
@@ -368,12 +362,12 @@
                 display: block;
                 text-align: right;
                 position: relative;
-                padding-left: 50%; /* Space for data-label */
+                padding-left: 50%;
                 border: none;
-                border-bottom: 1px solid var(--border-color); /* Separator for stacked rows */
+                border-bottom: 1px solid var(--border-color);
             }
             .brand-summary-table td:last-child, .detailed-report-table td:last-child {
-                border-bottom: none; /* No border for last stacked row */
+                border-bottom: none;
             }
             .brand-summary-table td::before, .detailed-report-table td::before {
                 content: attr(data-label);
@@ -387,8 +381,8 @@
             }
             .detailed-report-table .brand-group-header {
                 text-align: center;
-                border-radius: var(--border-radius); /* Apply border-radius to header too */
-                margin-bottom: 10px; /* Space from table */
+                border-radius: var(--border-radius);
+                margin-bottom: 10px;
             }
         }
         @media (max-width: 480px) {
