@@ -3,128 +3,274 @@
 {% block title %}สรุปรายงานสต็อกรายช่วงเวลา - ระบบจัดการสต็อก{% endblock %}
 
 {% block head %}
-    {# เพิ่ม Flatpickr CSS/JS ที่นี่ เนื่องจาก base.html REMOVED ออกไป #}
+    {{ super() }} {# เรียกใช้ block head จาก base.html เพื่อให้ CSS/JS หลักถูกโหลด #}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    {# หากคุณมีไฟล์ locale สำหรับ Flatpickr ด้วย สามารถเพิ่มตรงนี้ #}
-    {# <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script> #}
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script> {# เพิ่มภาษาไทย #}
+
     <style>
-        /* สไตล์ที่คุณเพิ่มใน summary_stock_report.html เดิม */
-        .summary-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
+        /* General Layout & Colors */
+        .container {
+            max-width: 1200px; /* Limit width for better readability */
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
-        .summary-table th, .summary-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        .summary-table th {
-            background-color: #f2f2f2;
-        }
-        .summary-table tr.total-row {
-            font-weight: bold;
-            background-color: #e0e0e0;
-        }
-        .summary-header {
-            margin-bottom: 20px;
+
+        .page-header {
+            color: #333;
             text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+            font-weight: 600;
         }
-        .summary-header h2 {
-            margin-bottom: 10px;
+
+        h2, h3 {
+            color: #444;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
         }
+
+        /* Date Selector Form */
         .date-selector-form {
             display: flex;
-            gap: 10px;
+            flex-wrap: wrap;
+            gap: 15px;
             align-items: center;
-            margin-bottom: 20px;
             justify-content: center;
-            flex-wrap: wrap; /* เพิ่มเพื่อให้ responsive มากขึ้น */
+            background-color: #f0f8ff; /* Light blue background for emphasis */
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
         }
+
         .date-selector-form label {
             font-weight: bold;
+            color: #555;
+            font-size: 1.1em;
         }
+
         .date-selector-form input[type="date"] {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 10px 12px;
+            border: 1px solid #a8d9ff; /* Blue border */
+            border-radius: 6px;
+            font-size: 1em;
+            width: 160px; /* Fixed width for consistency */
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
+
+        .date-selector-form input[type="date"]:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+            outline: none;
+        }
+
         .date-selector-form button {
-            padding: 8px 15px;
+            padding: 10px 25px;
             background-color: #007bff;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            font-size: 1.1em;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
+
         .date-selector-form button:hover {
             background-color: #0056b3;
+            transform: translateY(-1px);
         }
-        .total-summary-section {
-            background-color: #f8f8f8;
-            border: 1px solid #e0e0e0;
-            padding: 15px;
-            margin-top: 30px;
-            border-radius: 8px;
-        }
-        .total-summary-section h3 {
-            text-align: center;
-            margin-bottom: 15px;
-            color: #333;
-        }
-        .total-summary-section .row {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 10px;
-            flex-wrap: wrap; /* เพิ่มเพื่อให้ responsive มากขึ้น */
-        }
-        .total-summary-section .col {
-            flex: 1;
-            text-align: center;
-            font-size: 1.1em;
-            padding: 5px; /* เพิ่ม padding เล็กน้อย */
-            min-width: 150px; /* กำหนดขั้นต่ำเพื่อไม่ให้ชนกันมากเกินไป */
-        }
-        .total-summary-section .col strong {
-            display: block;
-            font-size: 1.2em;
-            color: #007bff;
-        }
-        .text-success { color: #28a745; } /* สีเขียว */
-        .text-danger { color: #dc3545; } /* สีแดง */
 
-        /* เพิ่มสไตล์สำหรับ Flash Messages หากคุณยังต้องการให้แสดงในหน้านี้ด้วย */
-        /* แต่แนะนำให้ base.html จัดการเพียงพอแล้ว */
-        /*
-        .flash-messages {
-            list-style: none;
-            padding: 0;
-            margin: 20px 0;
+        .date-selector-form button i {
+            font-size: 1.1em;
         }
-        .flash-message {
-            padding: 10px 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
+
+        /* Summary Header */
+        .summary-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .summary-header h2 {
+            font-size: 2em;
+            color: #2c3e50;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .summary-header h3 {
+            font-size: 1.4em;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        /* Table Styles */
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden; /* Ensures rounded corners apply to content */
+        }
+
+        .summary-table th, .summary-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .summary-table th {
+            background-color: #e2e6ea; /* Light grey header */
+            color: #343a40;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.9em;
+        }
+
+        .summary-table tbody tr:nth-child(even) {
+            background-color: #f8f9fa; /* Zebra striping */
+        }
+
+        .summary-table tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .summary-table td {
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .text-success {
+            color: #28a745;
             font-weight: bold;
         }
-        .flash-message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+
+        .text-danger {
+            color: #dc3545;
+            font-weight: bold;
         }
-        .flash-message.danger {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+
+        /* Total Summary Section */
+        .total-summary-section {
+            background-color: #e9f5ff; /* Lighter blue background */
+            border: 1px solid #cce5ff;
+            padding: 25px;
+            margin-top: 50px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
         }
-        .flash-message.warning {
-            background-color: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
+
+        .total-summary-section h3 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #0056b3;
+            font-size: 1.8em;
+            border-bottom: none;
         }
-        */
+
+        .total-summary-section .row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            gap: 20px; /* Space between columns */
+            margin-bottom: 15px;
+        }
+
+        .total-summary-section .col {
+            flex: 1;
+            min-width: 200px; /* Ensure columns don't get too small */
+            text-align: center;
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .total-summary-section .col strong {
+            display: block;
+            font-size: 1.8em;
+            color: #007bff;
+            margin-top: 5px;
+            font-weight: 700;
+        }
+        .total-summary-section .col .label {
+             font-size: 1em;
+             color: #666;
+        }
+        .total-summary-section .col .total-in {
+            color: #28a745;
+        }
+        .total-summary-section .col .total-out {
+            color: #dc3545;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .date-selector-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .date-selector-form input[type="date"] {
+                width: 100%;
+            }
+            .total-summary-section .row {
+                flex-direction: column;
+                align-items: center;
+            }
+            .total-summary-section .col {
+                width: 90%;
+            }
+            .summary-table, .summary-table tbody, .summary-table th, .summary-table td, .summary-table tr {
+                display: block;
+            }
+            .summary-table thead {
+                display: none;
+            }
+            .summary-table tr {
+                margin-bottom: 15px;
+                border: 1px solid #e9ecef;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            .summary-table td {
+                text-align: right;
+                position: relative;
+                padding-left: 50%;
+                border: none;
+            }
+            .summary-table td::before {
+                content: attr(data-label);
+                position: absolute;
+                left: 0;
+                width: 50%;
+                padding-left: 15px;
+                font-weight: bold;
+                text-align: left;
+                color: #555;
+            }
+        }
+        @media (max-width: 480px) {
+            .page-header {
+                font-size: 1.8em;
+            }
+            .summary-header h2 {
+                font-size: 1.6em;
+            }
+            .summary-header h3 {
+                font-size: 1.2em;
+            }
+        }
     </style>
 {% endblock %}
 
@@ -147,18 +293,7 @@
             <h3>ช่วงวันที่: {{ display_range_str }}</h3>
         </div>
 
-        {# Flash messages are already handled by base.html, remove this block to prevent duplication #}
-        {#
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-        #}
+        {# Flash messages are already handled by base.html, so we rely on that. #}
 
         <hr>
 
@@ -179,13 +314,13 @@
             <tbody>
                 {% for item in tire_report %}
                 <tr>
-                    <td>{{ item.brand | title }}</td>
-                    <td>{{ item.model | title }}</td>
-                    <td>{{ item.size }}</td>
-                    <td>{{ item.initial_quantity }}</td>
-                    <td class="text-success">+{{ item.IN }}</td>
-                    <td class="text-danger">-{{ item.OUT }}</td>
-                    <td>{{ item.final_quantity }}</td>
+                    <td data-label="ยี่ห้อ">{{ item.brand | title }}</td>
+                    <td data-label="รุ่นยาง">{{ item.model | title }}</td>
+                    <td data-label="เบอร์ยาง">{{ item.size }}</td>
+                    <td data-label="ยอดเริ่มต้น">{{ item.initial_quantity }}</td>
+                    <td data-label="รับเข้า" class="text-success">+{{ item.IN }}</td>
+                    <td data-label="จ่ายออก" class="text-danger">-{{ item.OUT }}</td>
+                    <td data-label="ยอดคงเหลือ">{{ item.final_quantity }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -215,15 +350,15 @@
             <tbody>
                 {% for item in wheel_report %}
                 <tr>
-                    <td>{{ item.brand | title }}</td>
-                    <td>{{ item.model | title }}</td>
-                    <td>{{ item.diameter }}</td>
-                    <td>{{ item.pcd }}</td>
-                    <td>{{ item.width }}</td>
-                    <td>{{ item.initial_quantity }}</td>
-                    <td class="text-success">+{{ item.IN }}</td>
-                    <td class="text-danger">-{{ item.OUT }}</td>
-                    <td>{{ item.final_quantity }}</td>
+                    <td data-label="ยี่ห้อ">{{ item.brand | title }}</td>
+                    <td data-label="ลาย">{{ item.model | title }}</td>
+                    <td data-label="ขอบ">{{ item.diameter }}</td>
+                    <td data-label="PCD">{{ item.pcd }}</td>
+                    <td data-label="กว้าง">{{ item.width }}</td>
+                    <td data-label="ยอดเริ่มต้น">{{ item.initial_quantity }}</td>
+                    <td data-label="รับเข้า" class="text-success">+{{ item.IN }}</td>
+                    <td data-label="จ่ายออก" class="text-danger">-{{ item.OUT }}</td>
+                    <td data-label="ยอดคงเหลือ">{{ item.final_quantity }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -236,38 +371,38 @@
             <h3>สรุปยอดรวมทั้งหมด</h3>
             <div class="row">
                 <div class="col">
-                    ยางรวม<br>
-                    ยอดเริ่มต้น: <strong>{{ overall_tire_initial }}</strong>
+                    <span class="label">ยางรวม</span><br>
+                    ยอดเริ่มต้น: <strong class="total-initial">{{ overall_tire_initial }}</strong>
                 </div>
                 <div class="col">
-                    ยางรวม<br>
-                    รับเข้า: <strong class="text-success">{{ overall_tire_in }}</strong>
+                    <span class="label">ยางรวม</span><br>
+                    รับเข้า: <strong class="total-in">{{ overall_tire_in }}</strong>
                 </div>
                 <div class="col">
-                    ยางรวม<br>
-                    จ่ายออก: <strong class="text-danger">{{ overall_tire_out }}</strong>
+                    <span class="label">ยางรวม</span><br>
+                    จ่ายออก: <strong class="total-out">{{ overall_tire_out }}</strong>
                 </div>
                 <div class="col">
-                    ยางรวม<br>
-                    ยอดคงเหลือ: <strong>{{ overall_tire_final }}</strong>
+                    <span class="label">ยางรวม</span><br>
+                    ยอดคงเหลือ: <strong class="total-final">{{ overall_tire_final }}</strong>
                 </div>
             </div>
             <div class="row">
                 <div class="col">
-                    แม็กรวม<br>
-                    ยอดเริ่มต้น: <strong>{{ overall_wheel_initial }}</strong>
+                    <span class="label">แม็กรวม</span><br>
+                    ยอดเริ่มต้น: <strong class="total-initial">{{ overall_wheel_initial }}</strong>
                 </div>
                 <div class="col">
-                    แม็กรวม<br>
-                    รับเข้า: <strong class="text-success">{{ overall_wheel_in }}</strong>
+                    <span class="label">แม็กรวม</span><br>
+                    รับเข้า: <strong class="total-in">{{ overall_wheel_in }}</strong>
                 </div>
                 <div class="col">
-                    แม็กรวม<br>
-                    จ่ายออก: <strong class="text-danger">{{ overall_wheel_out }}</strong>
+                    <span class="label">แม็กรวม</span><br>
+                    จ่ายออก: <strong class="total-out">{{ overall_wheel_out }}</strong>
                 </div>
                 <div class="col">
-                    แม็กรวม<br>
-                    ยอดคงเหลือ: <strong>{{ overall_wheel_final }}</strong>
+                    <span class="label">แม็กรวม</span><br>
+                    ยอดคงเหลือ: <strong class="total-final">{{ overall_wheel_final }}</strong>
                 </div>
             </div>
         </div>
@@ -276,17 +411,15 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Flatpickr for date inputs with Thai locale
             flatpickr("#start_date", {
                 dateFormat: "Y-m-d",
-                locale: "th" // ใช้ locale ภาษาไทย ถ้าคุณมีไฟล์ th.js
+                locale: "th" // Use Thai locale
             });
             flatpickr("#end_date", {
                 dateFormat: "Y-m-d",
-                locale: "th" // ใช้ locale ภาษาไทย ถ้าคุณมีไฟล์ th.js
+                locale: "th" // Use Thai locale
             });
-
-            // If you had a Thai locale file for Flatpickr like th.js:
-            // flatpickr.localize(flatpickr.l10ns.th);
         });
     </script>
 {% endblock %}
