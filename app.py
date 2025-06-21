@@ -517,74 +517,24 @@ def add_item():
             wholesale_price2 = request.form.get('wholesale_price2')
             
             image_file = request.files.get('image_file') 
-            image_url = None # กำหนดค่าเริ่มต้น
+            uploaded_image_url = None # กำหนดค่าเริ่มต้น
             
             if image_file and image_file.filename != '':
                 if allowed_image_file(image_file.filename):
-                    try: # <--- เริ่มต้น try block สำหรับการอัปโหลด Cloudinary
+                    try: 
                         upload_result = cloudinary.uploader.upload(image_file)
-                        image_url = upload_result['secure_url']
-                    except Exception as e: # <--- except block ที่จับ error จาก Cloudinary upload
+                        uploaded_image_url = upload_result['secure_url']
+                    except Exception as e: 
                         flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพไปยังเซิฟเวอร์: {e}', 'danger')
                         active_tab = 'wheel'
                         return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
-                else: # <--- else block ของ if allowed_image_file
+                else: 
                     flash('ชนิดไฟล์รูปภาพไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
                     active_tab = 'wheel'
                     return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
-            # ไม่มี else: ตรงนี้แล้ว เพราะเป็นโครงสร้าง try-except-else ที่ใช้กับ try/except เท่านั้น
 
-            # ... (โค้ดต่อจากการจัดการรูปภาพ: validation ของ form fields, ตรวจสอบ barcode) ...
             if not brand or not model or not pcd or not diameter or not width or not quantity or not retail_price:
                 flash('กรุณากรอกข้อมูลแม็กให้ครบถ้วนในช่องที่มีเครื่องหมาย *', 'danger')
-                active_tab = 'wheel'
-                return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
-            
-            # ... (ต่อด้วยการตรวจสอบ Barcode ID และ try/except หลักของ add_wheel) ...
-            try: # <--- นี่คือ try block หลักสำหรับ logic การเพิ่มแม็กทั้งหมด
-                diameter = float(diameter)
-                width = float(width)
-                quantity = int(quantity)
-                retail_price = float(retail_price)
-
-                cost = float(cost) if cost and cost.strip() else None
-                et = int(et) if et and et.strip() else None
-                cost_online = float(cost_online) if cost_online and cost_online.strip() else None
-                wholesale_price1 = float(wholesale_price1) if wholesale_price1 and wholesale_price1.strip() else None
-                wholesale_price2 = float(wholesale_price2) if wholesale_price2 and wholesale_price2.strip() else None
-                
-                cursor = conn.cursor()
-                if "psycopg2" in str(type(conn)):
-                    cursor.execute("SELECT id FROM wheels WHERE brand = %s AND model = %s AND diameter = %s AND width = %s AND pcd = %s AND et = %s", 
-                                   (brand, model, diameter, width, pcd, et))
-                else:
-                    cursor.execute("SELECT id FROM wheels WHERE brand = ? AND model = ? AND diameter = ? AND width = ? AND pcd = ? AND et = ?", 
-                                   (brand, model, diameter, width, pcd, et))
-                
-                existing_wheel = cursor.fetchone()
-
-                if existing_wheel:
-                    flash(f'แม็ก {brand.title()} ลาย {model.title()} ขนาด {diameter}x{width} มีอยู่ในระบบแล้ว', 'warning')
-                else:
-                    new_wheel_id = database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, 
-                                                    quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
-                    if scanned_barcode_for_add:
-                        database.add_wheel_barcode(conn, new_wheel_id, scanned_barcode_for_add, is_primary=True)
-                    database.add_wheel_movement(conn, new_wheel_id, 'IN', quantity, quantity, "Initial Stock (Manual Add)", None, user_id=current_user.id)
-                    conn.commit()
-                    flash(f'เพิ่มแม็ก {brand.title()} ลาย {model.title()} จำนวน {quantity} วง สำเร็จ!', 'success')
-                return redirect(url_for('index', tab='wheels'))
-            except ValueError:
-                conn.rollback()
-                flash('ข้อมูลตัวเลขไม่ถูกต้อง กรุณาตรวจสอบ', 'danger')
-                active_tab = 'wheel'
-                return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
-            except (sqlite3.IntegrityError, Exception) as e:
-                conn.rollback()
-                if "UNIQUE constraint failed" in str(e) or "duplicate key value violates unique constraint" in str(e):
-                    flash(f'เกิดข้อผิดพลาด: ข้อมูลซ้ำซ้อนในระบบ หรือ Barcode ID นี้มีอยู่แล้ว. รายละเอียด: {e}', 'warning')
-                else:
-                    flash(f'เกิดข้อผิดพลาดในการเพิ่มแม็ก: {e}', 'danger')
                 active_tab = 'wheel'
                 return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
             
@@ -598,7 +548,7 @@ def add_item():
                     return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
             # --------------------------------------------------------
 
-            try:
+            try: 
                 diameter = float(diameter)
                 width = float(width)
                 quantity = int(quantity)
@@ -609,23 +559,6 @@ def add_item():
                 cost_online = float(cost_online) if cost_online and cost_online.strip() else None
                 wholesale_price1 = float(wholesale_price1) if wholesale_price1 and wholesale_price1.strip() else None
                 wholesale_price2 = float(wholesale_price2) if wholesale_price2 and wholesale_price2.strip() else None
-
-                image_url = None
-                
-                if image_file and image_file.filename != '':
-                    if allowed_image_file(image_file.filename):
-                        try:
-                            upload_result = cloudinary.uploader.upload(image_file)
-                            image_url = upload_result['secure_url']
-                            
-                        except Exception as e:
-                            flash(f'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพไปยังเซิฟเวอร์: {e}', 'danger')
-                            active_tab = 'wheel'
-                            return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
-                    else:
-                        flash('ชนิดไฟล์รูปภาพไม่ถูกต้อง อนุญาตเฉพาะ .png, .jpg, .jpeg, .gif เท่านั้น', 'danger')
-                        active_tab = 'wheel'
-                        return render_template('add_item.html', form_data=form_data, active_tab=active_tab, current_year=current_year, all_promotions=all_promotions)
                 
                 cursor = conn.cursor()
                 if "psycopg2" in str(type(conn)):
@@ -641,12 +574,9 @@ def add_item():
                     flash(f'แม็ก {brand.title()} ลาย {model.title()} ขนาด {diameter}x{width} มีอยู่ในระบบแล้ว', 'warning')
                 else:
                     new_wheel_id = database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, 
-                                                    quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
-                    # --- เพิ่มตรงนี้: บันทึก Barcode ID สำหรับแม็ก (เฉพาะถ้ามีการกรอก) ---
+                                                    quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, uploaded_image_url, user_id=current_user_id)
                     if scanned_barcode_for_add:
                         database.add_wheel_barcode(conn, new_wheel_id, scanned_barcode_for_add, is_primary=True)
-                    # -----------------------------------------------------------------
-                    database.add_wheel_movement(conn, new_wheel_id, 'IN', quantity, quantity, "Initial Stock (Manual Add)", None, user_id=current_user.id)
                     conn.commit()
                     flash(f'เพิ่มแม็ก {brand.title()} ลาย {model.title()} จำนวน {quantity} วง สำเร็จ!', 'success')
                 return redirect(url_for('index', tab='wheels'))
@@ -1352,7 +1282,7 @@ def daily_stock_report():
 
     processed_tire_movements_raw_today = []
     for movement in tire_movements_raw_today:
-        movement_data = dict(movement)
+        movement_data = movement
         movement_data['timestamp'] = convert_to_bkk_time(movement_data['timestamp'])
         processed_tire_movements_raw_today.append(movement_data)
     tire_movements_raw = processed_tire_movements_raw_today
@@ -1488,7 +1418,6 @@ def daily_stock_report():
         ORDER BY wm.timestamp DESC
     """ # MODIFIED: ORDER BY wm.timestamp DESC
     if "psycopg2" in str(type(conn)):
-        cursor = conn.cursor()
         cursor.execute(wheel_movements_query_today, (sql_date_filter,))
         wheel_movements_raw_today = cursor.fetchall()
     else:
@@ -1687,7 +1616,6 @@ def daily_stock_report():
                            wheel_movements_raw=wheel_movements_raw
                           )
 
-# --- NEW: Summary Stock Report Route ---
 @app.route('/summary_stock_report')
 @login_required
 def summary_stock_report():
@@ -1711,7 +1639,7 @@ def summary_stock_report():
             start_date_obj = end_date_obj - timedelta(days=6)
             start_date_str = start_date_obj.strftime('%Y-%m-%d')
         except ValueError:
-            flash("รูปแบบวันที่สิ้นสุดไม่ถูกต้อง กรุณาใช้ YYYY-MM-DD", "danger")
+            flash("รูปแบบวันที่สิ้นสุดไม่ถูกต้อง กรุณาใช้YYYY-MM-DD", "danger")
             end_date_obj = today_bkk
             start_date_obj = today_bkk - timedelta(days=6)
             start_date_str = start_date_obj.strftime('%Y-%m-%d')
@@ -1723,7 +1651,7 @@ def summary_stock_report():
             end_date_obj = today_bkk
             end_date_str = end_date_obj.strftime('%Y-%m-%d')
         except ValueError:
-            flash("รูปแบบวันที่เริ่มต้นไม่ถูกต้อง กรุณาใช้ YYYY-MM-DD", "danger")
+            flash("รูปแบบวันที่เริ่มต้นไม่ถูกต้อง กรุณาใช้YYYY-MM-DD", "danger")
             end_date_obj = today_bkk
             start_date_obj = today_bkk - timedelta(days=6)
             start_date_str = start_date_obj.strftime('%Y-%m-%d')
@@ -1733,7 +1661,7 @@ def summary_stock_report():
             start_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date_obj = datetime.strptime(end_date_str, '%Y-%m-%d').date()
         except ValueError:
-            flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้ YYYY-MM-DD", "danger")
+            flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้YYYY-MM-DD", "danger")
             end_date_obj = today_bkk
             start_date_obj = today_bkk - timedelta(days=6)
             start_date_str = start_date_obj.strftime('%Y-%m-%d')
@@ -1844,6 +1772,7 @@ def summary_stock_report():
         final_qty = initial_qty + in_qty - out_qty
 
         item_data = {
+            'tire_id': tire_id,  # ADDED tire_id here
             'brand': brand,
             'model': data['model'],
             'size': data['size'],
@@ -1859,14 +1788,15 @@ def summary_stock_report():
         tire_brand_totals_for_summary_report[brand]['OUT'] += out_qty
     
     # Add items that had initial stock but no movements in the range
-    for tire_id, initial_qty in tire_initial_quantities.items():
-        # Check if this tire_id was processed in item_range_summary (meaning it had movements)
-        if initial_qty > 0 and not any(item_data['tire_id'] == tire_id for items_list in tires_by_brand_for_summary_report.values() for item_data in items_list):
-            tire_info = database.get_tire(conn, tire_id)
+    moved_tire_ids_in_range = {data['tire_id'] for data in item_range_summary.values()} # Efficient set of moved IDs
+    for tire_id_from_initial_quantities, initial_qty in tire_initial_quantities.items():
+        if initial_qty > 0 and tire_id_from_initial_quantities not in moved_tire_ids_in_range:
+            tire_info = database.get_tire(conn, tire_id_from_initial_quantities)
             if tire_info and not tire_info['is_deleted']:
                 brand = tire_info['brand']
                 # Add to detailed report for display
                 tires_by_brand_for_summary_report[brand].append({
+                    'tire_id': tire_id_from_initial_quantities, # Also add tire_id here
                     'brand': brand,
                     'model': tire_info['model'],
                     'size': tire_info['size'],
@@ -1976,6 +1906,7 @@ def summary_stock_report():
         final_qty = initial_qty + in_qty - out_qty
 
         item_data = {
+            'wheel_id': wheel_id, # ADDED wheel_id here
             'brand': brand,
             'model': data['model'],
             'diameter': data['diameter'],
@@ -1991,12 +1922,14 @@ def summary_stock_report():
         wheel_brand_totals_for_summary_report[brand]['IN'] += in_qty
         wheel_brand_totals_for_summary_report[brand]['OUT'] += out_qty
 
-    for wheel_id, initial_qty in wheel_initial_quantities.items():
-        if initial_qty > 0 and not any(item_data['wheel_id'] == wheel_id for items_list in wheels_by_brand_for_summary_report.values() for item_data in items_list):
-            wheel_info = database.get_wheel(conn, wheel_id)
+    moved_wheel_ids_in_range = {data['wheel_id'] for data in item_range_summary_wheels.values()} # Efficient set of moved IDs
+    for wheel_id_from_initial_quantities, initial_qty in wheel_initial_quantities.items():
+        if initial_qty > 0 and wheel_id_from_initial_quantities not in moved_wheel_ids_in_range:
+            wheel_info = database.get_wheel(conn, wheel_id_from_initial_quantities)
             if wheel_info and not wheel_info['is_deleted']:
                 brand = wheel_info['brand']
                 wheels_by_brand_for_summary_report[brand].append({
+                    'wheel_id': wheel_id_from_initial_quantities, # Also add wheel_id here
                     'brand': brand,
                     'model': wheel_info['model'],
                     'diameter': wheel_info['diameter'],
@@ -2169,6 +2102,8 @@ def export_tires_action():
 
     return send_file(output, download_name='tire_stock.xlsx', as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
+@app.route('/import_tires_action', methods=('POST',))
+@login_required
 def import_tires_action():
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการนำเข้าข้อมูลยาง', 'danger')
@@ -2352,6 +2287,8 @@ def export_wheels_action():
 
     return send_file(output, download_name='wheel_stock.xlsx', as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
+@app.route('/import_wheels_action', methods=('POST',))
+@login_required
 def import_wheels_action():
     if not current_user.can_edit():
         flash('คุณไม่มีสิทธิ์ในการนำเข้าข้อมูลแม็ก', 'danger')
