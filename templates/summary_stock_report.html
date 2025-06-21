@@ -1,609 +1,315 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul class="flash-messages">
+            {% for category, message in messages %}
+                <li class="flash-message {{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
 {% extends 'base.html' %}
 
-{% block title %}สรุปรายงานสต็อกรายช่วงเวลา{% endblock %}
-
-{% block head %}
-    {{ super() }} {# เรียกใช้ block head จาก base.html เพื่อให้ CSS/JS หลักถูกโหลด #}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script> {# เพิ่มภาษาไทย #}
-
-    <style>
-        /*
-         * *** สำคัญ: Global CSS Variables (:root block) ถูกย้ายไปที่ style.css แล้ว ***
-         * ไม่ควรประกาศตัวแปรซ้ำในไฟล์นี้อีก
-         * การประกาศตัวแปรใดๆ ในนี้จะถือเป็น Local Override เท่านั้น
-         */
-
-        body {
-            font-family: 'Prompt', sans-serif;
-            background-color: var(--bg-light);
-            color: var(--text-dark);
-        }
-
-        .container {
-            max-width: 1280px;
-            margin: 25px auto;
-            padding: 30px;
-            background-color: var(--bg-white);
-            border-radius: var(--border-radius-md);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .page-header {
-            color: var(--primary-dark);
-            text-align: center;
-            margin-bottom: 40px;
-            font-size: 2.8em;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid var(--primary-color);
-            position: relative;
-        }
-        .page-header::after {
-            content: '';
-            position: absolute;
-            bottom: -5px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80px;
-            height: 5px;
-            background-color: var(--warning-color);
-            border-radius: 50%;
-        }
-
-        .report-controls-bar {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            background-color: var(--bg-accent-light);
-            padding: 15px 25px;
-            border-radius: var(--border-radius-md);
-            margin-bottom: 30px;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .report-period-info h2 {
-            font-size: 1.8em;
-            color: var(--text-dark);
-            margin: 0;
-            padding: 0;
-            border: none;
-        }
-        .report-period-info h3 {
-            font-size: 1.2em;
-            color: var(--text-light);
-            margin: 0;
-            padding: 0;
-        }
-
-        .date-selector-form {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .date-selector-form label {
-            font-weight: 600;
-            color: var(--text-dark);
-            font-size: 0.9em;
-        }
-
-        .date-selector-form input[type="date"],
-        .date-selector-form input[type="text"].flatpickr-input {
-            padding: 8px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius); /* Using var(--border-radius) for 4px */
-            font-size: 0.9em;
-            width: 140px;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-        }
-
-        .date-selector-form input[type="date"]:focus,
-        .date-selector-form input[type="text"].flatpickr-input:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-            outline: none;
-        }
-
-        .date-selector-form button {
-            padding: 8px 20px;
-            background-color: var(--primary-color);
-            color: var(--text-white);
-            border: none;
-            border-radius: var(--border-radius); /* Using var(--border-radius) for 4px */
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-        }
-        .date-selector-form button:hover {
-            background-color: var(--primary-dark);
-            transform: translateY(-1px);
-        }
-        .date-selector-form button i {
-            font-size: 1em;
-        }
-
-        .summary-period-header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .summary-period-header h2 {
-            font-size: 2em;
-            color: var(--text-dark);
-            margin-bottom: 10px;
-            padding: 0;
-            border: none;
-        }
-
-        .summary-period-header h3 {
-            font-size: 1.5em;
-            color: var(--text-light);
-            margin: 0;
-            padding: 0;
-        }
-
-        /* General Section Styling (Cards, Tables) */
-        .section-card {
-            background-color: var(--bg-white);
-            border-radius: var(--border-radius-md);
-            box-shadow: var(--shadow-md); /* Using var(--shadow-md) */
-            margin-bottom: 40px;
-            overflow: hidden;
-        }
-
-        .section-card-header {
-            background-color: var(--bg-card-header);
-            padding: 18px 25px;
-            font-size: 1.5em;
-            font-weight: 600;
-            color: var(--text-dark);
-            border-bottom: 1px solid var(--border-color);
-        }
-        .section-card-content {
-            padding: 25px;
-        }
-
-
-        /* Overall Summary Cards (Main Totals) */
-        .overall-summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-        }
-
-        .summary-value-card {
-            background-color: var(--bg-white);
-            padding: 20px;
-            border-radius: var(--border-radius-md);
-            box-shadow: var(--shadow-sm); /* Using var(--shadow-sm) */
-            text-align: center;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .summary-value-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
-        }
-        .summary-value-card h4 {
-            color: var(--text-light);
-            font-size: 1.1em;
-            margin-top: 0;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-        .summary-value-card .value-display {
-            font-size: 2.5em;
-            font-weight: 700;
-            color: var(--primary-color);
-            line-height: 1.2;
-        }
-        .summary-value-card .value-display.text-success { color: var(--success-color); }
-        .summary-value-card .value-display.text-danger { color: var(--danger-color); }
-
-        /* Brand Summary Table */
-        .brand-summary-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-
-        .brand-summary-table th, .brand-summary-table td {
-            border: 1px solid var(--border-color);
-            padding: 12px 15px;
-            text-align: left;
-            font-size: 0.95em;
-        }
-
-        .brand-summary-table th {
-            background-color: var(--primary-color);
-            color: var(--text-white);
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .brand-summary-table tbody tr:nth-child(even) {
-            background-color: var(--bg-stripe);
-        }
-        .brand-summary-table tbody tr:hover {
-            background-color: var(--bg-hover); /* Using var(--bg-hover) */
-        }
-        .brand-summary-table td.text-right {
-            text-align: right;
-            font-weight: 500;
-        }
-        .brand-summary-table td.brand-name-cell {
-            text-transform: capitalize;
-            font-weight: 600;
-            color: var(--primary-dark);
-        }
-
-        /* Detailed Report Tables */
-        .detailed-report-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-        .detailed-report-table th, .detailed-report-table td {
-            border: 1px solid var(--border-color);
-            padding: 10px 12px;
-            text-align: left;
-            font-size: 0.85em;
-        }
-        .detailed-report-table th {
-            background-color: var(--bg-light);
-            color: var(--text-dark);
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-        .detailed-report-table tbody tr:nth-child(even) {
-            background-color: var(--bg-stripe);
-        }
-        .detailed-report-table tbody tr:hover {
-            background-color: var(--bg-hover); /* Using var(--bg-hover) */
-        }
-        .detailed-report-table td.text-right {
-            text-align: right;
-        }
-        .detailed-report-table .brand-group-header {
-            background-color: var(--info-color);
-            color: var(--text-white);
-            font-weight: 700;
-            text-align: left;
-            font-size: 1.05em;
-            padding: 12px 15px;
-            text-transform: capitalize;
-        }
-        .no-data-message {
-            text-align: center;
-            padding: 20px;
-            color: var(--text-light);
-            font-style: italic;
-        }
-
-        /* Text colors (These are already defined in style.css or are common classes) */
-        .text-success { color: var(--success-color); font-weight: bold; }
-        .text-danger { color: var(--danger-color); font-weight: bold; }
-        .text-primary { color: var(--primary-color); font-weight: bold; }
-
-        /* Responsive Adjustments */
-        @media (max-width: 992px) {
-            .container {
-                padding: 20px;
-                margin: 15px auto;
-            }
-            .page-header {
-                font-size: 2.2em;
-                margin-bottom: 30px;
-            }
-            .report-controls-bar {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-            }
-            .date-selector-form {
-                justify-content: flex-start;
-            }
-            .overall-summary-cards {
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            }
-            .summary-info-card .value-display {
-                font-size: 2em;
-            }
-            /* .brand-summary-grid is no longer used for brand summary cards */
-        }
-
-        @media (max-width: 768px) {
-            .date-selector-form {
-                flex-direction: column;
-                width: 100%;
-            }
-            .date-selector-form label,
-            .date-selector-form input,
-            .date-selector-form button {
-                width: 100%;
-                text-align: center;
-            }
-            .page-header {
-                font-size: 1.8em;
-            }
-            .report-period-info h2 {
-                font-size: 1.5em;
-            }
-            .report-period-info h3 {
-                font-size: 1.1em;
-            }
-            .overall-summary-cards {
-                grid-template-columns: 1fr;
-            }
-            .brand-summary-table, .detailed-report-table {
-                display: block;
-                width: 100%;
-            }
-            .brand-summary-table thead, .detailed-report-table thead {
-                display: none;
-            }
-            .brand-summary-table tbody tr, .detailed-report-table tbody tr {
-                margin-bottom: 15px;
-                border: 1px solid var(--border-color);
-                border-radius: var(--border-radius-md);
-                overflow: hidden;
-                display: block;
-            }
-            .brand-summary-table td, .detailed-report-table td {
-                display: block;
-                text-align: right;
-                position: relative;
-                padding-left: 50%;
-                border: none;
-                border-bottom: 1px solid var(--border-color);
-            }
-            .brand-summary-table td:last-child, .detailed-report-table td:last-child {
-                border-bottom: none;
-            }
-            .brand-summary-table td::before, .detailed-report-table td::before {
-                content: attr(data-label);
-                position: absolute;
-                left: 0;
-                width: 50%;
-                padding-left: 15px;
-                font-weight: bold;
-                text-align: left;
-                color: var(--text-light);
-            }
-            .detailed-report-table .brand-group-header {
-                text-align: center;
-                border-radius: var(--border-radius);
-                margin-bottom: 10px;
-            }
-        }
-        @media (max-width: 480px) {
-            .page-header {
-                font-size: 1.5em;
-            }
-            .report-period-info h2 {
-                font-size: 1.3em;
-            }
-            .report-period-info h3 {
-                font-size: 1em;
-            }
-            .summary-info-card h4 {
-                font-size: 1em;
-            }
-            .summary-info-card .value-display {
-                font-size: 2em;
-            }
-            .section-card-header {
-                font-size: 1.2em;
-            }
-        }
-    </style>
-{% endblock %}
-
 {% block content %}
-    <div class="container">
-        <h1 class="page-header">รายงานสรุปสต็อกสินค้า</h1>
+<h2>รับเข้า / จ่ายออกสต็อก</h2>
 
-        <div class="report-controls-bar">
-            <div class="report-period-info">
-                <h2>รายงานสรุปประจำเดือน/ช่วงเวลา</h2>
-                <h3>สำหรับช่วงวันที่: {{ display_range_str }}</h3>
-            </div>
-            {# Date selector form #}
-            <div class="date-selector-form">
-                <form action="{{ url_for('summary_stock_report') }}" method="GET">
-                    <label for="start_date">จากวันที่:</label>
-                    <input type="date" id="start_date" name="start_date" value="{{ start_date_param }}">
-                    <label for="end_date">ถึงวันที่:</label>
-                    <input type="date" id="end_date" name="end_date" value="{{ end_date_param }}">
-                    <button type="submit"><i class="fas fa-filter"></i> ดูรายงาน</button>
-                </form>
-            </div>
-        </div>
+<a href="{{ url_for('daily_stock_report') }}" class="btn btn-info" style="margin-bottom: 20px;"><i class="fas fa-chart-bar"></i> ดูรายงานสต็อกประจำวัน</a>
+<a href="{{ url_for('summary_stock_report') }}" class="btn btn-info" style="margin-bottom: 20px;"><i class="fa-solid fa-calendar"></i> ดูรายงานสต็อกรายเดือน</a>
 
-        {# Overall Summary Section #}
-        <div class="section-card">
-            <div class="section-card-header">สรุปภาพรวมทั้งหมด</div>
-            <div class="section-card-content">
-                <div class="overall-summary-grid">
-                    <div class="summary-value-card">
-                        <h4>ยางรวม: ยอดเริ่มต้น</h4>
-                        <div class="value-display text-primary">{{ overall_tire_initial }}</div>
-                    </div>
-                    <div class="summary-value-card">
-                        <h4>ยางรวม: รับเข้า</h4>
-                        <div class="value-display text-success">{{ overall_tire_in }}</div>
-                    </div>
-                    <div class="summary-value-card">
-                        <h4>ยางรวม: จ่ายออก</h4>
-                        <div class="value-display text-danger">{{ overall_tire_out }}</div>
-                    </div>
-                    <div class="summary-value-card">
-                        <h4>ยางรวม: ยอดคงเหลือ</h4>
-                        <div class="value-display text-primary">{{ overall_tire_final }}</div>
-                    </div>
-                    <div class="summary-value-card">
-                        <h4>แม็กรวม: ยอดเริ่มต้น</h4>
-                        <div class="value-display text-primary">{{ overall_wheel_initial }}</div>
-                    </div>
-                    <div class="summary-value-card">
-                        <h4>แม็กรวม: รับเข้า</h4>
-                        <div class="value-display text-success">{{ overall_wheel_in }}</div>
-                    </div>
-                    <div class="summary-value-card">
-                        <h4>แม็กรวม: จ่ายออก</h4>
-                        <div class="value-display text-danger">{{ overall_wheel_out }}</div>
-                    </div>
-                    <div class="summary-value-card">
-                        <h4>แม็กรวม: ยอดคงเหลือ</h4>
-                        <div class="value-display text-primary">{{ overall_wheel_final }}</div>
-                    </div>
+<div class="tabs">
+    <button class="tab-button active" data-tab="tire_movements">สต็อกยาง</button>
+    <button class="tab-button" data-tab="wheel_movements">สต็อกแม็ก</button>
+</div>
+
+<div id="tire_movements" class="tab-content {{ 'active' if active_tab == 'tire_movements' }}">
+    <h3>จัดการสต็อกยาง</h3>
+    <div class="form-section">
+        <form action="{{ url_for('stock_movement') }}" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="submit_type" value="tire_movement">
+            <div class="form-row">
+                <div class="form-group half-width">
+                    <label for="tire_id">เลือกยาง (ยี่ห้อ รุ่น เบอร์ยาง):</label>
+                    <select id="tire_id" name="tire_id" required>
+                        <option value="">-- เลือกยาง --</option>
+                        {% for tire in tires %}
+                            <option value="{{ tire.id }}">{{ tire.brand }} {{ tire.model }} {{ tire.size }} (คงเหลือ: {{ tire.quantity }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group quarter-width">
+                    <label for="type">ประเภท:</label>
+                    <select id="type" name="type" required>
+                        <option value="IN">รับเข้า</option>
+                        <option value="OUT">จ่ายออก</option>
+                    </select>
+                </div>
+                <div class="form-group quarter-width">
+                    <label for="quantity">จำนวน (เส้น):</label>
+                    <input type="number" id="quantity" name="quantity" min="1" required>
+    
                 </div>
             </div>
-        </div>
-
-        {# Brand-wise Summary Section #}
-        <div class="section-card">
-            <div class="section-card-header">สรุปยอดรวมแยกตามยี่ห้อ (คงเหลือ ณ สิ้นสุดช่วง)</div>
-            <div class="section-card-content">
-                {% if brand_overall_summary_list %}
-                <div class="table-responsive">
-                    <table class="brand-summary-table">
-                        <thead>
-                            <tr>
-                                <th>ยี่ห้อ</th>
-                                <th class="text-right">ยอดเริ่มต้น</th>
-                                <th class="text-right">รับเข้า</th>
-                                <th class="text-right">จ่ายออก</th>
-                                <th class="text-right">คงเหลือ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for brand_summary in brand_overall_summary_list %}
-                            <tr>
-                                <td data-label="ยี่ห้อ" class="brand-name-cell">{{ brand_summary.brand_name | title }}</td>
-                                <td data-label="ยอดเริ่มต้น" class="text-right">{{ brand_summary.initial_quantity }}</td>
-                                <td data-label="รับเข้า" class="text-right text-success">+{{ brand_summary.IN }}</td>
-                                <td data-label="จ่ายออก" class="text-right text-danger">-{{ brand_summary.OUT }}</td>
-                                <td data-label="คงเหลือ" class="text-right text-primary">{{ brand_summary.final_quantity }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <p class="no-data-message">ไม่พบข้อมูลสรุปแยกตามยี่ห้อในช่วงที่เลือก</p>
-                {% endif %}
+            <div class="form-group">
+                <label for="notes">หมายเหตุ (ถ้ามี):</label>
+                <input type="text" id="notes" name="notes">
             </div>
+			
+			<div class="form-group">
+            <label for="tire_bill_image">อัปโหลดรูปบิล (ถ้ามี):</label>
+            <input type="file" id="tire_bill_image" name="bill_image" accept="image/*">
         </div>
+		
+        <button type="submit" class="btn btn-primary">บันทึกการเคลื่อนไหว</button>
+    </form>
+</div>
 
-        <hr style="border-top: 2px solid var(--border-color); margin: 50px 0;">
-
-        {# Detailed Report for Tires #}
-        <div class="section-card">
-            <div class="section-card-header">รายงานสต็อกยาง (รายละเอียด)</div>
-            <div class="section-card-content">
-                {% if grouped_tire_report %}
-                {% for brand, tires in grouped_tire_report.items() %}
-                <h4 class="brand-group-header">ยี่ห้อ: {{ brand | title }}</h4>
-                <div class="table-responsive">
-                    <table class="detailed-report-table">
-                        <thead>
-                            <tr>
-                                <th>รุ่นยาง</th>
-                                <th>เบอร์ยาง</th>
-                                <th class="text-right">ยอดเริ่มต้น</th>
-                                <th class="text-right">รับเข้า</th>
-                                <th class="text-right">จ่ายออก</th>
-                                <th class="text-right">ยอดคงเหลือ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in tires %}
-                            <tr>
-                                <td data-label="รุ่นยาง">{{ item.model | title }}</td>
-                                <td data-label="เบอร์ยาง">{{ item.size }}</td>
-                                <td data-label="ยอดเริ่มต้น" class="text-right">{{ item.initial_quantity }}</td>
-                                <td data-label="รับเข้า" class="text-right text-success">+{{ item.IN }}</td>
-                                <td data-label="จ่ายออก" class="text-right text-danger">-{{ item.OUT }}</td>
-                                <td data-label="ยอดคงเหลือ" class="text-right text-primary">{{ item.final_quantity }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+    <h3>ประวัติการเคลื่อนไหวล่าสุดของยาง</h3>
+    {% if tire_movements %}
+        <div class="table-responsive">
+            <table>
+                 <thead>
+                <tr>
+                    <th>เวลา</th>
+                    <th>ข้อมูลยาง</th> {# Changed from ID ยาง #}
+                    <th>ประเภท</th>
+                    <th>จำนวน</th>
+                    <th>คงเหลือ</th>
+                    <th>หมายเหตุ</th>
+                    <th>พนักงาน</th> {# MODIFIED: เพิ่มและย้าย "พนักงาน" #}
+                    <th>หลักฐาน</th>
+                </tr>
+            </thead>
+                <tbody>
+                    {% for movement in tire_movements %}
+                    <tr>
+                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        <td>{{ movement.brand }} {{ movement.model }} {{ movement.size }}</td>
+                        <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
+                        <td>{{ movement.quantity_change }}</td>
+                        <td>{{ movement.remaining_quantity }}</td>
+                        <td>
+                            {% if movement.notes %}
+                                {{ movement.notes }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# MODIFIED: แสดง user_username #}
+                        <td>
+                            {% if movement.image_filename %}
+                                <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
                 {% endfor %}
-                {% else %}
-                <p class="no-data-message">ไม่พบข้อมูลการเคลื่อนไหวสต็อกยางในช่วงที่เลือก</p>
-                {% endif %}
-            </div>
+                </tbody>
+            </table>
         </div>
+    {% else %}
+        <p>ยังไม่มีประวัติการเคลื่อนไหวของยาง</p>
+    {% endif %}
+</div>
 
-        {# Detailed Report for Wheels #}
-        <div class="section-card">
-            <div class="section-card-header">รายงานสต็อกล้อแม็ก (รายละเอียด)</div>
-            <div class="section-card-content">
-                {% if grouped_wheel_report %}
-                {% for brand, wheels in grouped_wheel_report.items() %}
-                <h4 class="brand-group-header">ยี่ห้อ: {{ brand | title }}</h4>
-                <div class="table-responsive">
-                    <table class="detailed-report-table">
-                        <thead>
-                            <tr>
-                                <th>ลาย</th>
-                                <th>ขอบ</th>
-                                <th>PCD</th>
-                                <th>กว้าง</th>
-                                <th class="text-right">ยอดเริ่มต้น</th>
-                                <th class="text-right">รับเข้า</th>
-                                <th class="text-right">จ่ายออก</th>
-                                <th class="text-right">ยอดคงเหลือ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in wheels %}
-                            <tr>
-                                <td data-label="ลาย">{{ item.model | title }}</td>
-                                <td data-label="ขอบ">{{ item.diameter }}</td>
-                                <td data-label="PCD">{{ item.pcd }}</td>
-                                <td data-label="กว้าง">{{ item.width }}</td>
-                                <td data-label="ยอดเริ่มต้น" class="text-right">{{ item.initial_quantity }}</td>
-                                <td data-label="รับเข้า" class="text-right text-success">+{{ item.IN }}</td>
-                                <td data-label="จ่ายออก" class="text-right text-danger">-{{ item.OUT }}</td>
-                                <td data-label="ยอดคงเหลือ" class="text-right text-primary">{{ item.final_quantity }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+<div id="wheel_movements" class="tab-content {{ 'active' if active_tab == 'wheel_movements' }}">
+    <h3>จัดการสต็อกแม็ก</h3>
+    <div class="form-section">
+        <form action="{{ url_for('stock_movement') }}" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="submit_type" value="wheel_movement">
+            <div class="form-row">
+                <div class="form-group half-width">
+                    <label for="wheel_id">เลือกแม็ก (ยี่ห้อ ลาย ขอบ):</label>
+                    <select id="wheel_id" name="wheel_id" required>
+                        <option value="">-- เลือกแม็ก --</option>
+                        {% for wheel in wheels %}
+                            <option value="{{ wheel.id }}">{{ wheel.brand }} {{ wheel.model }} {{ "%.1f"|format(wheel.diameter) }} นิ้ว (คงเหลือ: {{ wheel.quantity }})</option>
+                        {% endfor %}
+                    </select>
                 </div>
-                {% endfor %}
-                {% else %}
-                <p class="no-data-message">ไม่พบข้อมูลการเคลื่อนไหวสต็อกล้อแม็กในช่วงที่เลือก</p>
-                {% endif %}
+                <div class="form-group quarter-width">
+                    <label for="type">ประเภท:</label>
+                    <select id="type" name="type" required>
+                        <option value="IN">รับเข้า</option>
+                        <option value="OUT">จ่ายออก</option>
+                    </select>
+                </div>
+                <div class="form-group quarter-width">
+                    <label for="quantity">จำนวน (วง):</label>
+                    <input type="number" id="quantity" name="quantity" min="1" required>
+    
+                </div>
             </div>
+            <div class="form-group">
+                <label for="notes">หมายเหตุ (ถ้ามี):</label>
+                <input type="text" id="notes" name="notes">
+            </div>
+			
+			<div class="form-group">
+            <label for="wheel_bill_image">อัปโหลดรูปบิล (ถ้ามี):</label>
+            <input type="file" id="wheel_bill_image" name="bill_image" accept="image/*">
         </div>
-
+			 <button type="submit" class="btn btn-primary">บันทึกการเคลื่อนไหว</button>
+        </form>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Flatpickr for date inputs with Thai locale
-            flatpickr("#start_date", {
-                dateFormat: "Y-m-d",
-                locale: "th" // Use Thai locale
+    <h3>ประวัติการเคลื่อนไหวล่าสุดของแม็ก</h3>
+    {% if wheel_movements %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                <tr>
+                    <th>เวลา</th>
+                    <th>ข้อมูลแม็ก</th> {# Changed from ID แม็ก #}
+                    <th>ประเภท</th>
+                    <th>จำนวน</th>
+                    <th>คงเหลือ</th>
+                    <th>หมายเหตุ</th>
+                    <th>พนักงาน</th> {# MODIFIED: เพิ่มและย้าย "พนักงาน" #}
+                    <th>หลักฐาน</th>
+                </tr>
+            </thead>
+                <tbody>
+                     {% for movement in wheel_movements %}
+                    <tr>
+                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        <td>{{ movement.brand }} {{ movement.model }} {{ "%.1f"|format(movement.diameter) }} นิ้ว</td> {# Removed ID #}
+                        <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
+                        <td>{{ movement.quantity_change }}</td>
+                        <td>{{ movement.remaining_quantity }}</td>
+                        <td>
+                            {% if movement.notes %}
+                                {{ movement.notes }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# MODIFIED: แสดง user_username #}
+                        <td>
+                            {% if movement.image_filename %}
+                                <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>ยังไม่มีประวัติการเคลื่อนไหวของแม็ก</p>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        function switchTab(tabId) {
+            tabContents.forEach(content => {
+                content.classList.remove('active');
             });
-            flatpickr("#end_date", {
-                dateFormat: "Y-m-d",
-                locale: "th" // Use Thai locale
+            tabButtons.forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // Activate the selected tab
+            const targetContent = document.getElementById(tabId);
+            const targetButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+            if (targetContent) targetContent.classList.add('active');
+            if (targetButton) targetButton.classList.add('active');
+
+            // อัปเดต URL เพื่อให้จดจำแท็บ
+            history.pushState(null, '', `?tab=${tabId}`);
+
+            // NEW: Re-initialize/resize Select2 when tab changes
+            if (tabId === 'tire_movements') {
+                // For tire_id, ensure Select2 is initialized/refreshed
+                $('#tire_id').select2({
+                    placeholder: "-- เลือกยาง --",
+                    allowClear: true
+                });
+            } else if (tabId === 'wheel_movements') {
+                // For wheel_id, ensure Select2 is initialized/refreshed
+                // It's crucial to ensure it's not already initialized to avoid errors
+                // We can use .select2('destroy') first if unsure, then re-initialize
+                if ($('#wheel_id').data('select2')) { // Check if Select2 is already initialized
+                    $('#wheel_id').select2('destroy'); // Destroy existing instance
+                }
+                $('#wheel_id').select2({
+                    placeholder: "-- เลือกแม็ก --",
+                    allowClear: true
+                });
+                // Trigger a resize if the problem is still related to hidden element rendering
+                $('#wheel_id').select2('open'); // Briefly open to trigger resize
+                $('#wheel_id').select2('close'); // Then immediately close
+            }
+        }
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+                switchTab(tabId);
             });
         });
-    </script>
+
+        // ตรวจสอบ URL เพื่อเปิดแท็บที่ถูกต้องเมื่อโหลดหน้าเว็บ
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTabFromUrl = urlParams.get('tab');
+        const flaskActiveTab = "{{ active_tab }}"; 
+
+        if (flaskActiveTab && flaskActiveTab !== 'None') { 
+            switchTab(flaskActiveTab);
+        } else if (activeTabFromUrl) {
+            switchTab(activeTabFromUrl);
+        } else {
+            switchTab('tire_movements'); 
+        }
+
+        // เพิ่มการตรวจสอบ active_tab จาก Flask เพื่อให้แสดงผลถูกต้องเมื่อเกิด error
+        {% if active_tab %}
+        // Call switchTab to ensure the active tab is correctly set and Select2 is initialized
+        switchTab('{{ active_tab }}');
+        {% endif %}
+
+        // Initial Select2 setup for both on page load
+        // This runs only once when DOM is ready
+        $('#tire_id').select2({
+            placeholder: "-- เลือกยาง --",
+            allowClear: true
+        });
+        $('#wheel_id').select2({
+            placeholder: "-- เลือกแม็ก --",
+            allowClear: true
+        });
+
+        // Ensure Select2 is resized when tabs are switched, especially if hidden.
+        // This is a common workaround for Select2 with tabs.
+        $('a[data-tab]').on('shown.bs.tab', function (e) { // If you use Bootstrap tabs
+             $('#tire_id').select2('close'); // Close any open select2
+             $('#wheel_id').select2('close'); // Close any open select2
+             $($.fn.select2.amd.require('select2/selection/single')).each(function() {
+                if ($(this).data('select2')) {
+                    $(this).data('select2').dropdown._resizeDropdown();
+                }
+             });
+        });
+
+        // Alternatively, manually trigger resize on tab switch if the above doesn't work
+        // This is a more direct way:
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+                setTimeout(() => { // Give browser a moment to render the tab
+                    if (tabId === 'tire_movements' && $('#tire_id').data('select2')) {
+                        $('#tire_id').select2('open').select2('close'); // Open and close to force resize
+                    } else if (tabId === 'wheel_movements' && $('#wheel_id').data('select2')) {
+                        $('#wheel_id').select2('open').select2('close'); // Open and close to force resize
+                    }
+                }, 100); // Small delay might be needed
+            });
+        });
+    });
+</script>
 {% endblock %}
