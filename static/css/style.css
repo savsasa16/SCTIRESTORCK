@@ -1,28 +1,3 @@
-/*
- * SC-TIRE-STOCK Application Stylesheet
- * Version: 2.0 - Final Responsive Build
- * Author: Gemini (AI)
- * Date: June 6, 2025
- *
- * This stylesheet aims for a complete, robust, and highly responsive design,
- * addressing specific issues like table word-wrapping and overall layout consistency.
- *
- * Contents:
- * - Global CSS Variables
- * - Base Typography & Layout
- * - Navigation Bar
- * - Flash Messages
- * - Tabs & Tab Content
- * - Form Elements & Layouts
- * - Buttons
- * - Table Styling (Highly Responsive)
- * - Links
- * - No Data Message
- * - Responsive Adjustments (Mobile First & Larger Breakpoints)
- * - Select2 Specific Overrides
- * - Detail Page Layouts (Wheel Detail)
- */
-
 /* --- Global CSS Variables --- */
 :root {
     /* Colors */
@@ -52,6 +27,7 @@
     --bg-white: #ffffff;
     --bg-hover-light: #eaf2f8;
     --bg-stripe: #fdfdfd;
+    --card-bg-light: #fefefe; /* เพิ่มสีพื้นหลังสำหรับการ์ด/กรอบ */
 
     /* Borders & Shadows */
     --border-color: #e0e0e0; /* Standard border */
@@ -201,6 +177,11 @@ h4 {
     margin-left: var(--spacing-md);
     white-space: nowrap; /* Prevent username from breaking */
 }
+/* Navigation Bar (แก้ไขปุ่ม Logout ให้เป็น btn-danger) */
+.navbar-links .btn-danger {
+    margin-left: var(--spacing-sm); /* เพิ่มระยะห่างจาก user-info */
+}
+
 
 /* --- Flash Messages --- */
 .flash-messages {
@@ -619,6 +600,43 @@ p.no-data {
         margin-top: var(--spacing-xs);
         font-weight: 700;
     }
+
+    /* Specific adjustments for summary_stock_report */
+    .date-selector-form .form-row {
+        flex-direction: column; /* Stack date inputs and button vertically */
+        align-items: stretch;
+    }
+    .date-selector-form .form-group {
+        flex-basis: 100%; /* Full width for inputs */
+        margin-bottom: var(--spacing-sm);
+    }
+    .date-selector-form .form-group:last-child { /* The button group */
+        margin-top: var(--spacing-md);
+        margin-bottom: 0;
+    }
+    .date-selector-form button.btn {
+        width: 100%; /* Full width button */
+    }
+
+    .brand-frame {
+        padding: var(--spacing-md);
+    }
+    .brand-frame h4 {
+        font-size: 1.2em;
+        margin-bottom: var(--spacing-md);
+    }
+    .summary-table th, .summary-table td {
+        padding: var(--spacing-xs);
+        font-size: 0.75em;
+    }
+
+    .total-summary-section .form-row {
+        flex-direction: column; /* Stack total summary cards vertically */
+        gap: var(--spacing-md);
+    }
+    .total-summary-section .form-group.quarter-width {
+        flex-basis: 100%; /* Full width for each total card */
+    }
 }
 
 /* Small devices (phones, 481px to 768px) */
@@ -648,13 +666,39 @@ p.no-data {
     .total-summary-section .form-row {
         gap: var(--spacing-xl);
     }
-    .total-summary-section .form-group {
-        flex-basis: calc(50% - (var(--spacing-xl) / 2)); /* Two columns */
+    .total-summary-section .form-group.quarter-width {
+        flex-basis: calc(50% - (var(--spacing-xl) / 2)); /* Two columns for totals */
         font-size: 1.1em;
         padding: var(--spacing-lg);
     }
     .total-summary-section .form-group strong {
         font-size: 1.6em;
+    }
+
+    /* Specific adjustments for summary_stock_report */
+    .date-selector-form .form-row {
+        flex-wrap: wrap; /* Allow wrapping */
+        gap: var(--spacing-md);
+        justify-content: center;
+    }
+    .date-selector-form .form-group.half-width {
+        flex-basis: calc(50% - (var(--spacing-md) / 2)); /* Two columns */
+    }
+    .date-selector-form .form-group:last-child { /* The button group */
+        flex-basis: 100%; /* Button takes full width or adjust */
+        text-align: center;
+        margin-top: var(--spacing-md);
+    }
+    .date-selector-form button.btn {
+        min-width: unset; /* Allow button to shrink */
+        width: auto; /* Auto width */
+    }
+    
+    .brand-frame {
+        padding: var(--spacing-lg);
+    }
+    .brand-frame h4 {
+        font-size: 1.3em;
     }
 }
 
@@ -677,42 +721,54 @@ p.no-data {
     }
     /* Total Summary Section for summary_stock_report */
     .total-summary-section .form-row {
-        gap: var(--spacing-xxl);
+        gap: var(--spacing-xl); /* Changed from xxl to xl for better spacing */
     }
-    .total-summary-section .form-group {
-        flex-basis: calc(25% - (var(--spacing-xxl) * 3 / 4)); /* Four columns */
+    .total-summary-section .form-group.quarter-width {
+        flex-basis: calc(25% - (var(--spacing-xl) * 3 / 4)); /* Four columns for totals */
         font-size: 1.15em;
         padding: var(--spacing-xl);
     }
     .total-summary-section .form-group strong {
         font-size: 1.8em;
+    }
+
+    /* Specific adjustments for summary_stock_report */
+    .date-selector-form .form-row {
+        justify-content: flex-end;
+        gap: var(--spacing-lg);
+    }
+    .date-selector-form .form-group:last-child { /* The button group */
+        flex-basis: auto; /* Auto width */
+        margin-top: 0;
+    }
+
+    .brand-frame {
+        padding: var(--spacing-xl);
+    }
+    .brand-frame h4 {
+        font-size: 1.4em;
     }
 }
 
-/* Large devices (desktops, 993px and up) - Standard Desktop View */
-/* No specific media query needed if base styles are for desktop first */
+/* Large devices (desktops, 993px and up) */
 @media (min-width: 993px) {
-    /* Summary header for summary_stock_report */
-    .summary-header {
+    /* ... (โค้ดเดิม) ... */
+    
+    /* Specific adjustments for summary_stock_report */
+    .date-selector-form .form-row {
+        justify-content: flex-end;
+        gap: var(--spacing-xl);
+    }
+    .date-selector-form .form-group:last-child { /* The button group */
+        flex-basis: auto;
+        margin-top: 0;
+    }
+
+    .brand-frame {
         padding: var(--spacing-xxl);
     }
-    .summary-header h2 {
-        font-size: 2.4em;
-    }
-    .summary-header h3 {
-        font-size: 1.4em;
-    }
-    /* Total Summary Section for summary_stock_report */
-    .total-summary-section .form-row {
-        gap: var(--spacing-xxl);
-    }
-    .total-summary-section .form-group {
-        flex-basis: calc(25% - (var(--spacing-xxl) * 3 / 4)); /* Four columns */
-        font-size: 1.15em;
-        padding: var(--spacing-xl);
-    }
-    .total-summary-section .form-group strong {
-        font-size: 1.8em;
+    .brand-frame h4 {
+        font-size: 1.5em;
     }
 }
 
