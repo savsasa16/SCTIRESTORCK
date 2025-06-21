@@ -1,161 +1,292 @@
-{% extends 'base.html' %} {# เปลี่ยนจาก {% include 'navbar.html' %} เป็น extend base.html #}
+{% extends 'base.html' %}
 
 {% block title %}สรุปรายงานสต็อกรายช่วงเวลา - ระบบจัดการสต็อก{% endblock %}
 
-{% block content %} {# เนื้อหาทั้งหมดของหน้านี้จะอยู่ใน block content #}
-<div class="container">
-    <h1 class="page-header">สรุปรายงานสต็อกรายช่วงเวลา</h1>
+{% block head %}
+    {# เพิ่ม Flatpickr CSS/JS ที่นี่ เนื่องจาก base.html REMOVED ออกไป #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    {# หากคุณมีไฟล์ locale สำหรับ Flatpickr ด้วย สามารถเพิ่มตรงนี้ #}
+    {# <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script> #}
+    <style>
+        /* สไตล์ที่คุณเพิ่มใน summary_stock_report.html เดิม */
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .summary-table th, .summary-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .summary-table th {
+            background-color: #f2f2f2;
+        }
+        .summary-table tr.total-row {
+            font-weight: bold;
+            background-color: #e0e0e0;
+        }
+        .summary-header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .summary-header h2 {
+            margin-bottom: 10px;
+        }
+        .date-selector-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            justify-content: center;
+            flex-wrap: wrap; /* เพิ่มเพื่อให้ responsive มากขึ้น */
+        }
+        .date-selector-form label {
+            font-weight: bold;
+        }
+        .date-selector-form input[type="date"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .date-selector-form button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .date-selector-form button:hover {
+            background-color: #0056b3;
+        }
+        .total-summary-section {
+            background-color: #f8f8f8;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            margin-top: 30px;
+            border-radius: 8px;
+        }
+        .total-summary-section h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .total-summary-section .row {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 10px;
+            flex-wrap: wrap; /* เพิ่มเพื่อให้ responsive มากขึ้น */
+        }
+        .total-summary-section .col {
+            flex: 1;
+            text-align: center;
+            font-size: 1.1em;
+            padding: 5px; /* เพิ่ม padding เล็กน้อย */
+            min-width: 150px; /* กำหนดขั้นต่ำเพื่อไม่ให้ชนกันมากเกินไป */
+        }
+        .total-summary-section .col strong {
+            display: block;
+            font-size: 1.2em;
+            color: #007bff;
+        }
+        .text-success { color: #28a745; } /* สีเขียว */
+        .text-danger { color: #dc3545; } /* สีแดง */
 
-    <div class="date-selector-form">
-        <form action="{{ url_for('summary_stock_report') }}" method="GET">
-            <label for="start_date">จากวันที่:</label>
-            <input type="date" id="start_date" name="start_date" value="{{ start_date_param }}">
-            <label for="end_date">ถึงวันที่:</label>
-            <input type="date" id="end_date" name="end_date" value="{{ end_date_param }}">
-            <button type="submit"><i class="fas fa-filter"></i> ดูรายงาน</button>
-        </form>
-    </div>
+        /* เพิ่มสไตล์สำหรับ Flash Messages หากคุณยังต้องการให้แสดงในหน้านี้ด้วย */
+        /* แต่แนะนำให้ base.html จัดการเพียงพอแล้ว */
+        /*
+        .flash-messages {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .flash-message {
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .flash-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .flash-message.danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .flash-message.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        */
+    </style>
+{% endblock %}
 
-    <div class="summary-header">
-        <h2>รายงานสต็อกยางและล้อแม็ก</h2>
-        <h3>ช่วงวันที่: {{ display_range_str }}</h3>
-    </div>
+{% block content %}
+    <div class="container">
+        <h1 class="page-header">สรุปรายงานสต็อกรายช่วงเวลา</h1>
 
-    {# Flashed messages are handled by base.html, so you can remove the {% with messages %} block here if you only want it to appear once via base.html #}
-    {#
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
+        <div class="date-selector-form">
+            <form action="{{ url_for('summary_stock_report') }}" method="GET">
+                <label for="start_date">จากวันที่:</label>
+                <input type="date" id="start_date" name="start_date" value="{{ start_date_param }}">
+                <label for="end_date">ถึงวันที่:</label>
+                <input type="date" id="end_date" name="end_date" value="{{ end_date_param }}">
+                <button type="submit"><i class="fas fa-filter"></i> ดูรายงาน</button>
+            </form>
+        </div>
+
+        <div class="summary-header">
+            <h2>รายงานสต็อกยางและล้อแม็ก</h2>
+            <h3>ช่วงวันที่: {{ display_range_str }}</h3>
+        </div>
+
+        {# Flash messages are already handled by base.html, remove this block to prevent duplication #}
+        {#
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        #}
+
+        <hr>
+
+        <h3>รายงานสต็อกยาง</h3>
+        {% if tire_report %}
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>ยี่ห้อ</th>
+                    <th>รุ่นยาง</th>
+                    <th>เบอร์ยาง</th>
+                    <th>ยอดเริ่มต้น</th>
+                    <th>รับเข้า</th>
+                    <th>จ่ายออก</th>
+                    <th>ยอดคงเหลือ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in tire_report %}
+                <tr>
+                    <td>{{ item.brand | title }}</td>
+                    <td>{{ item.model | title }}</td>
+                    <td>{{ item.size }}</td>
+                    <td>{{ item.initial_quantity }}</td>
+                    <td class="text-success">+{{ item.IN }}</td>
+                    <td class="text-danger">-{{ item.OUT }}</td>
+                    <td>{{ item.final_quantity }}</td>
+                </tr>
                 {% endfor %}
-            </div>
+            </tbody>
+        </table>
+        {% else %}
+        <p>ไม่พบข้อมูลการเคลื่อนไหวสต็อกยางในช่วงที่เลือก</p>
         {% endif %}
-    {% endwith %}
-    #}
 
-    <hr>
+        <hr>
 
-    <h3>รายงานสต็อกยาง</h3>
-    {% if tire_report %}
-    <table class="summary-table">
-        <thead>
-            <tr>
-                <th>ยี่ห้อ</th>
-                <th>รุ่นยาง</th>
-                <th>เบอร์ยาง</th>
-                <th>ยอดเริ่มต้น</th>
-                <th>รับเข้า</th>
-                <th>จ่ายออก</th>
-                <th>ยอดคงเหลือ</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in tire_report %}
-            <tr>
-                <td>{{ item.brand | title }}</td>
-                <td>{{ item.model | title }}</td>
-                <td>{{ item.size }}</td>
-                <td>{{ item.initial_quantity }}</td>
-                <td class="text-success">+{{ item.IN }}</td>
-                <td class="text-danger">-{{ item.OUT }}</td>
-                <td>{{ item.final_quantity }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p>ไม่พบข้อมูลการเคลื่อนไหวสต็อกยางในช่วงที่เลือก</p>
-    {% endif %}
+        <h3>รายงานสต็อกล้อแม็ก</h3>
+        {% if wheel_report %}
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>ยี่ห้อ</th>
+                    <th>ลาย</th>
+                    <th>ขอบ</th>
+                    <th>PCD</th>
+                    <th>กว้าง</th>
+                    <th>ยอดเริ่มต้น</th>
+                    <th>รับเข้า</th>
+                    <th>จ่ายออก</th>
+                    <th>ยอดคงเหลือ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in wheel_report %}
+                <tr>
+                    <td>{{ item.brand | title }}</td>
+                    <td>{{ item.model | title }}</td>
+                    <td>{{ item.diameter }}</td>
+                    <td>{{ item.pcd }}</td>
+                    <td>{{ item.width }}</td>
+                    <td>{{ item.initial_quantity }}</td>
+                    <td class="text-success">+{{ item.IN }}</td>
+                    <td class="text-danger">-{{ item.OUT }}</td>
+                    <td>{{ item.final_quantity }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>ไม่พบข้อมูลการเคลื่อนไหวสต็อกล้อแม็กในช่วงที่เลือก</p>
+        {% endif %}
 
-    <hr>
-
-    <h3>รายงานสต็อกล้อแม็ก</h3>
-    {% if wheel_report %}
-    <table class="summary-table">
-        <thead>
-            <tr>
-                <th>ยี่ห้อ</th>
-                <th>ลาย</th>
-                <th>ขอบ</th>
-                <th>PCD</th>
-                <th>กว้าง</th>
-                <th>ยอดเริ่มต้น</th>
-                <th>รับเข้า</th>
-                <th>จ่ายออก</th>
-                <th>ยอดคงเหลือ</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in wheel_report %}
-            <tr>
-                <td>{{ item.brand | title }}</td>
-                <td>{{ item.model | title }}</td>
-                <td>{{ item.diameter }}</td>
-                <td>{{ item.pcd }}</td>
-                <td>{{ item.width }}</td>
-                <td>{{ item.initial_quantity }}</td>
-                <td class="text-success">+{{ item.IN }}</td>
-                <td class="text-danger">-{{ item.OUT }}</td>
-                <td>{{ item.final_quantity }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p>ไม่พบข้อมูลการเคลื่อนไหวสต็อกล้อแม็กในช่วงที่เลือก</p>
-    {% endif %}
-
-    <div class="total-summary-section">
-        <h3>สรุปยอดรวมทั้งหมด</h3>
-        <div class="row">
-            <div class="col">
-                ยางรวม<br>
-                ยอดเริ่มต้น: <strong>{{ overall_tire_initial }}</strong>
+        <div class="total-summary-section">
+            <h3>สรุปยอดรวมทั้งหมด</h3>
+            <div class="row">
+                <div class="col">
+                    ยางรวม<br>
+                    ยอดเริ่มต้น: <strong>{{ overall_tire_initial }}</strong>
+                </div>
+                <div class="col">
+                    ยางรวม<br>
+                    รับเข้า: <strong class="text-success">{{ overall_tire_in }}</strong>
+                </div>
+                <div class="col">
+                    ยางรวม<br>
+                    จ่ายออก: <strong class="text-danger">{{ overall_tire_out }}</strong>
+                </div>
+                <div class="col">
+                    ยางรวม<br>
+                    ยอดคงเหลือ: <strong>{{ overall_tire_final }}</strong>
+                </div>
             </div>
-            <div class="col">
-                ยางรวม<br>
-                รับเข้า: <strong class="text-success">{{ overall_tire_in }}</strong>
-            </div>
-            <div class="col">
-                ยางรวม<br>
-                จ่ายออก: <strong class="text-danger">{{ overall_tire_out }}</strong>
-            </div>
-            <div class="col">
-                ยางรวม<br>
-                ยอดคงเหลือ: <strong>{{ overall_tire_final }}</strong>
+            <div class="row">
+                <div class="col">
+                    แม็กรวม<br>
+                    ยอดเริ่มต้น: <strong>{{ overall_wheel_initial }}</strong>
+                </div>
+                <div class="col">
+                    แม็กรวม<br>
+                    รับเข้า: <strong class="text-success">{{ overall_wheel_in }}</strong>
+                </div>
+                <div class="col">
+                    แม็กรวม<br>
+                    จ่ายออก: <strong class="text-danger">{{ overall_wheel_out }}</strong>
+                </div>
+                <div class="col">
+                    แม็กรวม<br>
+                    ยอดคงเหลือ: <strong>{{ overall_wheel_final }}</strong>
+                </div>
             </div>
         </div>
-        <div class="row">
-            <div class="col">
-                แม็กรวม<br>
-                ยอดเริ่มต้น: <strong>{{ overall_wheel_initial }}</strong>
-            </div>
-            <div class="col">
-                แม็กรวม<br>
-                รับเข้า: <strong class="text-success">{{ overall_wheel_in }}</strong>
-            </div>
-            <div class="col">
-                แม็กรวม<br>
-                จ่ายออก: <strong class="text-danger">{{ overall_wheel_out }}</strong>
-            </div>
-            <div class="col">
-                แม็กรวม<br>
-                ยอดคงเหลือ: <strong>{{ overall_wheel_final }}</strong>
-            </div>
-        </div>
+
     </div>
 
-</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            flatpickr("#start_date", {
+                dateFormat: "Y-m-d",
+                locale: "th" // ใช้ locale ภาษาไทย ถ้าคุณมีไฟล์ th.js
+            });
+            flatpickr("#end_date", {
+                dateFormat: "Y-m-d",
+                locale: "th" // ใช้ locale ภาษาไทย ถ้าคุณมีไฟล์ th.js
+            });
 
-<script>
-    // Initialize Flatpickr for date inputs
-    flatpickr("#start_date", {
-        dateFormat: "Y-m-d",
-        // You can add more options here, e.g., maxDate, minDate
-    });
-    flatpickr("#end_date", {
-        dateFormat: "Y-m-d",
-    });
-</script>
-{% endblock %} {# End of block content #}
+            // If you had a Thai locale file for Flatpickr like th.js:
+            // flatpickr.localize(flatpickr.l10ns.th);
+        });
+    </script>
+{% endblock %}
