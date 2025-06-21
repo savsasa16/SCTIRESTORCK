@@ -3,562 +3,232 @@
 {% block title %}สรุปรายงานสต็อกรายช่วงเวลา{% endblock %}
 
 {% block head %}
-    {{ super() }} {# เรียกใช้ block head จาก base.html เพื่อให้ CSS/JS หลักถูกโหลด #}
+    {{ super() }}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script> {# เพิ่มภาษาไทย #}
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
 
     <style>
-        /* Variables from base CSS (ensure these are defined in your static/style.css or base.html) */
         :root {
-            --primary-color: #007bff; /* Blue */
-            --primary-dark: #0056b3; /* Darker Blue */
-            --success-color: #28a745; /* Green */
-            --danger-color: #dc3545; /* Red */
-            --warning-color: #ffc107; /* Orange/Yellow */
-            --info-color: #17a2b8; /* Cyan */
-            
-            --text-dark: #343a40; /* Dark Grey */
-            --text-light: #6c757d; /* Light Grey */
-            --text-white: #ffffff; /* White */
-
-            --bg-white: #ffffff; /* White background */
-            --bg-light: #f8f9fa; /* Very Light Grey background */
-            --bg-stripe: #e9ecef; /* Slightly darker light grey for table stripes */
-            --bg-hover: #f1f1f1; /* Light grey for hover */
-            --bg-accent-light: #e0f2f7; /* Very light blue for subtle accents */
-
-            --border-color: #dee2e6; /* Light border grey */
-            --border-radius: 4px;
-            --border-radius-md: 8px;
-            --shadow-light: 0 2px 5px rgba(0,0,0,0.1);
+            --primary-color: #007bff;
+            --primary-dark: #0056b3;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --text-dark: #343a40;
+            --text-light: #6c757d;
+            --text-white: #ffffff;
+            --bg-white: #ffffff;
+            --bg-light: #f8f9fa;
+            --bg-stripe: #e9ecef;
+            --bg-hover: #f1f1f1;
+            --border-color: #dee2e6;
+            --border-radius: 6px;
         }
 
         body {
-            font-family: 'Prompt', sans-serif; /* Ensure consistent font */
-            background-color: var(--bg-light); /* Consistent page background */
+            font-family: 'Prompt', sans-serif;
+            background-color: var(--bg-light);
         }
 
         .container {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 25px; /* Increased padding */
-            background-color: var(--bg-white);
-            border-radius: var(--border-radius-md);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* Stronger shadow */
+            max-width: 1100px;
+            margin: 30px auto;
+            background: var(--bg-white);
+            padding: 25px 30px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
 
         .page-header {
-            color: var(--primary-dark); /* Changed to darker primary color */
+            font-size: 2.2em;
+            font-weight: bold;
             text-align: center;
+            color: var(--primary-dark);
             margin-bottom: 30px;
-            font-size: 2.5em; /* Larger heading */
-            font-weight: 700; /* Bolder */
-            text-transform: uppercase; /* Uppercase for prominence */
-            letter-spacing: 1px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid var(--primary-color); /* Stronger underline */
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
         }
 
-        /* Date Selector Form - Compact and right-aligned */
-        .date-selector-form {
+        .date-selector-form form {
             display: flex;
+            justify-content: flex-end;
+            align-items: center;
             flex-wrap: wrap;
             gap: 10px;
-            align-items: center;
-            justify-content: flex-end; /* Consistent with daily_stock_report */
-            background-color: var(--bg-accent-light); /* Light blue background */
-            padding: 15px 20px;
-            border-radius: var(--border-radius-md);
             margin-bottom: 30px;
-            box-shadow: inset 0 1px 5px rgba(0,0,0,0.1);
         }
 
         .date-selector-form label {
-            font-weight: 600; /* Bolder label */
-            color: var(--text-dark);
-            font-size: 0.95em;
+            font-weight: bold;
         }
 
-        .date-selector-form input[type="date"],
-        .date-selector-form input[type="text"].flatpickr-input {
-            padding: 8px 10px; /* Slightly larger for usability but still compact */
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
+        .date-selector-form input[type="date"] {
+            padding: 6px 10px;
             font-size: 0.9em;
-            width: 130px; /* Fixed width */
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-        }
-
-        .date-selector-form input[type="date"]:focus,
-        .date-selector-form input[type="text"].flatpickr-input:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-            outline: none;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
         }
 
         .date-selector-form button {
-            padding: 8px 18px; /* Consistent button size */
             background-color: var(--primary-color);
             color: var(--text-white);
             border: none;
+            padding: 7px 16px;
             border-radius: var(--border-radius);
+            font-weight: bold;
             cursor: pointer;
-            font-size: 1em;
-            font-weight: 600; /* Bolder button text */
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: background-color 0.3s ease, transform 0.2s ease;
         }
 
-        .date-selector-form button:hover {
-            background-color: var(--primary-dark);
-            transform: translateY(-1px);
-        }
-
-        .date-selector-form button i {
-            font-size: 1em;
-        }
-
-        /* Summary Period Header */
         .summary-period-header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .summary-period-header h2 {
-            font-size: 2em;
-            color: var(--text-dark);
             margin-bottom: 10px;
-            padding-bottom: 0;
-            border-bottom: none;
         }
 
-        .summary-period-header h3 {
-            font-size: 1.5em;
-            color: var(--text-light);
-            margin-top: 0;
-        }
-
-        /* Overall Summary Cards (Main Totals) */
         .overall-summary-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Responsive grid */
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 20px;
             margin-bottom: 40px;
         }
 
         .summary-info-card {
-            background-color: var(--bg-white);
-            padding: 20px;
-            border-radius: var(--border-radius-md);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            background-color: var(--bg-light);
             text-align: center;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .summary-info-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         }
 
         .summary-info-card h4 {
-            color: var(--primary-color);
-            font-size: 1.4em;
-            margin-top: 0;
             margin-bottom: 10px;
+            color: var(--primary-dark);
         }
 
         .summary-info-card .value {
-            font-size: 2.2em; /* Larger value */
-            font-weight: 700;
-            color: var(--text-dark);
-            line-height: 1.2;
-        }
-        .summary-info-card .value.text-success { color: var(--success-color); }
-        .summary-info-card .value.text-danger { color: var(--danger-color); }
-        .summary-info-card .value.text-primary { color: var(--primary-color); }
-
-
-        /* Brand-wise Summary Table (New Style) */
-        .brand-summary-section {
-            margin-bottom: 40px;
-            background-color: var(--bg-white);
-            padding: 25px;
-            border-radius: var(--border-radius-md);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .brand-summary-section h3 {
-            color: var(--primary-dark);
             font-size: 1.8em;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--primary-color);
-            padding-bottom: 10px;
+            font-weight: bold;
         }
 
-        .brand-summary-table {
+        .text-success { color: var(--success-color); }
+        .text-danger { color: var(--danger-color); }
+        .text-primary { color: var(--primary-color); }
+
+        .brand-summary-section, .detailed-report-section {
+            margin-bottom: 40px;
+        }
+
+        .brand-summary-table, .detailed-report-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
         }
 
-        .brand-summary-table th, .brand-summary-table td {
+        .brand-summary-table th,
+        .detailed-report-table th,
+        .brand-summary-table td,
+        .detailed-report-table td {
+            padding: 10px;
             border: 1px solid var(--border-color);
-            padding: 10px 12px;
-            text-align: left;
             font-size: 0.9em;
         }
 
-        .brand-summary-table th {
-            background-color: var(--primary-color);
-            color: var(--text-white);
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .brand-summary-table tbody tr:nth-child(even) {
-            background-color: var(--bg-stripe);
-        }
-        .brand-summary-table tbody tr:hover {
-            background-color: var(--bg-hover);
-        }
-        .brand-summary-table td.text-right {
-            text-align: right;
-            font-weight: 500;
-        }
-        .brand-summary-table td.brand-name-cell {
-            text-transform: capitalize;
-            font-weight: 600;
-            color: var(--primary-dark);
-        }
-
-        /* Detailed Report Sections (Tables) */
-        .detailed-report-section {
-            background-color: var(--bg-white);
-            padding: 25px;
-            border-radius: var(--border-radius-md);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            margin-bottom: 40px;
-        }
-        .detailed-report-section h3 {
-            color: var(--text-dark);
-            font-size: 1.8em;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-        }
-        .detailed-report-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-        .detailed-report-table th, .detailed-report-table td {
-            border: 1px solid var(--border-color);
-            padding: 10px;
-            text-align: left;
-            font-size: 0.85em; /* Slightly smaller for detail */
-        }
+        .brand-summary-table th,
         .detailed-report-table th {
-            background-color: var(--bg-light);
-            color: var(--text-dark);
-            text-transform: uppercase;
-            font-weight: 600;
+            background-color: var(--primary-color);
+            color: white;
+            text-align: left;
         }
-        .detailed-report-table tbody tr:nth-child(even) {
+
+        .brand-summary-table tr:nth-child(even),
+        .detailed-report-table tr:nth-child(even) {
             background-color: var(--bg-stripe);
         }
-        .detailed-report-table tbody tr:hover {
-            background-color: var(--bg-hover);
-        }
-        .detailed-report-table td.text-right {
-            text-align: right;
-        }
-        .detailed-report-table td.brand-cell {
-            text-transform: capitalize;
-            font-weight: 500;
-        }
-        .detailed-report-table .brand-group-header {
-            background-color: var(--primary-color); /* Primary color for brand group headers */
-            color: var(--text-white);
-            font-weight: 700;
-            text-align: left;
+
+        .brand-group-header {
+            background: var(--primary-dark);
+            color: white;
+            padding: 8px 12px;
             font-size: 1.1em;
-            padding: 12px 10px;
-            text-transform: capitalize;
-        }
-
-
-        /* Text colors */
-        .text-success { color: var(--success-color); font-weight: bold; }
-        .text-danger { color: var(--danger-color); font-weight: bold; }
-        .text-primary { color: var(--primary-color); font-weight: bold; }
-
-        /* Responsive Adjustments */
-        @media (max-width: 992px) {
-            .container {
-                padding: 15px;
-            }
-            .page-header {
-                font-size: 2em;
-            }
-            .overall-summary-cards {
-                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            }
-            .summary-info-card .value {
-                font-size: 1.8em;
-            }
-            .brand-summary-grid {
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            }
-        }
-
-        @media (max-width: 768px) {
-            .date-selector-form {
-                justify-content: center;
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .date-selector-form input,
-            .date-selector-form button {
-                width: 100%;
-            }
-            .page-header {
-                font-size: 1.8em;
-            }
-            .summary-period-header h2 {
-                font-size: 1.6em;
-            }
-            .summary-period-header h3 {
-                font-size: 1.2em;
-            }
-            .overall-summary-cards, .brand-summary-grid {
-                grid-template-columns: 1fr; /* Stack cards on small screens */
-            }
-            
-            /* Responsive tables (detailed reports) */
-            .detailed-report-table, .brand-summary-table,
-            .detailed-report-table tbody, .detailed-report-table th, .detailed-report-table td, .detailed-report-table tr,
-            .brand-summary-table tbody, .brand-summary-table th, .brand-summary-table td, .brand-summary-table tr {
-                display: block;
-            }
-            .detailed-report-table thead, .brand-summary-table thead {
-                display: none;
-            }
-            .detailed-report-table tr, .brand-summary-table tr {
-                margin-bottom: 15px;
-                border: 1px solid var(--border-color);
-                border-radius: var(--border-radius-md);
-                overflow: hidden;
-            }
-            .detailed-report-table td, .brand-summary-table td {
-                text-align: right;
-                position: relative;
-                padding-left: 50%;
-                border: none;
-            }
-            .detailed-report-table td::before, .brand-summary-table td::before {
-                content: attr(data-label);
-                position: absolute;
-                left: 0;
-                width: 50%;
-                padding-left: 15px;
-                font-weight: bold;
-                text-align: left;
-                color: var(--text-light);
-            }
-            .detailed-report-table .brand-group-header {
-                text-align: center;
-            }
+            border-radius: var(--border-radius);
+            margin-top: 20px;
         }
     </style>
 {% endblock %}
 
 {% block content %}
-    <div class="container">
-        <h1 class="page-header">สรุปรายงานสต็อกรายช่วงเวลา</h1>
+<div class="container">
+    <h1 class="page-header">สรุปรายงานสต็อกรายช่วงเวลา</h1>
 
-        <div class="date-selector-form">
-            <form action="{{ url_for('summary_stock_report') }}" method="GET">
-                <label for="start_date">จากวันที่:</label>
-                <input type="date" id="start_date" name="start_date" value="{{ start_date_param }}">
-                <label for="end_date">ถึงวันที่:</label>
-                <input type="date" id="end_date" name="end_date" value="{{ end_date_param }}">
-                <button type="submit"><i class="fas fa-filter"></i> ดูรายงาน</button>
-            </form>
-        </div>
-
-        <div class="summary-period-header">
-            <h2>รายงานสต็อกยางและล้อแม็ก</h2>
-            <h3>ช่วงวันที่: {{ display_range_str }}</h3>
-        </div>
-
-        {# Overall Summary Cards (Main Totals) #}
-        <div class="overall-summary-cards">
-            <div class="summary-info-card">
-                <h4>ยางรวม: ยอดเริ่มต้น</h4>
-                <div class="value text-primary">{{ overall_tire_initial }}</div>
-            </div>
-            <div class="summary-info-card">
-                <h4>ยางรวม: รับเข้า</h4>
-                <div class="value text-success">{{ overall_tire_in }}</div>
-            </div>
-            <div class="summary-info-card">
-                <h4>ยางรวม: จ่ายออก</h4>
-                <div class="value text-danger">{{ overall_tire_out }}</div>
-            </div>
-            <div class="summary-info-card">
-                <h4>ยางรวม: ยอดคงเหลือ</h4>
-                <div class="value text-primary">{{ overall_tire_final }}</div>
-            </div>
-            <div class="summary-info-card">
-                <h4>แม็กรวม: ยอดเริ่มต้น</h4>
-                <div class="value text-primary">{{ overall_wheel_initial }}</div>
-            </div>
-            <div class="summary-info-card">
-                <h4>แม็กรวม: รับเข้า</h4>
-                <div class="value text-success">{{ overall_wheel_in }}</div>
-            </div>
-            <div class="summary-info-card">
-                <h4>แม็กรวม: จ่ายออก</h4>
-                <div class="value text-danger">{{ overall_wheel_out }}</div>
-            </div>
-            <div class="summary-info-card">
-                <h4>แม็กรวม: ยอดคงเหลือ</h4>
-                <div class="value text-primary">{{ overall_wheel_final }}</div>
-            </div>
-        </div>
-
-        {# Brand-wise Summary Table #}
-        <div class="brand-summary-section">
-            <h3>สรุปยอดรวมแยกตามยี่ห้อ</h3>
-            {% if brand_overall_summary_list %}
-            <div class="table-responsive">
-                <table class="brand-summary-table">
-                    <thead>
-                        <tr>
-                            <th>ยี่ห้อ</th>
-                            <th class="text-right">ยอดเริ่มต้น</th>
-                            <th class="text-right">รับเข้า</th>
-                            <th class="text-right">จ่ายออก</th>
-                            <th class="text-right">คงเหลือ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for brand_summary in brand_overall_summary_list %}
-                        <tr>
-                            <td data-label="ยี่ห้อ" class="brand-name-cell">{{ brand_summary.brand_name | title }}</td>
-                            <td data-label="ยอดเริ่มต้น" class="text-right">{{ brand_summary.initial_quantity }}</td>
-                            <td data-label="รับเข้า" class="text-right text-success">+{{ brand_summary.IN }}</td>
-                            <td data-label="จ่ายออก" class="text-right text-danger">-{{ brand_summary.OUT }}</td>
-                            <td data-label="คงเหลือ" class="text-right text-primary">{{ brand_summary.final_quantity }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <p>ไม่พบข้อมูลสรุปแยกตามยี่ห้อในช่วงที่เลือก</p>
-            {% endif %}
-        </div>
-
-        <hr>
-
-        {# Detailed Report for Tires #}
-        <div class="detailed-report-section">
-            <h3>รายงานสต็อกยาง (รายละเอียด)</h3>
-            {% if grouped_tire_report %}
-            {% for brand, tires in grouped_tire_report.items() %}
-            <h4 class="brand-group-header" style="background-color: var(--info-color); color: var(--text-white); padding: 10px; margin-top: 20px; margin-bottom: 5px; border-radius: var(--border-radius);">ยี่ห้อ: {{ brand | title }}</h4>
-            <div class="table-responsive">
-                <table class="detailed-report-table">
-                    <thead>
-                        <tr>
-                            <th>รุ่นยาง</th>
-                            <th>เบอร์ยาง</th>
-                            <th class="text-right">ยอดเริ่มต้น</th>
-                            <th class="text-right">รับเข้า</th>
-                            <th class="text-right">จ่ายออก</th>
-                            <th class="text-right">ยอดคงเหลือ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in tires %}
-                        <tr>
-                            <td data-label="รุ่นยาง">{{ item.model | title }}</td>
-                            <td data-label="เบอร์ยาง">{{ item.size }}</td>
-                            <td data-label="ยอดเริ่มต้น" class="text-right">{{ item.initial_quantity }}</td>
-                            <td data-label="รับเข้า" class="text-right text-success">+{{ item.IN }}</td>
-                            <td data-label="จ่ายออก" class="text-right text-danger">-{{ item.OUT }}</td>
-                            <td data-label="ยอดคงเหลือ" class="text-right text-primary">{{ item.final_quantity }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endfor %}
-            {% else %}
-            <p>ไม่พบข้อมูลการเคลื่อนไหวสต็อกยางในช่วงที่เลือก</p>
-            {% endif %}
-        </div>
-
-        {# Detailed Report for Wheels #}
-        <div class="detailed-report-section">
-            <h3>รายงานสต็อกล้อแม็ก (รายละเอียด)</h3>
-            {% if grouped_wheel_report %}
-            {% for brand, wheels in grouped_wheel_report.items() %}
-            <h4 class="brand-group-header" style="background-color: var(--info-color); color: var(--text-white); padding: 10px; margin-top: 20px; margin-bottom: 5px; border-radius: var(--border-radius);">ยี่ห้อ: {{ brand | title }}</h4>
-            <div class="table-responsive">
-                <table class="detailed-report-table">
-                    <thead>
-                        <tr>
-                            <th>ลาย</th>
-                            <th>ขอบ</th>
-                            <th>PCD</th>
-                            <th>กว้าง</th>
-                            <th class="text-right">ยอดเริ่มต้น</th>
-                            <th class="text-right">รับเข้า</th>
-                            <th class="text-right">จ่ายออก</th>
-                            <th class="text-right">ยอดคงเหลือ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in wheels %}
-                        <tr>
-                            <td data-label="ลาย">{{ item.model | title }}</td>
-                            <td data-label="ขอบ">{{ item.diameter }}</td>
-                            <td data-label="PCD">{{ item.pcd }}</td>
-                            <td data-label="กว้าง">{{ item.width }}</td>
-                            <td data-label="ยอดเริ่มต้น" class="text-right">{{ item.initial_quantity }}</td>
-                            <td data-label="รับเข้า" class="text-right text-success">+{{ item.IN }}</td>
-                            <td data-label="จ่ายออก" class="text-right text-danger">-{{ item.OUT }}</td>
-                            <td data-label="ยอดคงเหลือ" class="text-right text-primary">{{ item.final_quantity }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endfor %}
-            {% else %}
-            <p>ไม่พบข้อมูลการเคลื่อนไหวสต็อกล้อแม็กในช่วงที่เลือก</p>
-            {% endif %}
-        </div>
-
+    <div class="date-selector-form">
+        <form action="{{ url_for('summary_stock_report') }}" method="GET">
+            <label for="start_date">จากวันที่:</label>
+            <input type="date" id="start_date" name="start_date" value="{{ start_date_param }}">
+            <label for="end_date">ถึงวันที่:</label>
+            <input type="date" id="end_date" name="end_date" value="{{ end_date_param }}">
+            <button type="submit">ดูรายงาน</button>
+        </form>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Flatpickr for date inputs with Thai locale
-            flatpickr("#start_date", {
-                dateFormat: "Y-m-d",
-                locale: "th" // Use Thai locale
-            });
-            flatpickr("#end_date", {
-                dateFormat: "Y-m-d",
-                locale: "th" // Use Thai locale
-            });
-        });
-    </script>
+    <div class="summary-period-header">
+        <h2>รายงานสต็อกยางและล้อแม็ก</h2>
+        <h3>ช่วงวันที่: {{ display_range_str }}</h3>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="overall-summary-cards">
+        {% for title, value, cls in [
+            ('ยางรวม: ยอดเริ่มต้น', overall_tire_initial, 'text-primary'),
+            ('ยางรวม: รับเข้า', overall_tire_in, 'text-success'),
+            ('ยางรวม: จ่ายออก', overall_tire_out, 'text-danger'),
+            ('ยางรวม: ยอดคงเหลือ', overall_tire_final, 'text-primary'),
+            ('แม็กรวม: ยอดเริ่มต้น', overall_wheel_initial, 'text-primary'),
+            ('แม็กรวม: รับเข้า', overall_wheel_in, 'text-success'),
+            ('แม็กรวม: จ่ายออก', overall_wheel_out, 'text-danger'),
+            ('แม็กรวม: ยอดคงเหลือ', overall_wheel_final, 'text-primary')
+        ] %}
+        <div class="summary-info-card">
+            <h4>{{ title }}</h4>
+            <div class="value {{ cls }}">{{ value }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Brand Summary -->
+    <div class="brand-summary-section">
+        <h3>สรุปยอดรวมแยกตามยี่ห้อ</h3>
+        {% if brand_overall_summary_list %}
+        <table class="brand-summary-table">
+            <thead>
+                <tr>
+                    <th>ยี่ห้อ</th>
+                    <th>ยอดเริ่มต้น</th>
+                    <th>รับเข้า</th>
+                    <th>จ่ายออก</th>
+                    <th>คงเหลือ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for brand_summary in brand_overall_summary_list %}
+                <tr>
+                    <td>{{ brand_summary.brand_name | title }}</td>
+                    <td>{{ brand_summary.initial_quantity }}</td>
+                    <td class="text-success">+{{ brand_summary.IN }}</td>
+                    <td class="text-danger">-{{ brand_summary.OUT }}</td>
+                    <td class="text-primary">{{ brand_summary.final_quantity }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>ไม่พบข้อมูลแยกตามยี่ห้อ</p>
+        {% endif %}
+    </div>
+</div>
+<script>
+    flatpickr("#start_date", { dateFormat: "Y-m-d", locale: "th" });
+    flatpickr("#end_date", { dateFormat: "Y-m-d", locale: "th" });
+</script>
 {% endblock %}
