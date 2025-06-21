@@ -15,7 +15,8 @@
                 <label for="end_date">ถึงวันที่:</label>
                 <input type="date" id="end_date" name="end_date" value="{{ end_date_param }}">
             </div>
-            <div class="form-group" style="flex-grow: 0; min-width: unset;"> {# Override flex-grow for button group #}
+            {# The button is kept outside form-group for flex-row alignment, or put it in its own form-group and adjust min-width if needed #}
+            <div class="form-group" style="flex-grow: 0; min-width: unset;"> {# This div ensures the button doesn't stretch #}
                 <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> ดูรายงาน</button>
             </div>
         </form>
@@ -28,31 +29,25 @@
 
     <hr>
 
-    <h3>รายงานสต็อกยาง</h3>
-    {% if tire_report %}
+    <h3>สรุปการเคลื่อนไหวสต็อกยาง (ตามแบรนด์)</h3>
+    {% if tire_movements_by_brand %}
     <div class="table-responsive">
         <table class="summary-table">
             <thead>
                 <tr>
                     <th>ยี่ห้อ</th>
-                    <th>รุ่นยาง</th>
-                    <th>เบอร์ยาง</th>
-                    <th>ยอดเริ่มต้น</th>
-                    <th>รับเข้า</th>
-                    <th>จ่ายออก</th>
-                    <th>ยอดคงเหลือ</th>
+                    <th>รับเข้า (เส้น)</th>
+                    <th>จ่ายออก (เส้น)</th>
                 </tr>
             </thead>
             <tbody>
-                {% for item in tire_report %}
+                {# Sort brands alphabetically for consistent display #}
+                {% for brand in tire_movements_by_brand.keys() | sort %}
+                {% set totals = tire_movements_by_brand[brand] %}
                 <tr>
-                    <td>{{ item.brand | title }}</td>
-                    <td>{{ item.model | title }}</td>
-                    <td>{{ item.size }}</td>
-                    <td>{{ item.initial_quantity }}</td>
-                    <td class="text-success">+{{ item.IN }}</td>
-                    <td class="text-danger">-{{ item.OUT }}</td>
-                    <td>{{ item.final_quantity }}</td>
+                    <td>{{ brand | title }}</td>
+                    <td class="text-success">{{ totals.IN }}</td>
+                    <td class="text-danger">{{ totals.OUT }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -64,35 +59,25 @@
 
     <hr>
 
-    <h3>รายงานสต็อกล้อแม็ก</h3>
-    {% if wheel_report %}
+    <h3>สรุปการเคลื่อนไหวสต็อกล้อแม็ก (ตามแบรนด์)</h3>
+    {% if wheel_movements_by_brand %}
     <div class="table-responsive">
         <table class="summary-table">
             <thead>
                 <tr>
                     <th>ยี่ห้อ</th>
-                    <th>ลาย</th>
-                    <th>ขอบ</th>
-                    <th>PCD</th>
-                    <th>กว้าง</th>
-                    <th>ยอดเริ่มต้น</th>
-                    <th>รับเข้า</th>
-                    <th>จ่ายออก</th>
-                    <th>ยอดคงเหลือ</th>
+                    <th>รับเข้า (วง)</th>
+                    <th>จ่ายออก (วง)</th>
                 </tr>
             </thead>
             <tbody>
-                {% for item in wheel_report %}
+                {# Sort brands alphabetically for consistent display #}
+                {% for brand in wheel_movements_by_brand.keys() | sort %}
+                {% set totals = wheel_movements_by_brand[brand] %}
                 <tr>
-                    <td>{{ item.brand | title }}</td>
-                    <td>{{ item.model | title }}</td>
-                    <td>{{ item.diameter }}</td>
-                    <td>{{ item.pcd }}</td>
-                    <td>{{ item.width }}</td>
-                    <td>{{ item.initial_quantity }}</td>
-                    <td class="text-success">+{{ item.IN }}</td>
-                    <td class="text-danger">-{{ item.OUT }}</td>
-                    <td>{{ item.final_quantity }}</td>
+                    <td>{{ brand | title }}</td>
+                    <td class="text-success">{{ totals.IN }}</td>
+                    <td class="text-danger">{{ totals.OUT }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -142,15 +127,20 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script>
         // Initialize Flatpickr for date inputs
-        flatpickr("#start_date", {
-            dateFormat: "Y-m-d",
-            locale: "th" // Use Thai locale
-        });
-        flatpickr("#end_date", {
-            dateFormat: "Y-m-d",
-            locale: "th"
+        document.addEventListener('DOMContentLoaded', function() {
+            flatpickr("#start_date", {
+                dateFormat: "Y-m-d",
+                locale: "th" // Use Thai locale
+            });
+            flatpickr("#end_date", {
+                dateFormat: "Y-m-d",
+                locale: "th"
+            });
         });
     </script>
 {% endblock %}
