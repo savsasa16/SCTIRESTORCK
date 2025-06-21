@@ -11,7 +11,7 @@
     <style>
         /* General Layout & Colors */
         .container {
-            max-width: 1200px; /* Limit width for better readability */
+            max-width: 1200px;
             margin: 20px auto;
             padding: 20px;
             background-color: #fff;
@@ -35,15 +35,15 @@
             padding-bottom: 8px;
         }
 
-        /* Date Selector Form */
+        /* Date Selector Form - Make inputs smaller */
         .date-selector-form {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 10px; /* Reduced gap */
             align-items: center;
             justify-content: center;
-            background-color: #f0f8ff; /* Light blue background for emphasis */
-            padding: 20px;
+            background-color: #f0f8ff;
+            padding: 15px; /* Reduced padding */
             border-radius: 8px;
             margin-bottom: 30px;
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
@@ -52,15 +52,15 @@
         .date-selector-form label {
             font-weight: bold;
             color: #555;
-            font-size: 1.1em;
+            font-size: 1em; /* Slightly smaller font */
         }
 
         .date-selector-form input[type="date"] {
-            padding: 10px 12px;
-            border: 1px solid #a8d9ff; /* Blue border */
-            border-radius: 6px;
-            font-size: 1em;
-            width: 160px; /* Fixed width for consistency */
+            padding: 8px 10px; /* Reduced padding for smaller size */
+            border: 1px solid #a8d9ff;
+            border-radius: 4px; /* Slightly smaller border radius */
+            font-size: 0.9em; /* Smaller font size for input */
+            width: 140px; /* Fixed width, slightly smaller */
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
@@ -72,17 +72,17 @@
         }
 
         .date-selector-form button {
-            padding: 10px 25px;
+            padding: 8px 20px; /* Reduced padding for button */
             background-color: #007bff;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px; /* Smaller border radius */
             cursor: pointer;
-            font-size: 1.1em;
+            font-size: 1em; /* Smaller font size for button */
             font-weight: 500;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px; /* Reduced gap */
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
 
@@ -92,7 +92,7 @@
         }
 
         .date-selector-form button i {
-            font-size: 1.1em;
+            font-size: 1em; /* Smaller icon size */
         }
 
         /* Summary Header */
@@ -114,14 +114,114 @@
             margin-top: 10px;
         }
 
-        /* Table Styles */
+        /* NEW: Overall Summary Section at the top */
+        .overall-summary-section {
+            background-color: #e9f5ff; /* Lighter blue background */
+            border: 1px solid #cce5ff;
+            padding: 25px;
+            margin-bottom: 40px; /* Space before brand details */
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+
+        .overall-summary-section h3 {
+            color: #0056b3;
+            font-size: 1.8em;
+            margin-bottom: 25px;
+            border-bottom: none; /* Override default h3 border */
+            padding-bottom: 0;
+        }
+
+        .overall-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Adjusted min-width for columns */
+            gap: 20px;
+        }
+
+        .overall-summary-card {
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .overall-summary-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .overall-summary-card .label {
+            font-size: 1em;
+            color: #666;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .overall-summary-card strong {
+            display: block;
+            font-size: 1.8em; /* Larger number */
+            color: #007bff; /* Primary color */
+            font-weight: 700;
+        }
+
+        .overall-summary-card .total-in { color: #28a745; } /* Green for IN */
+        .overall-summary-card .total-out { color: #dc3545; } /* Red for OUT */
+        .overall-summary-card .total-initial, .overall-summary-card .total-final { color: #007bff; } /* Blue for Initial/Final */
+
+        /* Brand-specific Summary Cards (used at the top) */
+        .brand-summary-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Adjust min-width for brand cards */
+            gap: 20px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .brand-summary-card {
+            background-color: #fcfcfc;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .brand-summary-card h4 {
+            color: #333;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #ddd;
+            padding-bottom: 5px;
+            text-align: center;
+        }
+
+        .brand-summary-card .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.95em;
+        }
+
+        .brand-summary-card .detail-row span:first-child {
+            color: #666;
+        }
+
+        .brand-summary-card .detail-row span:last-child {
+            font-weight: bold;
+        }
+
+
+        /* Table Styles (for detailed reports by brand) */
         .summary-table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 40px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
-            overflow: hidden; /* Ensures rounded corners apply to content */
+            overflow: hidden;
         }
 
         .summary-table th, .summary-table td {
@@ -131,7 +231,7 @@
         }
 
         .summary-table th {
-            background-color: #e2e6ea; /* Light grey header */
+            background-color: #e2e6ea;
             color: #343a40;
             font-weight: 600;
             text-transform: uppercase;
@@ -139,7 +239,7 @@
         }
 
         .summary-table tbody tr:nth-child(even) {
-            background-color: #f8f9fa; /* Zebra striping */
+            background-color: #f8f9fa;
         }
 
         .summary-table tbody tr:hover {
@@ -151,69 +251,9 @@
             font-size: 0.95em;
         }
 
-        .text-success {
-            color: #28a745;
-            font-weight: bold;
-        }
-
-        .text-danger {
-            color: #dc3545;
-            font-weight: bold;
-        }
-
-        /* Total Summary Section */
-        .total-summary-section {
-            background-color: #e9f5ff; /* Lighter blue background */
-            border: 1px solid #cce5ff;
-            padding: 25px;
-            margin-top: 50px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-        }
-
-        .total-summary-section h3 {
-            text-align: center;
-            margin-bottom: 25px;
-            color: #0056b3;
-            font-size: 1.8em;
-            border-bottom: none;
-        }
-
-        .total-summary-section .row {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-around;
-            gap: 20px; /* Space between columns */
-            margin-bottom: 15px;
-        }
-
-        .total-summary-section .col {
-            flex: 1;
-            min-width: 200px; /* Ensure columns don't get too small */
-            text-align: center;
-            background-color: #ffffff;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-
-        .total-summary-section .col strong {
-            display: block;
-            font-size: 1.8em;
-            color: #007bff;
-            margin-top: 5px;
-            font-weight: 700;
-        }
-        .total-summary-section .col .label {
-             font-size: 1em;
-             color: #666;
-        }
-        .total-summary-section .col .total-in {
-            color: #28a745;
-        }
-        .total-summary-section .col .total-out {
-            color: #dc3545;
-        }
+        .text-success { color: #28a745; font-weight: bold; }
+        .text-danger { color: #dc3545; font-weight: bold; }
+        .text-primary { color: #007bff; font-weight: bold; }
 
         /* Responsive Adjustments */
         @media (max-width: 768px) {
@@ -224,12 +264,8 @@
             .date-selector-form input[type="date"] {
                 width: 100%;
             }
-            .total-summary-section .row {
-                flex-direction: column;
-                align-items: center;
-            }
-            .total-summary-section .col {
-                width: 90%;
+            .overall-summary-grid, .brand-summary-container {
+                grid-template-columns: 1fr; /* Stack columns on small screens */
             }
             .summary-table, .summary-table tbody, .summary-table th, .summary-table td, .summary-table tr {
                 display: block;
@@ -293,11 +329,77 @@
             <h3>ช่วงวันที่: {{ display_range_str }}</h3>
         </div>
 
-        {# Flash messages are already handled by base.html, so we rely on that. #}
+        {# NEW: Overall Summary Section at the top #}
+        <div class="overall-summary-section">
+            <h3>สรุปยอดรวมทั้งหมด</h3>
+            <div class="overall-summary-grid">
+                <div class="overall-summary-card">
+                    <span class="label">ยางรวม ยอดเริ่มต้น</span>
+                    <strong class="total-initial">{{ overall_tire_initial }}</strong>
+                </div>
+                <div class="overall-summary-card">
+                    <span class="label">ยางรวม รับเข้า</span>
+                    <strong class="total-in">{{ overall_tire_in }}</strong>
+                </div>
+                <div class="overall-summary-card">
+                    <span class="label">ยางรวม จ่ายออก</span>
+                    <strong class="total-out">{{ overall_tire_out }}</strong>
+                </div>
+                <div class="overall-summary-card">
+                    <span class="label">ยางรวม ยอดคงเหลือ</span>
+                    <strong class="total-final">{{ overall_tire_final }}</strong>
+                </div>
+                <div class="overall-summary-card">
+                    <span class="label">แม็กรวม ยอดเริ่มต้น</span>
+                    <strong class="total-initial">{{ overall_wheel_initial }}</strong>
+                </div>
+                <div class="overall-summary-card">
+                    <span class="label">แม็กรวม รับเข้า</span>
+                    <strong class="total-in">{{ overall_wheel_in }}</strong>
+                </div>
+                <div class="overall-summary-card">
+                    <span class="label">แม็กรวม จ่ายออก</span>
+                    <strong class="total-out">{{ overall_wheel_out }}</strong>
+                </div>
+                <div class="overall-summary-card">
+                    <span class="label">แม็กรวม ยอดคงเหลือ</span>
+                    <strong class="total-final">{{ overall_wheel_final }}</strong>
+                </div>
+            </div>
+
+            {# NEW: Brand-wise summary within the overall section #}
+            {% if brand_overall_summary %}
+            <h4 style="margin-top: 40px; margin-bottom: 20px; color: #0056b3;">สรุปยอดรวมแยกตามยี่ห้อ (สินค้าคงเหลือ ณ สิ้นสุดช่วง)</h4>
+            <div class="brand-summary-container">
+                {% for brand_name, summary_data in brand_overall_summary.items() %}
+                <div class="brand-summary-card">
+                    <h4>{{ brand_name | title }}</h4>
+                    <div class="detail-row">
+                        <span>ยอดเริ่มต้น:</span>
+                        <span class="text-primary">{{ summary_data.initial_quantity }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>รับเข้า:</span>
+                        <span class="text-success">+{{ summary_data.IN }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>จ่ายออก:</span>
+                        <span class="text-danger">-{{ summary_data.OUT }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>คงเหลือ:</span>
+                        <span class="text-primary">{{ summary_data.final_quantity }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {# END NEW: Overall Summary Section #}
 
         <hr>
 
-        <h3>รายงานสต็อกยาง</h3>
+        <h3>รายงานสต็อกยาง (รายละเอียด)</h3>
         {% if tire_report %}
         <table class="summary-table">
             <thead>
@@ -331,7 +433,7 @@
 
         <hr>
 
-        <h3>รายงานสต็อกล้อแม็ก</h3>
+        <h3>รายงานสต็อกล้อแม็ก (รายละเอียด)</h3>
         {% if wheel_report %}
         <table class="summary-table">
             <thead>
@@ -366,46 +468,6 @@
         {% else %}
         <p>ไม่พบข้อมูลการเคลื่อนไหวสต็อกล้อแม็กในช่วงที่เลือก</p>
         {% endif %}
-
-        <div class="total-summary-section">
-            <h3>สรุปยอดรวมทั้งหมด</h3>
-            <div class="row">
-                <div class="col">
-                    <span class="label">ยางรวม</span><br>
-                    ยอดเริ่มต้น: <strong class="total-initial">{{ overall_tire_initial }}</strong>
-                </div>
-                <div class="col">
-                    <span class="label">ยางรวม</span><br>
-                    รับเข้า: <strong class="total-in">{{ overall_tire_in }}</strong>
-                </div>
-                <div class="col">
-                    <span class="label">ยางรวม</span><br>
-                    จ่ายออก: <strong class="total-out">{{ overall_tire_out }}</strong>
-                </div>
-                <div class="col">
-                    <span class="label">ยางรวม</span><br>
-                    ยอดคงเหลือ: <strong class="total-final">{{ overall_tire_final }}</strong>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col">
-                    <span class="label">แม็กรวม</span><br>
-                    ยอดเริ่มต้น: <strong class="total-initial">{{ overall_wheel_initial }}</strong>
-                </div>
-                <div class="col">
-                    <span class="label">แม็กรวม</span><br>
-                    รับเข้า: <strong class="total-in">{{ overall_wheel_in }}</strong>
-                </div>
-                <div class="col">
-                    <span class="label">แม็กรวม</span><br>
-                    จ่ายออก: <strong class="total-out">{{ overall_wheel_out }}</strong>
-                </div>
-                <div class="col">
-                    <span class="label">แม็กรวม</span><br>
-                    ยอดคงเหลือ: <strong class="total-final">{{ overall_wheel_final }}</strong>
-                </div>
-            </div>
-        </div>
 
     </div>
 
