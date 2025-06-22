@@ -53,18 +53,23 @@
                 <tbody>
                     {% set last_brand_display_tire = "" %}
                     {% for item in tires_for_display %}
-                        {# MODIFIED: ใช้ item.is_summary_to_show เพื่อควบคุมการแสดงผลรวม #}
-                        {% if item.is_summary_to_show %} 
-                            <tr class="summary-row">
-                                <td colspan="3"><b>ยอดรวม {{ item.brand | title }}</b></td>
-                                <td><b>{{ item.quantity }}</b></td>
-                                <td colspan="4"></td>
-                                <td></td> {# เพิ่ม td ว่างสำหรับคอลัมน์ "การดำเนินการ" #}
-                            </tr>
+                        {# ตรวจสอบว่า item นี้คือแถว summary ที่ควรแสดงหรือไม่ #}
+                        {# NEW: ใช้ item.is_summary แทน item.is_summary_to_show เพื่อควบคุมโครงสร้างลูป #}
+                        {% if item.is_summary %} 
+                            {# NEW: เพิ่มเงื่อนไขการแสดงผล summary row ด้วย item.is_summary_to_show #}
+                            {% if item.is_summary_to_show %}
+                                <tr class="summary-row">
+                                    <td colspan="3"><b>ยอดรวม {{ item.brand | title }}</b></td>
+                                    <td><b>{{ item.quantity }}</b></td>
+                                    <td colspan="4"></td>
+                                    <td></td> {# เพิ่ม td ว่างสำหรับคอลัมน์ "การดำเนินการ" #}
+                                </tr>
+                            {% endif %}
                         {% else %}
+                            {# นี่คือแถวข้อมูลยางปกติ #}
                             <tr>
                                 <td>
-                                    {# ตรรกะนี้จะยังคงทำงานเพื่อแสดงชื่อแบรนด์ครั้งเดียวต่อกลุ่มเสมอ #}
+                                    {# ตรรกะนี้ยังคงใช้ item.brand และ last_brand_display_tire เพื่อตรวจสอบการเปลี่ยนแบรนด์เสมอ #}
                                     {% if item.brand != last_brand_display_tire %}
                                         {{ item.brand | title }}
                                         {% set last_brand_display_tire = item.brand %}
@@ -158,18 +163,22 @@
                 <tbody>
                     {% set last_brand_display_wheel = "" %}
                     {% for item in wheels_for_display %}
-                        {# MODIFIED: ใช้ item.is_summary_to_show เพื่อควบคุมการแสดงผลรวม #}
-                        {% if item.is_summary_to_show %} 
-                            <tr class="summary-row">
-                                <td colspan="5"><b>ยอดรวม {{ item.brand }}</b></td>
-                                <td><b>{{ item.quantity }}</b></td>
-                                <td colspan="3"></td> {# เพิ่ม td ว่างเพื่อให้ตารางไม่ผิดรูป #}
-                                <td></td> {# เพิ่ม td ว่างสำหรับคอลัมน์ "การดำเนินการ" #}
-                            </tr>
+                        {# MODIFIED: ใช้ item.is_summary แทน item.is_summary_to_show เพื่อควบคุมโครงสร้างลูป #}
+                        {% if item.is_summary %}
+                            {# NEW: เพิ่มเงื่อนไขการแสดงผล summary row ด้วย item.is_summary_to_show #}
+                            {% if item.is_summary_to_show %}
+                                <tr class="summary-row">
+                                    <td colspan="5"><b>ยอดรวม {{ item.brand }}</b></td>
+                                    <td><b>{{ item.quantity }}</b></td>
+                                    <td colspan="3"></td> {# เพิ่ม td ว่างเพื่อให้ตารางไม่ผิดรูป #}
+                                    <td></td> {# เพิ่ม td ว่างสำหรับคอลัมน์ "การดำเนินการ" #}
+                                </tr>
+                            {% endif %}
                         {% else %}
+                            {# นี่คือแถวข้อมูลแม็กปกติ #}
                             <tr>
                                 <td>
-                                    {# ตรรกะนี้จะยังคงทำงานเพื่อแสดงชื่อแบรนด์ครั้งเดียวต่อกลุ่มเสมอ #}
+                                    {# ตรรกะนี้ยังคงใช้ item.brand และ last_brand_display_wheel เพื่อตรวจสอบการเปลี่ยนแบรนด์เสมอ #}
                                     {% if item.brand != last_brand_display_wheel %}
                                         {{ item.brand }}
                                         {% set last_brand_display_wheel = item.brand %}
