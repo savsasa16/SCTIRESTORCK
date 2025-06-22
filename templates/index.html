@@ -53,10 +53,9 @@
                 <tbody>
                     {% set last_brand_display_tire = "" %}
                     {% for item in tires_for_display %}
-                        {# ตรวจสอบว่า item นี้คือแถว summary ที่ควรแสดงหรือไม่ #}
-                        {# NEW: ใช้ item.is_summary แทน item.is_summary_to_show เพื่อควบคุมโครงสร้างลูป #}
+                        {# ตรวจสอบว่า item นี้คือแถว summary หรือไม่ #}
                         {% if item.is_summary %} 
-                            {# NEW: เพิ่มเงื่อนไขการแสดงผล summary row ด้วย item.is_summary_to_show #}
+                            {# ถ้าเป็นแถว summary และควรแสดง (is_summary_to_show) #}
                             {% if item.is_summary_to_show %}
                                 <tr class="summary-row">
                                     <td colspan="3"><b>ยอดรวม {{ item.brand | title }}</b></td>
@@ -67,12 +66,26 @@
                             {% endif %}
                         {% else %}
                             {# นี่คือแถวข้อมูลยางปกติ #}
-                            <tr>
+                            {% set add_top_border = false %}
+                            {% if loop.index0 > 0 %}
+                                {# ตรวจสอบรายการก่อนหน้า โดยข้าม summary row ที่อาจซ่อนอยู่ #}
+                                {% set prev_actual_item = none %}
+                                {% for i in range(loop.index0 - 1, -1, -1) %}
+                                    {% if not tires_for_display[i].is_summary %}
+                                        {% set prev_actual_item = tires_for_display[i] %}
+                                        {% break %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if prev_actual_item is not none and item.brand != prev_actual_item.brand %}
+                                    {% set add_top_border = true %}
+                                {% endif %}
+                            {% endif %}
+                            
+                            <tr class="{{ 'brand-separator' if add_top_border }}">
                                 <td>
-                                    {# ตรรกะนี้ยังคงใช้ item.brand และ last_brand_display_tire เพื่อตรวจสอบการเปลี่ยนแบรนด์เสมอ #}
-                                    {% if item.brand != last_brand_display_tire %}
+                                    {# แสดงชื่อแบรนด์เฉพาะเมื่อมีการเปลี่ยนแบรนด์ หรือเป็นรายการแรกของตาราง #}
+                                    {% if add_top_border or loop.first %}
                                         {{ item.brand | title }}
-                                        {% set last_brand_display_tire = item.brand %}
                                     {% endif %}
                                 </td>
                                 <td>{{ item.model | title }}</td>
@@ -163,9 +176,9 @@
                 <tbody>
                     {% set last_brand_display_wheel = "" %}
                     {% for item in wheels_for_display %}
-                        {# MODIFIED: ใช้ item.is_summary แทน item.is_summary_to_show เพื่อควบคุมโครงสร้างลูป #}
+                        {# ตรวจสอบว่า item นี้คือแถว summary หรือไม่ #}
                         {% if item.is_summary %}
-                            {# NEW: เพิ่มเงื่อนไขการแสดงผล summary row ด้วย item.is_summary_to_show #}
+                            {# ถ้าเป็นแถว summary และควรแสดง (is_summary_to_show) #}
                             {% if item.is_summary_to_show %}
                                 <tr class="summary-row">
                                     <td colspan="5"><b>ยอดรวม {{ item.brand }}</b></td>
@@ -176,12 +189,25 @@
                             {% endif %}
                         {% else %}
                             {# นี่คือแถวข้อมูลแม็กปกติ #}
-                            <tr>
+                            {% set add_top_border = false %}
+                            {% if loop.index0 > 0 %}
+                                {% set prev_actual_item = none %}
+                                {% for i in range(loop.index0 - 1, -1, -1) %}
+                                    {% if not wheels_for_display[i].is_summary %}
+                                        {% set prev_actual_item = wheels_for_display[i] %}
+                                        {% break %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if prev_actual_item is not none and item.brand != prev_actual_item.brand %}
+                                    {% set add_top_border = true %}
+                                {% endif %}
+                            {% endif %}
+
+                            <tr class="{{ 'brand-separator' if add_top_border }}">
                                 <td>
-                                    {# ตรรกะนี้ยังคงใช้ item.brand และ last_brand_display_wheel เพื่อตรวจสอบการเปลี่ยนแบรนด์เสมอ #}
-                                    {% if item.brand != last_brand_display_wheel %}
+                                    {# แสดงชื่อแบรนด์เฉพาะเมื่อมีการเปลี่ยนแบรนด์ หรือเป็นรายการแรกของตาราง #}
+                                    {% if add_top_border or loop.first %}
                                         {{ item.brand }}
-                                        {% set last_brand_display_wheel = item.brand %}
                                     {% endif %}
                                 </td>
                                 <td>{{ item.model }}</td> {# ลบส่วน |format ออก #}
@@ -284,6 +310,19 @@
         color: green; /* สามารถเปลี่ยนเป็นสีที่คุณต้องการ หรือใช้ตัวแปร CSS เช่น var(--success-color) ได้ */
         font-weight: bold; /* เพื่อเน้น */
     }
+
+    /* NEW CSS for brand separator */
+    .brand-separator td {
+        border-top: 2px solid var(--primary-color) !important; /* หรือสีอื่นที่คุณต้องการ */
+        padding-top: 15px; /* เพิ่ม padding ด้านบนเล็กน้อย */
+    }
+    .brand-separator td:first-child {
+        border-top-left-radius: var(--border-radius-sm);
+    }
+    .brand-separator td:last-child {
+        border-top-right-radius: var(--border-radius-sm);
+    }
+
 
     /* CSS ที่เหลือของคุณ (จาก style.css หรือส่วนอื่นใน index.html) */
     /* อย่าลืมรวม CSS ส่วนที่เกี่ยวข้องกับตารางและปุ่มต่างๆ ด้วย */
