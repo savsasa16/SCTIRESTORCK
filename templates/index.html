@@ -53,8 +53,7 @@
                 <tbody>
                     {% set last_brand_display_tire = "" %}
                     {% for item in tires_for_display %}
-                        {# MODIFIED: เปลี่ยนเงื่อนไขการแสดง summary row เป็น is_summary_for_display #}
-                        {% if item.is_summary_for_display %} 
+                        {% if item.is_summary %}
                             <tr class="summary-row">
                                 <td colspan="3"><b>ยอดรวม {{ item.brand }}</b></td>
                                 <td><b>{{ item.quantity }}</b></td>
@@ -63,10 +62,7 @@
                         {% else %}
                             <tr>
                                 <td>
-                                    {# ตรรกะนี้ยังคงใช้ item.is_summary เพื่อตรวจสอบการเปลี่ยนแบรนด์เสมอ #}
-                                    {% if loop.previtem is defined and loop.previtem.is_summary and loop.previtem.brand == item.brand %}
-                                        {# ถ้า item ก่อนหน้าเป็น summary ของแบรนด์เดียวกัน ไม่ต้องแสดงชื่อแบรนด์ซ้ำ #}
-                                    {% elif item.brand != last_brand_display_tire %}
+                                    {% if item.brand != last_brand_display_tire %}
                                         {{ item.brand | title }}
                                         {% set last_brand_display_tire = item.brand %}
                                     {% endif %}
@@ -159,8 +155,7 @@
                 <tbody>
                     {% set last_brand_display_wheel = "" %}
                     {% for item in wheels_for_display %}
-                        {# MODIFIED: เปลี่ยนเงื่อนไขการแสดง summary row เป็น is_summary_for_display #}
-                        {% if item.is_summary_for_display %} 
+                        {% if item.is_summary %}
                             <tr class="summary-row">
                                 <td colspan="5"><b>ยอดรวม {{ item.brand }}</b></td>
                                 <td><b>{{ item.quantity }}</b></td>
@@ -169,10 +164,7 @@
                         {% else %}
                             <tr>
                                 <td>
-                                    {# ตรรกะนี้ยังคงใช้ item.is_summary เพื่อตรวจสอบการเปลี่ยนแบรนด์เสมอ #}
-                                    {% if loop.previtem is defined and loop.previtem.is_summary and loop.previtem.brand == item.brand %}
-                                        {# ถ้า item ก่อนหน้าเป็น summary ของแบรนด์เดียวกัน ไม่ต้องแสดงชื่อแบรนด์ซ้ำ #}
-                                    {% elif item.brand != last_brand_display_wheel %}
+                                    {% if item.brand != last_brand_display_wheel %}
                                         {{ item.brand }}
                                         {% set last_brand_display_wheel = item.brand %}
                                     {% endif %}
