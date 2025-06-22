@@ -34,13 +34,12 @@
         </form>
     </div>
 
-    {# MODIFIED: Loop through grouped_data (tires_by_brand_for_display) #}
     {% if tires_by_brand_for_display %}
         {% for brand_name, brand_data in tires_by_brand_for_display.items() %}
-            <div class="brand-group-container"> {# NEW: Container สำหรับแต่ละแบรนด์ #}
-                <h4 class="brand-header">{{ brand_name | title }}</h4> {# NEW: ชื่อแบรนด์ #}
+            <div class="brand-group-container">
+                <h4 class="brand-header">{{ brand_name | title }}</h4>
                 <div class="table-responsive">
-                    <table class="brand-table"> {# NEW: Table สำหรับแต่ละแบรนด์ #}
+                    <table class="brand-table">
                         <thead>
                             <tr>
                                 <th>รุ่นยาง</th>
@@ -54,7 +53,8 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for item in brand_data.items %} {# Loop through actual items within the brand #}
+                            {# MODIFIED: Loop through brand_data.items_list #}
+                            {% for item in brand_data.items_list %} 
                                 <tr>
                                     <td>{{ item.model | title }}</td>
                                     <td>{{ item.size }}</td>
@@ -85,7 +85,7 @@
                                     </td>
                                 </tr>
                             {% endfor %}
-                            {# NEW: แสดง summary row ถ้ามีและ is_summary_to_show เป็น True #}
+                            {# แสดง summary row ถ้ามีและ is_summary_to_show เป็น True #}
                             {% if brand_data.summary.is_summary_to_show %}
                                 <tr class="summary-row">
                                     <td colspan="2"><b>ยอดรวม {{ brand_data.summary.brand | title }}</b></td>
@@ -131,13 +131,12 @@
         </form>
     </div>
 
-    {# MODIFIED: Loop through grouped_data (wheels_by_brand_for_display) #}
     {% if wheels_by_brand_for_display %}
         {% for brand_name, brand_data in wheels_by_brand_for_display.items() %}
-            <div class="brand-group-container"> {# NEW: Container สำหรับแต่ละแบรนด์ #}
-                <h4 class="brand-header">{{ brand_name | title }}</h4> {# NEW: ชื่อแบรนด์ #}
+            <div class="brand-group-container">
+                <h4 class="brand-header">{{ brand_name | title }}</h4>
                 <div class="table-responsive">
-                    <table class="brand-table"> {# NEW: Table สำหรับแต่ละแบรนด์ #}
+                    <table class="brand-table">
                         <thead>
                             <tr>
                                 <th>ลาย</th>
@@ -152,7 +151,8 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for item in brand_data.items %} {# Loop through actual items within the brand #}
+                            {# MODIFIED: Loop through brand_data.items_list #}
+                            {% for item in brand_data.items_list %} 
                                 <tr>
                                     <td>{{ item.model }}</td>
                                     <td>{{ "%.0f"|format(item.diameter) }}x{{ "%.0f"|format(item.width) }}</td>
@@ -177,7 +177,7 @@
                                     </td>
                                 </tr>
                             {% endfor %}
-                            {# NEW: แสดง summary row ถ้ามีและ is_summary_to_show เป็น True #}
+                            {# แสดง summary row ถ้ามีและ is_summary_to_show เป็น True #}
                             {% if brand_data.summary.is_summary_to_show %}
                                 <tr class="summary-row">
                                     <td colspan="4"><b>ยอดรวม {{ brand_data.summary.brand | title }}</b></td>
