@@ -132,18 +132,19 @@ def logout():
 
 # --- Helper function for processing report tables in app.py (for index and daily_stock_report) ---
 def process_tire_report_data(all_tires, include_summary_in_output=True):
-    # ใช้ OrderedDict เพื่อรักษาลำดับของแบรนด์
     grouped_data = OrderedDict()
-    brand_quantities = defaultdict(int) # สำหรับคำนวณยอดรวมของแต่ละแบรนด์
+    brand_quantities = defaultdict(int)
 
     sorted_tires = sorted(all_tires, key=lambda x: (x['brand'], x['model'], x['size']))
 
     for tire in sorted_tires:
         brand = tire['brand']
+        # ถ้ายังไม่มีแบรนด์นี้ใน grouped_data ให้สร้าง entry ใหม่
         if brand not in grouped_data:
-            grouped_data[brand] = {'items': [], 'summary': {}}
-
-        grouped_data[brand]['items'].append({
+            grouped_data[brand] = {'items_list': [], 'summary': {}} # เปลี่ยนชื่อเป็น items_list
+        
+        # เพิ่มรายการยางลงใน 'items_list'
+        grouped_data[brand]['items_list'].append({
             'is_summary': False,
             'brand': tire['brand'],
             'model': tire['model'],
@@ -161,32 +162,29 @@ def process_tire_report_data(all_tires, include_summary_in_output=True):
         })
         brand_quantities[brand] += tire['quantity']
 
-    # เพิ่มข้อมูล summary ให้แต่ละแบรนด์
     for brand, data in grouped_data.items():
         data['summary'] = {
             'is_summary': True,
-            'is_summary_to_show': include_summary_in_output, # ควบคุมการแสดงผลใน HTML
+            'is_summary_to_show': include_summary_in_output,
             'brand': brand,
             'quantity': brand_quantities[brand]
-            # ไม่ต้องใส่ None สำหรับคีย์ที่ไม่เกี่ยวข้องแล้ว เพราะจะแยกการแสดงผล
         }
     return grouped_data
 
 
-# MODIFIED: เปลี่ยนโครงสร้าง return data เพื่อให้จัดกลุ่มตามแบรนด์
+# MODIFIED: ปรับโครงสร้าง return data ใน process_wheel_report_data
 def process_wheel_report_data(all_wheels, include_summary_in_output=True):
-    # ใช้ OrderedDict เพื่อรักษาลำดับของแบรนด์
     grouped_data = OrderedDict()
-    brand_quantities = defaultdict(int) # สำหรับคำนวณยอดรวมของแต่ละแบรนด์
+    brand_quantities = defaultdict(int)
 
     sorted_wheels = sorted(all_wheels, key=lambda x: (x['brand'], x['model'], x['diameter'], x['width'], x['pcd']))
 
     for wheel in sorted_wheels:
         brand = wheel['brand']
         if brand not in grouped_data:
-            grouped_data[brand] = {'items': [], 'summary': {}}
+            grouped_data[brand] = {'items_list': [], 'summary': {}} # เปลี่ยนชื่อเป็น items_list
             
-        grouped_data[brand]['items'].append({
+        grouped_data[brand]['items_list'].append({
             'is_summary': False,
             'brand': wheel['brand'],
             'model': wheel['model'],
@@ -203,11 +201,10 @@ def process_wheel_report_data(all_wheels, include_summary_in_output=True):
         })
         brand_quantities[brand] += wheel['quantity']
 
-    # เพิ่มข้อมูล summary ให้แต่ละแบรนด์
     for brand, data in grouped_data.items():
         data['summary'] = {
             'is_summary': True,
-            'is_summary_to_show': include_summary_in_output, # ควบคุมการแสดงผลใน HTML
+            'is_summary_to_show': include_summary_in_output,
             'brand': brand,
             'quantity': brand_quantities[brand]
         }
@@ -221,43 +218,31 @@ def index():
 
     tire_query = request.args.get('tire_query', '').strip()
     tire_selected_brand = request.args.get('tire_brand_filter', 'all').strip()
-
-    # Determine if a search/filter is active for tires
     is_tire_search_active = bool(tire_query or (tire_selected_brand and tire_selected_brand != 'all'))
 
     all_tires = database.get_all_tires(conn, query=tire_query, brand_filter=tire_selected_brand, include_deleted=False)
-    
     available_tire_brands = database.get_all_tire_brands(conn)
-
-    # ส่ง grouped_data (dict ของแบรนด์) ไปยัง template
     tires_by_brand_for_display = process_tire_report_data(all_tires, include_summary_in_output=is_tire_search_active)
     
     wheel_query = request.args.get('wheel_query', '').strip()
     wheel_selected_brand = request.args.get('wheel_brand_filter', 'all').strip()
-
-    # Determine if a search/filter is active for wheels
     is_wheel_search_active = bool(wheel_query or (wheel_selected_brand and wheel_selected_brand != 'all'))
 
     all_wheels = database.get_all_wheels(conn, query=wheel_query, brand_filter=wheel_selected_brand, include_deleted=False)
-
     available_wheel_brands = database.get_all_wheel_brands(conn) 
-
-    # ส่ง grouped_data (dict ของแบรนด์) ไปยัง template
     wheels_by_brand_for_display = process_wheel_report_data(all_wheels, include_summary_in_output=is_wheel_search_active)
     
     active_tab = request.args.get('tab', 'tires')
 
     return render_template('index.html',
-                           tires_by_brand_for_display=tires_by_brand_for_display, # เปลี่ยนชื่อตัวแปร
-                           wheels_by_brand_for_display=wheels_by_brand_for_display, # เปลี่ยนชื่อตัวแปร
-                           
+                           tires_by_brand_for_display=tires_by_brand_for_display,
+                           wheels_by_brand_for_display=wheels_by_brand_for_display,
                            tire_query=tire_query,
                            available_tire_brands=available_tire_brands,
                            tire_selected_brand=tire_selected_brand,
                            wheel_query=wheel_query,
                            available_wheel_brands=available_wheel_brands,
                            wheel_selected_brand=wheel_selected_brand,
-
                            active_tab=active_tab)
 
 # --- Promotions Routes ---
