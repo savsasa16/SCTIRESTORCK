@@ -53,15 +53,18 @@
                 <tbody>
                     {% set last_brand_display_tire = "" %}
                     {% for item in tires_for_display %}
-                        {% if item.is_summary %}
+                        {# MODIFIED: ใช้ item.is_summary_to_show เพื่อควบคุมการแสดงผลรวม #}
+                        {% if item.is_summary_to_show %} 
                             <tr class="summary-row">
-                                <td colspan="3"><b>ยอดรวม {{ item.brand }}</b></td>
+                                <td colspan="3"><b>ยอดรวม {{ item.brand | title }}</b></td>
                                 <td><b>{{ item.quantity }}</b></td>
                                 <td colspan="4"></td>
+                                <td></td> {# เพิ่ม td ว่างสำหรับคอลัมน์ "การดำเนินการ" #}
                             </tr>
                         {% else %}
                             <tr>
                                 <td>
+                                    {# ตรรกะนี้จะยังคงทำงานเพื่อแสดงชื่อแบรนด์ครั้งเดียวต่อกลุ่มเสมอ #}
                                     {% if item.brand != last_brand_display_tire %}
                                         {{ item.brand | title }}
                                         {% set last_brand_display_tire = item.brand %}
@@ -155,15 +158,18 @@
                 <tbody>
                     {% set last_brand_display_wheel = "" %}
                     {% for item in wheels_for_display %}
-                        {% if item.is_summary %}
+                        {# MODIFIED: ใช้ item.is_summary_to_show เพื่อควบคุมการแสดงผลรวม #}
+                        {% if item.is_summary_to_show %} 
                             <tr class="summary-row">
                                 <td colspan="5"><b>ยอดรวม {{ item.brand }}</b></td>
                                 <td><b>{{ item.quantity }}</b></td>
-                                <td colspan="3"></td>
+                                <td colspan="3"></td> {# เพิ่ม td ว่างเพื่อให้ตารางไม่ผิดรูป #}
+                                <td></td> {# เพิ่ม td ว่างสำหรับคอลัมน์ "การดำเนินการ" #}
                             </tr>
                         {% else %}
                             <tr>
                                 <td>
+                                    {# ตรรกะนี้จะยังคงทำงานเพื่อแสดงชื่อแบรนด์ครั้งเดียวต่อกลุ่มเสมอ #}
                                     {% if item.brand != last_brand_display_wheel %}
                                         {{ item.brand }}
                                         {% set last_brand_display_wheel = item.brand %}
