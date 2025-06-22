@@ -51,7 +51,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% set last_brand_display_tire = "" %}
+                    {# last_brand_display_tire ถูกลบออกไปแล้วเพราะตรรกะการแยกแบรนด์จะใช้ prev_actual_item #}
                     {% for item in tires_for_display %}
                         {# ตรวจสอบว่า item นี้คือแถว summary หรือไม่ #}
                         {% if item.is_summary %} 
@@ -67,15 +67,19 @@
                         {% else %}
                             {# นี่คือแถวข้อมูลยางปกติ #}
                             {% set add_top_border = false %}
+                            {% set prev_actual_item = none %}
+                            {% set found_prev_item = false %} {# NEW: Flag เพื่อจำลอง break #}
+
                             {% if loop.index0 > 0 %}
-                                {# ตรวจสอบรายการก่อนหน้า โดยข้าม summary row ที่อาจซ่อนอยู่ #}
-                                {% set prev_actual_item = none %}
+                                {# ลูปย้อนกลับเพื่อหา prev_actual_item ที่ไม่ใช่ summary #}
                                 {% for i in range(loop.index0 - 1, -1, -1) %}
-                                    {% if not tires_for_display[i].is_summary %}
+                                    {# NEW: ใช้ if not found_prev_item เพื่อจำลอง break #}
+                                    {% if not found_prev_item and not tires_for_display[i].is_summary %}
                                         {% set prev_actual_item = tires_for_display[i] %}
-                                        {% break %}
+                                        {% set found_prev_item = true %} {# ตั้งค่า flag เป็น true เพื่อหยุดการค้นหา #}
                                     {% endif %}
                                 {% endfor %}
+                                
                                 {% if prev_actual_item is not none and item.brand != prev_actual_item.brand %}
                                     {% set add_top_border = true %}
                                 {% endif %}
@@ -174,7 +178,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% set last_brand_display_wheel = "" %}
+                    {# last_brand_display_wheel ถูกลบออกไปแล้ว #}
                     {% for item in wheels_for_display %}
                         {# ตรวจสอบว่า item นี้คือแถว summary หรือไม่ #}
                         {% if item.is_summary %}
@@ -190,14 +194,19 @@
                         {% else %}
                             {# นี่คือแถวข้อมูลแม็กปกติ #}
                             {% set add_top_border = false %}
+                            {% set prev_actual_item = none %}
+                            {% set found_prev_item = false %} {# NEW: Flag เพื่อจำลอง break #}
+
                             {% if loop.index0 > 0 %}
-                                {% set prev_actual_item = none %}
+                                {# ลูปย้อนกลับเพื่อหา prev_actual_item ที่ไม่ใช่ summary #}
                                 {% for i in range(loop.index0 - 1, -1, -1) %}
-                                    {% if not wheels_for_display[i].is_summary %}
+                                    {# NEW: ใช้ if not found_prev_item เพื่อจำลอง break #}
+                                    {% if not found_prev_item and not wheels_for_display[i].is_summary %}
                                         {% set prev_actual_item = wheels_for_display[i] %}
-                                        {% break %}
+                                        {% set found_prev_item = true %} {# ตั้งค่า flag เป็น true เพื่อหยุดการค้นหา #}
                                     {% endif %}
                                 {% endfor %}
+                                
                                 {% if prev_actual_item is not none and item.brand != prev_actual_item.brand %}
                                     {% set add_top_border = true %}
                                 {% endif %}
