@@ -131,7 +131,7 @@ def logout():
     return redirect(url_for('login'))
 
 # --- Helper function for processing report tables in app.py (for index and daily_stock_report) ---
-def process_tire_report_data(all_tires, include_summary=True):
+def process_tire_report_data(all_tires, include_summary_in_output=True): # เปลี่ยนชื่อ parameter เป็น include_summary_in_output
     processed_report = []
     brand_summaries = defaultdict(lambda: {'quantity_sum': 0})
     
@@ -144,15 +144,21 @@ def process_tire_report_data(all_tires, include_summary=True):
         if last_brand is not None and current_brand != last_brand:
             summary_data = brand_summaries[last_brand]
             processed_report.append({
-                'is_summary': True, # ยังคงเป็น True เพื่อช่วยในการจัดกลุ่มแบรนด์
-                'is_summary_for_display': include_summary,
+                'is_summary': True, # ใช้สำหรับตรรกะภายใน Python เท่านั้น (เช่นการจัดกลุ่ม)
+                'is_summary_to_show': include_summary_in_output, # <-- NEW: ตัวแปรนี้จะควบคุมการแสดงผลใน HTML
                 'brand': last_brand,
-                'quantity': summary_data['quantity_sum']
+                'quantity': summary_data['quantity_sum'],
+                'price_per_item': None, # ใส่ None เพื่อหลีกเลี่ยง TypeError หากเผลอไปใช้
+                'model': None, 'size': None, # ใส่ None สำหรับคุณสมบัติที่ไม่มีใน summary row
+                'promotion_id': None, 'promo_is_active': None, 'promo_name': None,
+                'display_promo_description_text': None, 'display_promo_price_per_item': None,
+                'display_price_for_4': None, 'year_of_manufacture': None, 'id': None # หลีกเลี่ยง TypeError
             })
         
+        # เพิ่มรายการยางปกติ
         processed_report.append({
             'is_summary': False,
-            'is_summary_for_display': False,
+            'is_summary_to_show': False, # <-- NEW: รายการปกติจะไม่แสดงเป็น summary
             'brand': tire['brand'],
             'model': tire['model'],
             'size': tire['size'],
@@ -175,16 +181,21 @@ def process_tire_report_data(all_tires, include_summary=True):
     if last_brand is not None:
         summary_data = brand_summaries[last_brand]
         processed_report.append({
-            'is_summary': True, # ยังคงเป็น True
-            'is_summary_for_display': include_summary,
+            'is_summary': True,
+            'is_summary_to_show': include_summary_in_output, # <-- NEW: ตัวแปรนี้จะควบคุมการแสดงผลใน HTML
             'brand': last_brand,
-            'quantity': summary_data['quantity_sum']
+            'quantity': summary_data['quantity_sum'],
+            'price_per_item': None, # ใส่ None
+            'model': None, 'size': None,
+            'promotion_id': None, 'promo_is_active': None, 'promo_name': None,
+            'display_promo_description_text': None, 'display_promo_price_per_item': None,
+            'display_price_for_4': None, 'year_of_manufacture': None, 'id': None
         })
         
     return processed_report
 
-# MODIFIED: เพิ่ม parameter include_summary ที่มีค่าเริ่มต้นเป็น True
-def process_wheel_report_data(all_wheels, include_summary=True):
+# MODIFIED: เพิ่ม parameter include_summary_in_output ที่มีค่าเริ่มต้นเป็น True
+def process_wheel_report_data(all_wheels, include_summary_in_output=True): # เปลี่ยนชื่อ parameter เป็น include_summary_in_output
     processed_report = []
     brand_summaries = defaultdict(lambda: {'quantity_sum': 0})
 
@@ -197,15 +208,18 @@ def process_wheel_report_data(all_wheels, include_summary=True):
         if last_brand is not None and current_brand != last_brand:
             summary_data = brand_summaries[last_brand]
             processed_report.append({
-                'is_summary': True, # ยังคงเป็น True
-                'is_summary_for_display': include_summary,
+                'is_summary': True,
+                'is_summary_to_show': include_summary_in_output, # <-- NEW: ตัวแปรนี้จะควบคุมการแสดงผลใน HTML
                 'brand': last_brand,
-                'quantity': summary_data['quantity_sum']
+                'quantity': summary_data['quantity_sum'],
+                'model': None, 'diameter': None, 'pcd': None, 'width': None, 'et': None,
+                'color': None, 'cost': None, 'retail_price': None, 'image_filename': None, 'id': None
             })
 
+        # เพิ่มรายการล้อแม็กปกติ
         processed_report.append({
             'is_summary': False,
-            'is_summary_for_display': False,
+            'is_summary_to_show': False, # <-- NEW: รายการปกติจะไม่แสดงเป็น summary
             'brand': wheel['brand'],
             'model': wheel['model'],
             'diameter': wheel['diameter'],
@@ -227,10 +241,12 @@ def process_wheel_report_data(all_wheels, include_summary=True):
     if last_brand is not None:
         summary_data = brand_summaries[last_brand]
         processed_report.append({
-            'is_summary': True, # ยังคงเป็น True
-            'is_summary_for_display': include_summary,
+            'is_summary': True,
+            'is_summary_to_show': include_summary_in_output, # <-- NEW: ตัวแปรนี้จะควบคุมการแสดงผลใน HTML
             'brand': last_brand,
-            'quantity': summary_data['quantity_sum']
+            'quantity': summary_data['quantity_sum'],
+            'model': None, 'diameter': None, 'pcd': None, 'width': None, 'et': None,
+            'color': None, 'cost': None, 'retail_price': None, 'image_filename': None, 'id': None
         })
     
     return processed_report
@@ -251,9 +267,8 @@ def index():
     
     available_tire_brands = database.get_all_tire_brands(conn)
 
-    # Pass include_summary based on whether a search is active
-    # MODIFIED: ส่ง is_tire_search_active เข้าไปใน include_summary
-    processed_tires_for_display = process_tire_report_data(all_tires, include_summary=is_tire_search_active)
+    # Pass include_summary_in_output based on whether a search is active
+    processed_tires_for_display = process_tire_report_data(all_tires, include_summary_in_output=is_tire_search_active)
     
     wheel_query = request.args.get('wheel_query', '').strip()
     wheel_selected_brand = request.args.get('wheel_brand_filter', 'all').strip()
@@ -265,9 +280,8 @@ def index():
 
     available_wheel_brands = database.get_all_wheel_brands(conn) 
 
-    # Pass include_summary based on whether a search is active
-    # MODIFIED: ส่ง is_wheel_search_active เข้าไปใน include_summary
-    processed_wheels_for_display = process_wheel_report_data(all_wheels, include_summary=is_wheel_search_active)
+    # Pass include_summary_in_output based on whether a search is active
+    processed_wheels_for_display = process_wheel_report_data(all_wheels, include_summary_in_output=is_wheel_search_active)
     
     active_tab = request.args.get('tab', 'tires')
 
