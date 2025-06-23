@@ -1741,6 +1741,8 @@ def summary_stock_report():
         brand = row['brand']
         move_type = row['type']
         total_qty = row['total_quantity']
+        # Ensure row is treated as dict for consistency with DictCursor [cite: 2025-06-22]
+        row_dict = dict(row) if not isinstance(row, dict) else row 
         tire_movements_by_brand[brand][move_type] = total_qty
 
     # --- Wheel Movements by Brand (สำหรับสรุปยอดรวมใหญ่) ---
@@ -1753,10 +1755,8 @@ def summary_stock_report():
         ORDER BY w.brand, wm.type;
     """
     if is_psycopg2_conn:
-        # cursor_wheel might not exist here, always create a cursor for safety if not explicitly handled before
-        # Best practice: create a cursor for each logical block or just one at the beginning if safe.
-        # Here, re-using 'cursor' for simplicity in summary_stock_report as long as it's psycopg2.
-        if 'cursor' not in locals(): # Ensure cursor is defined for psycopg2 here if it wasn't created by tire_movements_query_sql [cite: 2025-06-22]
+        # Ensure cursor is defined for psycopg2 here too, re-using 'cursor' from tire section if it exists
+        if 'cursor' not in locals(): 
             cursor = conn.cursor() 
         cursor.execute(wheel_movements_query_sql, (start_of_period_iso, end_of_period_iso))
         wheel_movements_by_brand_raw = cursor.fetchall()
@@ -1769,6 +1769,8 @@ def summary_stock_report():
         brand = row['brand']
         move_type = row['type']
         total_qty = row['total_quantity']
+        # Ensure row is treated as dict for consistency with DictCursor [cite: 2025-06-22]
+        row_dict = dict(row) if not isinstance(row, dict) else row 
         wheel_movements_by_brand[brand][move_type] = total_qty
 
     # --- Calculate overall totals for the summary section ---
@@ -1798,11 +1800,12 @@ def summary_stock_report():
         WHERE timestamp < %s;
     """
     if is_psycopg2_conn:
-        # Ensure cursor_wheel is defined for psycopg2 here too. Renamed to cursor_wheel_summary for clarity.
-        if 'cursor_wheel_summary' not in locals(): # Use a separate cursor for wheels in summary function [cite: 2025-06-22]
-            cursor_wheel_summary = conn.cursor() 
-        cursor_wheel_summary.execute(query_overall_initial_wheels, (start_of_period_iso,))
-        overall_wheel_initial = cursor_wheel_summary.fetchone()[0] or 0
+        # Using the same 'cursor' for simplicity since DictCursor is used. 
+        # If separate cursors are needed, ensure cursor_wheel_summary is correctly defined.
+        if 'cursor' not in locals(): # Ensure cursor is defined for psycopg2 here too [cite: 2025-06-22]
+            cursor = conn.cursor() 
+        cursor.execute(query_overall_initial_wheels, (start_of_period_iso,))
+        overall_wheel_initial = cursor.fetchone()[0] or 0
     else:
         query_result_obj = conn.execute(query_overall_initial_wheels.replace('%s', '?'), (start_of_period_iso,))
         overall_wheel_initial = query_result_obj.fetchone()[0] or 0
@@ -1812,21 +1815,22 @@ def summary_stock_report():
     overall_wheel_final = overall_wheel_initial + overall_wheel_in_period - overall_wheel_out_period
 
     # --- NEW: สำหรับรายงานการเคลื่อนไหวสต็อกยางตามยี่ห้อและขนาด (tires_by_brand_for_summary_report) ---
-    # Note: Use a new cursor or ensure the existing 'cursor' is used for psycopg2, not cursor_wheel from wheel section
+    # Note: Ensure the 'cursor' is used for psycopg2, not cursor_wheel from wheel section
     tire_detailed_movements_query = f"""
         SELECT
             t.brand, t.model, t.size,
-            SUM(CASE WHEN tm.type = 'IN' THEN tm.quantity_change ELSE 0 END) AS IN_qty,
-            SUM(CASE WHEN tm.type = 'OUT' THEN tm.quantity_change ELSE 0 END) AS OUT_qty,
-            (
+            COALESCE(SUM(CASE WHEN tm.type = 'IN' THEN tm.quantity_change ELSE 0 END), 0) AS IN_qty,  -- COALESCE ensures 0 not NULL [cite: 2025-06-23]
+            COALESCE(SUM(CASE WHEN tm.type = 'OUT' THEN tm.quantity_change ELSE 0 END), 0) AS OUT_qty, -- COALESCE ensures 0 not NULL [cite: 2025-06-23]
+            COALESCE(( -- COALESCE for subquery result [cite: 2025-06-23]
                 SELECT SUM(CASE WHEN prev_tm.type = 'IN' THEN prev_tm.quantity_change ELSE -prev_tm.quantity_change END)
                 FROM tire_movements prev_tm
                 WHERE prev_tm.tire_id = t.id AND prev_tm.timestamp < %s
-            ) AS initial_qty_before_period,
+            ), 0) AS initial_qty_before_period,
             t.id AS tire_id 
-        FROM tire_movements tm
-        JOIN tires t ON tm.tire_id = t.id
-        WHERE tm.timestamp BETWEEN %s AND %s
+        FROM tires t -- LEFT JOIN to ensure all tires are considered even if no movements [cite: 2025-06-23]
+        LEFT JOIN tire_movements tm ON tm.tire_id = t.id 
+        WHERE t.is_deleted = FALSE -- Only include non-deleted tires [cite: 2025-06-23]
+        AND (tm.timestamp BETWEEN %s AND %s OR tm.timestamp IS NULL) -- Include tires with no movements in period [cite: 2025-06-23]
         GROUP BY t.id, t.brand, t.model, t.size 
         ORDER BY t.brand, t.model, t.size;
     """
@@ -1837,6 +1841,7 @@ def summary_stock_report():
         cursor.execute(tire_detailed_movements_query, (start_of_period_iso, start_of_period_iso, end_of_period_iso))
         tire_detailed_movements_raw = cursor.fetchall()
     else:
+        # Replace %s with ? for SQLite and ensure COALESCE is compatible (it is)
         query_result_obj = conn.execute(tire_detailed_movements_query.replace('%s', '?'), (start_of_period_iso, start_of_period_iso, end_of_period_iso))
         tire_detailed_movements_raw = query_result_obj.fetchall()
 
@@ -1847,15 +1852,19 @@ def summary_stock_report():
         if brand not in tires_by_brand_for_summary_report:
             tires_by_brand_for_summary_report[brand] = []
         
-        initial_qty = row['initial_qty_before_period'] if row['initial_qty_before_period'] is not None else 0
-        final_qty = initial_qty + row['IN_qty'] - row['OUT_qty']
+        # Ensure values are treated as integers for arithmetic [cite: 2025-06-23]
+        initial_qty = int(row['initial_qty_before_period']) if row['initial_qty_before_period'] is not None else 0 
+        in_qty = int(row['IN_qty']) if row['IN_qty'] is not None else 0
+        out_qty = int(row['OUT_qty']) if row['OUT_qty'] is not None else 0
+        
+        final_qty = initial_qty + in_qty - out_qty # Use corrected values [cite: 2025-06-23]
 
         tires_by_brand_for_summary_report[brand].append({
             'model': row['model'],
             'size': row['size'],
             'initial_quantity': initial_qty,
-            'IN': row['IN_qty'],
-            'OUT': row['OUT_qty'],
+            'IN': in_qty,
+            'OUT': out_qty,
             'final_quantity': final_qty,
         })
     
@@ -1863,25 +1872,26 @@ def summary_stock_report():
     wheel_detailed_movements_query = f"""
         SELECT
             w.brand, w.model, w.diameter, w.pcd, w.width,
-            SUM(CASE WHEN wm.type = 'IN' THEN wm.quantity_change ELSE 0 END) AS IN_qty,
-            SUM(CASE WHEN wm.type = 'OUT' THEN wm.quantity_change ELSE 0 END) AS OUT_qty,
-            (
+            COALESCE(SUM(CASE WHEN wm.type = 'IN' THEN wm.quantity_change ELSE 0 END), 0) AS IN_qty,  -- COALESCE ensures 0 not NULL [cite: 2025-06-23]
+            COALESCE(SUM(CASE WHEN wm.type = 'OUT' THEN wm.quantity_change ELSE 0 END), 0) AS OUT_qty, -- COALESCE ensures 0 not NULL [cite: 2025-06-23]
+            COALESCE(( -- COALESCE for subquery result [cite: 2025-06-23]
                 SELECT SUM(CASE WHEN prev_wm.type = 'IN' THEN prev_wm.quantity_change ELSE -prev_wm.quantity_change END)
                 FROM wheel_movements prev_wm
                 WHERE prev_wm.wheel_id = w.id AND prev_wm.timestamp < %s
-            ) AS initial_qty_before_period,
+            ), 0) AS initial_qty_before_period,
             w.id AS wheel_id
-        FROM wheel_movements wm
-        JOIN wheels w ON wm.wheel_id = w.id
-        WHERE wm.timestamp BETWEEN %s AND %s
+        FROM wheels w -- LEFT JOIN to ensure all wheels are considered even if no movements [cite: 2025-06-23]
+        LEFT JOIN wheel_movements wm ON wm.wheel_id = w.id 
+        WHERE w.is_deleted = FALSE -- Only include non-deleted wheels [cite: 2025-06-23]
+        AND (wm.timestamp BETWEEN %s AND %s OR wm.timestamp IS NULL) -- Include wheels with no movements in period [cite: 2025-06-23]
         GROUP BY w.id, w.brand, w.model, w.diameter, w.pcd, w.width
         ORDER BY w.brand, w.model, w.diameter;
     """
     if is_psycopg2_conn:
-        if 'cursor_wheel_summary' not in locals(): # Use cursor_wheel_summary here consistently [cite: 2025-06-22]
-            cursor_wheel_summary = conn.cursor() 
-        cursor_wheel_summary.execute(wheel_detailed_movements_query, (start_of_period_iso, start_of_period_iso, end_of_period_iso))
-        wheel_detailed_movements_raw = cursor_wheel_summary.fetchall()
+        if 'cursor' not in locals(): # Ensure cursor is defined for psycopg2 here (can reuse 'cursor') [cite: 2025-06-22]
+            cursor = conn.cursor() 
+        cursor.execute(wheel_detailed_movements_query, (start_of_period_iso, start_of_period_iso, end_of_period_iso))
+        wheel_detailed_movements_raw = cursor.fetchall()
     else:
         query_result_obj = conn.execute(wheel_detailed_movements_query.replace('%s', '?'), (start_of_period_iso, start_of_period_iso, end_of_period_iso))
         wheel_detailed_movements_raw = query_result_obj.fetchall()
@@ -1893,8 +1903,12 @@ def summary_stock_report():
         if brand not in wheels_by_brand_for_summary_report:
             wheels_by_brand_for_summary_report[brand] = []
         
-        initial_qty = row['initial_qty_before_period'] if row['initial_qty_before_period'] is not None else 0 # FIXED: Corrected key name from initial_qty_period to initial_qty_before_period
-        final_qty = initial_qty + row['IN_qty'] - row['OUT_qty']
+        # Ensure values are treated as integers for arithmetic [cite: 2025-06-23]
+        initial_qty = int(row['initial_qty_before_period']) if row['initial_qty_before_period'] is not None else 0 
+        in_qty = int(row['IN_qty']) if row['IN_qty'] is not None else 0
+        out_qty = int(row['OUT_qty']) if row['OUT_qty'] is not None else 0
+        
+        final_qty = initial_qty + in_qty - out_qty # Use corrected values [cite: 2025-06-23]
 
         wheels_by_brand_for_summary_report[brand].append({
             'model': row['model'],
@@ -1902,16 +1916,13 @@ def summary_stock_report():
             'pcd': row['pcd'],
             'width': row['width'],
             'initial_quantity': initial_qty,
-            'IN': row['IN_qty'],
-            'OUT': row['OUT_qty'],
+            'IN': in_qty,
+            'OUT': out_qty,
             'final_quantity': final_qty,
         })
     # --- สำหรับสรุปยอดรวมแยกตามยี่ห้อยาง (tire_brand_totals_for_summary_report) ---
-    # ใช้ query เดิมที่ใช้ group by brand และ type
-    # tire_movements_query_sql และ tire_movements_by_brand_raw เหมือนเดิม
     tire_brand_totals_for_summary_report = OrderedDict()
     for brand, data in tire_movements_by_brand.items():
-        # ต้องคำนวณยอดเริ่มต้นและยอดคงเหลือสำหรับแต่ละแบรนด์ด้วย
         query_brand_initial_tire = f"""
             SELECT SUM(CASE WHEN type = 'IN' THEN quantity_change ELSE -quantity_change END)
             FROM tire_movements tm
@@ -1919,8 +1930,7 @@ def summary_stock_report():
             WHERE t.brand = %s AND tm.timestamp < %s;
         """
         if is_psycopg2_conn:
-            # ตรวจสอบว่า cursor ถูกสร้างแล้วหรือยัง
-            if 'cursor' not in locals() :
+            if 'cursor' not in locals(): 
                  cursor = conn.cursor()
             cursor.execute(query_brand_initial_tire, (brand, start_of_period_iso))
             brand_initial_qty = cursor.fetchone()[0] or 0
@@ -1939,11 +1949,8 @@ def summary_stock_report():
         }
 
     # --- สำหรับสรุปยอดรวมแยกตามยี่ห้อแม็ก (wheel_brand_totals_for_summary_report) ---
-    # ใช้ query เดิมที่ใช้ group by brand และ type
-    # wheel_movements_query_sql และ wheel_movements_by_brand_raw เหมือนเดิม
     wheel_brand_totals_for_summary_report = OrderedDict()
     for brand, data in wheel_movements_by_brand.items():
-        # ต้องคำนวณยอดเริ่มต้นและยอดคงเหลือสำหรับแต่ละแบรนด์ด้วย
         query_brand_initial_wheel = f"""
             SELECT SUM(CASE WHEN type = 'IN' THEN quantity_change ELSE -quantity_change END)
             FROM wheel_movements wm
@@ -1951,10 +1958,10 @@ def summary_stock_report():
             WHERE w.brand = %s AND wm.timestamp < %s;
         """
         if is_psycopg2_conn:
-            if 'cursor_wheel_summary' not in locals(): # Ensure cursor_wheel_summary is defined
-                cursor_wheel_summary = conn.cursor()
-            cursor_wheel_summary.execute(query_brand_initial_wheel, (brand, start_of_period_iso))
-            brand_initial_qty = cursor_wheel_summary.fetchone()[0] or 0
+            if 'cursor' not in locals(): # Reuse 'cursor' (from tire section), or ensure it's defined. Simpler than using cursor_wheel_summary if not needed elsewhere.
+                cursor = conn.cursor()
+            cursor.execute(query_brand_initial_wheel, (brand, start_of_period_iso))
+            brand_initial_qty = cursor.fetchone()[0] or 0
         else:
             query_result_obj = conn.execute(query_brand_initial_wheel.replace('%s', '?'), (brand, start_of_period_iso))
             brand_initial_qty = query_result_obj.fetchone()[0] or 0
