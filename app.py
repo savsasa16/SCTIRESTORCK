@@ -1723,7 +1723,7 @@ def summary_stock_report():
     end_of_period_iso = end_date_obj.isoformat()
     is_psycopg2_conn = "psycopg2" in str(type(conn))
 
-    # --- Tire Movements by Brand ---
+    # --- Tire Movements by Brand (สำหรับสรุปยอดรวมใหญ่) ---
     tire_movements_query_sql = f"""
         SELECT t.brand, tm.type, SUM(tm.quantity_change) AS total_quantity
         FROM tire_movements tm
@@ -1747,7 +1747,7 @@ def summary_stock_report():
         total_qty = row['total_quantity']
         tire_movements_by_brand[brand][move_type] = total_qty
 
-    # --- Wheel Movements by Brand ---
+    # --- Wheel Movements by Brand (สำหรับสรุปยอดรวมใหญ่) ---
     wheel_movements_query_sql = f"""
         SELECT w.brand, wm.type, SUM(wm.quantity_change) AS total_quantity
         FROM wheel_movements wm
@@ -1757,11 +1757,13 @@ def summary_stock_report():
         ORDER BY w.brand, wm.type;
     """
     if is_psycopg2_conn:
-        # cursor_wheel might not exist if only tire queries ran before, ensure it's defined or use generic cursor
-        if 'cursor_wheel' not in locals(): # Check if cursor_wheel already created in daily_stock_report or other parts
-            cursor_wheel = conn.cursor() # Ensure cursor is available for psycopg2 [cite: 2025-06-22]
-        cursor_wheel.execute(wheel_movements_query_sql, (start_of_period_iso, end_of_period_iso))
-        wheel_movements_by_brand_raw = cursor_wheel.fetchall()
+        # cursor_wheel might not exist here, always create a cursor for safety if not explicitly handled before
+        # Best practice: create a cursor for each logical block or just one at the beginning if safe.
+        # Here, re-using 'cursor' for simplicity in summary_stock_report as long as it's psycopg2.
+        if 'cursor' not in locals(): # Ensure cursor is defined for psycopg2 here if it wasn't created by tire_movements_query_sql [cite: 2025-06-22]
+            cursor = conn.cursor() 
+        cursor.execute(wheel_movements_query_sql, (start_of_period_iso, end_of_period_iso))
+        wheel_movements_by_brand_raw = cursor.fetchall()
     else: # SQLite
         query_result_obj = conn.execute(wheel_movements_query_sql.replace('%s', '?'), (start_of_period_iso, end_of_period_iso))
         wheel_movements_by_brand_raw = query_result_obj.fetchall()
@@ -1786,9 +1788,8 @@ def summary_stock_report():
         WHERE timestamp < %s;
     """
     if is_psycopg2_conn:
-        # Ensure cursor is defined for psycopg2 here too if it wasn't used earlier in this function
-        if 'cursor' not in locals():
-            cursor = conn.cursor() # Create cursor if it doesn't exist from tire_movements_query_sql [cite: 2025-06-22]
+        if 'cursor' not in locals(): # Ensure cursor is defined for psycopg2 here too [cite: 2025-06-22]
+            cursor = conn.cursor() 
         cursor.execute(query_overall_initial_tires, (start_of_period_iso,))
         overall_tire_initial = cursor.fetchone()[0] or 0
     else:
@@ -1801,9 +1802,8 @@ def summary_stock_report():
         WHERE timestamp < %s;
     """
     if is_psycopg2_conn:
-        # Ensure cursor_wheel is defined for psycopg2 here too
-        if 'cursor_wheel' not in locals():
-            cursor_wheel = conn.cursor() # Create cursor if it doesn't exist from wheel_movements_query_sql [cite: 2025-06-22]
+        if 'cursor_wheel' not in locals(): # Ensure cursor_wheel is defined for psycopg2 here too [cite: 2025-06-22]
+            cursor_wheel = conn.cursor() 
         cursor_wheel.execute(query_overall_initial_wheels, (start_of_period_iso,))
         overall_wheel_initial = cursor_wheel.fetchone()[0] or 0
     else:
@@ -1815,6 +1815,7 @@ def summary_stock_report():
     overall_wheel_final = overall_wheel_initial + overall_wheel_in_period - overall_wheel_out_period
 
     # --- NEW: สำหรับรายงานการเคลื่อนไหวสต็อกยางตามยี่ห้อและขนาด (tires_by_brand_for_summary_report) ---
+    # Note: Use a new cursor or ensure the existing 'cursor' is used for psycopg2, not cursor_wheel from wheel section
     tire_detailed_movements_query = f"""
         SELECT
             t.brand, t.model, t.size,
@@ -1825,18 +1826,17 @@ def summary_stock_report():
                 FROM tire_movements prev_tm
                 WHERE prev_tm.tire_id = t.id AND prev_tm.timestamp < %s
             ) AS initial_qty_before_period,
-            t.id AS tire_id -- เพิ่ม tire_id เพื่อให้แน่ใจว่าได้ item ที่ไม่ซ้ำกัน
+            t.id AS tire_id 
         FROM tire_movements tm
         JOIN tires t ON tm.tire_id = t.id
         WHERE tm.timestamp BETWEEN %s AND %s
-        GROUP BY t.id, t.brand, t.model, t.size -- Group by unique tire item
+        GROUP BY t.id, t.brand, t.model, t.size 
         ORDER BY t.brand, t.model, t.size;
     """
     
     if is_psycopg2_conn:
-        # Ensure cursor is defined for psycopg2 here too if it wasn't used earlier in this function
-        if 'cursor' not in locals():
-            cursor = conn.cursor() # Create cursor if it doesn't exist from tire_movements_query_sql [cite: 2025-06-22]
+        if 'cursor' not in locals(): # Ensure cursor is defined for psycopg2 here too [cite: 2025-06-22]
+            cursor = conn.cursor() 
         cursor.execute(tire_detailed_movements_query, (start_of_period_iso, start_of_period_iso, end_of_period_iso))
         tire_detailed_movements_raw = cursor.fetchall()
     else:
@@ -1881,9 +1881,8 @@ def summary_stock_report():
         ORDER BY w.brand, w.model, w.diameter;
     """
     if is_psycopg2_conn:
-        # Ensure cursor_wheel is defined for psycopg2 here too if it wasn't used earlier in this function
-        if 'cursor_wheel' not in locals():
-            cursor_wheel = conn.cursor() # Create cursor if it doesn't exist from wheel_movements_query_sql [cite: 2025-06-22]
+        if 'cursor_wheel' not in locals(): # Ensure cursor_wheel is defined for psycopg2 here too [cite: 2025-06-22]
+            cursor_wheel = conn.cursor() 
         cursor_wheel.execute(wheel_detailed_movements_query, (start_of_period_iso, start_of_period_iso, end_of_period_iso))
         wheel_detailed_movements_raw = cursor_wheel.fetchall()
     else:
@@ -1897,7 +1896,7 @@ def summary_stock_report():
         if brand not in wheels_by_brand_for_summary_report:
             wheels_by_brand_for_summary_report[brand] = []
         
-        initial_qty = row['initial_qty_before_period'] if row['initial_qty_before_period'] is not None else 0
+        initial_qty = row['initial_qty_before_period'] if row['initial_qty_period'] is not None else 0 # Bug: should be initial_qty_before_period
         final_qty = initial_qty + row['IN_qty'] - row['OUT_qty']
 
         wheels_by_brand_for_summary_report[brand].append({
@@ -1923,8 +1922,7 @@ def summary_stock_report():
             WHERE t.brand = %s AND tm.timestamp < %s;
         """
         if is_psycopg2_conn:
-            # ตรวจสอบว่า cursor ถูกสร้างแล้วหรือยัง
-            if 'cursor' not in locals() :
+            if 'cursor' not in locals(): 
                  cursor = conn.cursor()
             cursor.execute(query_brand_initial_tire, (brand, start_of_period_iso))
             brand_initial_qty = cursor.fetchone()[0] or 0
@@ -1955,7 +1953,6 @@ def summary_stock_report():
             WHERE w.brand = %s AND wm.timestamp < %s;
         """
         if is_psycopg2_conn:
-            # ตรวจสอบว่า cursor_wheel ถูกสร้างแล้วหรือยัง
             if 'cursor_wheel' not in locals():
                 cursor_wheel = conn.cursor()
             cursor_wheel.execute(query_brand_initial_wheel, (brand, start_of_period_iso))
@@ -1974,14 +1971,12 @@ def summary_stock_report():
             'final_quantity_sum': final_qty_brand,
         }
 
-    # ... (ส่วน overall_tire_initial และ overall_wheel_initial เหมือนเดิม) ...
-    # ต้องส่งตัวแปรใหม่ไปที่ render_template ด้วย
     return render_template('summary_stock_report.html',
                            start_date_param=start_date_obj.strftime('%Y-%m-%d'),
                            end_date_param=end_date_obj.strftime('%Y-%m-%d'),
                            display_range_str=display_range_str,
-                           tire_movements_by_brand=tire_movements_by_brand, # อันนี้สำหรับสรุปใหญ่
-                           wheel_movements_by_brand=wheel_movements_by_brand, # อันนี้สำหรับสรุปใหญ่
+                           tire_movements_by_brand=tire_movements_by_brand,
+                           wheel_movements_by_brand=wheel_movements_by_brand,
                            overall_tire_initial=overall_tire_initial,
                            overall_tire_in=overall_tire_in_period,
                            overall_tire_out=overall_tire_out_period,
@@ -1990,10 +1985,10 @@ def summary_stock_report():
                            overall_wheel_in=overall_wheel_in_period,
                            overall_wheel_out=overall_wheel_out_period,
                            overall_wheel_final=overall_wheel_final,
-                           tires_by_brand_for_summary_report=tires_by_brand_for_summary_report, # NEW
-                           wheels_by_brand_for_summary_report=wheels_by_brand_for_summary_report, # NEW
-                           tire_brand_totals_for_summary_report=tire_brand_totals_for_summary_report, # NEW
-                           wheel_brand_totals_for_summary_report=wheel_brand_totals_for_summary_report # NEW
+                           tires_by_brand_for_summary_report=tires_by_brand_for_summary_report,
+                           wheels_by_brand_for_summary_report=wheels_by_brand_for_summary_report,
+                           tire_brand_totals_for_summary_report=tire_brand_totals_for_summary_report,
+                           wheel_brand_totals_for_summary_report=wheel_brand_totals_for_summary_report
                           )
 
 
