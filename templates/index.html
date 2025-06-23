@@ -180,9 +180,15 @@
                             {# แสดง summary row ถ้ามีและ is_summary_to_show เป็น True #}
                             {% if brand_data.summary.is_summary_to_show %}
                                 <tr class="summary-row">
+<<<<<<< HEAD
                                     <td colspan="4"><b><span class="summary-brand-text">ยอดรวม {{ brand_data.summary.brand | title }}</span></b></td> {# MODIFIED #}
                                     <td>{{ brand_data.summary.formatted_quantity | safe }}</td>
                                     <td colspan="4"></td>
+=======
+                                    <td colspan="4"><b>ยอดรวม {{ brand_data.summary.brand | title }}</b></td>
+                                    <td><b>{{ brand_data.summary.quantity }}</b></td>
+                                    <td colspan="4"></td> {# ให้ colspan เท่ากับจำนวนคอลัมน์ที่เหลือ (9-5=4) #}
+>>>>>>> 8e6c31f2f955a25aa8b75ad7360d295f55bae58a
                                 </tr>
                             {% endif %}
                         </tbody>
@@ -359,6 +365,7 @@
         padding: 10px 20px;
         font-size: 1.1em;
     }
+<<<<<<< HEAD
     /* ... (CSS อื่นๆ) ... */
 
     .summary-brand-text {
@@ -373,6 +380,8 @@
         font-size: large;
         /* อาจเพิ่ม font-size เพื่อให้โดดเด่น */
     }
+=======
+>>>>>>> 8e6c31f2f955a25aa8b75ad7360d295f55bae58a
     /* อื่นๆ */
     .tabs {
         display: flex;

@@ -169,7 +169,6 @@ def process_tire_report_data(all_tires, include_summary_in_output=True):
             'brand': brand,
             'quantity': brand_quantities[brand],
             'formatted_quantity': f'<span class="summary-quantity-value">{brand_quantities[brand]}</span>' # type: ignore
-        }
     return grouped_data
 
 
@@ -207,8 +206,12 @@ def process_wheel_report_data(all_wheels, include_summary_in_output=True):
             'is_summary': True,
             'is_summary_to_show': include_summary_in_output,
             'brand': brand,
+<<<<<<< HEAD
             'quantity': brand_quantities[brand],
             'formatted_quantity': f'<span class="summary-quantity-value">{brand_quantities[brand]}</span>' # type: ignore
+=======
+            'quantity': brand_quantities[brand]
+>>>>>>> 8e6c31f2f955a25aa8b75ad7360d295f55bae58a
         }
     return grouped_data
 
