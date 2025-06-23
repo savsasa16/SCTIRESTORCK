@@ -1,0 +1,76 @@
+# Python specific files and directories
+__pycache__/            # ละเว้นโฟลเดอร์ __pycache__
+*.pyc                   # ละเว้นไฟล์ .pyc
+*.pyd                   # ละเว้นไฟล์ .pyd (Windows DLLs for Python)
+*.egg-info/             # ละเว้นโฟลเดอร์ egg-info
+.Python/                # ละเว้นโฟลเดอร์ .Python
+env/                    # ละเว้นโฟลเดอร์ virtual environment (ถ้าชื่อ env)
+venv/                   # ละเว้นโฟลเดอร์ virtual environment (ถ้าชื่อ venv)
+.venv/                  # ละเว้นโฟลเดอร์ virtual environment (ถ้าชื่อ .venv)
+pip-log.txt             # ละเว้น log ของ pip
+pip-delete-this-directory.txt
+
+# Database files
+*.db                    # ละเว้นไฟล์ database ที่มีนามสกุล .db
+inventory.db            # ระบุชื่อไฟล์ database ของคุณโดยตรง (จากที่คุณมี)
+*.sqlite                # ละเว้นไฟล์ SQLite database
+*.sqlite3               # ละเว้นไฟล์ SQLite3 database
+
+# Environment variables files (สำคัญมากสำหรับข้อมูล sensitive)
+.env                    # ละเว้นไฟล์ .env
+.flaskenv               # ละเว้นไฟล์ .flaskenv
+
+# Uploads folder (ถ้าคุณมีโฟลเดอร์สำหรับเก็บไฟล์ที่ผู้ใช้อัปโหลด)
+uploads/                # ละเว้นโฟลเดอร์ uploads และเนื้อหาทั้งหมด
+media/                  # อาจเป็นชื่ออื่น เช่น media/
+
+# IDE specific files
+.vscode/                # ละเว้นโฟลเดอร์การตั้งค่า VS Code (บางส่วน)
+.idea/                  # ละเว้นโฟลเดอร์การตั้งค่า PyCharm/IntelliJ
+*.sublime-project
+*.sublime-workspace
+.DS_Store               # macOS specific
+Thumbs.db               # Windows specific
+desktop.ini             # Windows specific (ที่คุณเคยเจอใน untracked)
+
+# Logs and temporary files
+*.log                   # ละเว้นไฟล์ .log
+*.tmp                   # ละเว้นไฟล์ .tmp
+*~                      # ละเว้นไฟล์ backup ที่สร้างโดย editor (เช่น vi)
+*.bak                   # ละเว้นไฟล์ backup ทั่วไป
+update.txt              # ละเว้นไฟล์ update.txt (จากที่คุณมี)
+
+# Compiled/binary files (ถ้ามี)
+*.exe                   # ละเว้นไฟล์ .exe
+*.dll                   # ละเว้นไฟล์ .dll
+*.so                    # ละเว้นไฟล์ .so
+*.o                     # ละเว้นไฟล์ .o
+*.obj                   # ละเว้นไฟล์ .obj
+
+# Other common temporary or generated files
+dist/                   # ละเว้นโฟลเดอร์ build
+build/                  # ละเว้นโฟลเดอร์ build
+node_modules/           # ถ้ามีโปรเจกต์ JavaScript/Node.js
+
+# เพิ่มไฟล์/โฟลเดอร์อื่นๆ จากรายการ untracked ของคุณที่ต้องการละเว้น
+# ตัวอย่าง:
+# *.xml                  # ไฟล์ XML ทั่วไป
+# .MUMUVMM/
+# .android/
+# .docker/
+# .gitconfig
+# .idlerc/
+# .kdx/
+# .lesshst
+# 3D Objects/
+# AppData/
+# Contacts/
+# 1.jpg
+# 100468.jpg
+# ... (เพิ่มรายการที่เหลือที่คุณไม่ต้องการให้ Git ติดตาม)
+# โปรดระวังพาธที่ขึ้นต้นด้วย ../../ หรือ ../../../ หากคุณไม่ได้รัน git จาก root ของ repository
+# ให้เพิ่มชื่อไฟล์/โฟลเดอร์ตรงๆ เช่น:
+# -1.14-windows.xml
+# .MUMUVMM/
+# .android/
+# ...

@@ -1,0 +1,315 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul class="flash-messages">
+            {% for category, message in messages %}
+                <li class="flash-message {{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>รับเข้า / จ่ายออกสต็อก</h2>
+
+<a href="{{ url_for('daily_stock_report') }}" class="btn btn-info" style="margin-bottom: 20px;"><i class="fas fa-chart-bar"></i> ดูรายงานสต็อกประจำวัน</a>
+<a href="{{ url_for('summary_stock_report') }}" class="btn btn-info" style="margin-bottom: 20px;"><i class="fa-solid fa-calendar"></i> ดูรายงานสต็อกรายเดือน</a>
+
+<div class="tabs">
+    <button class="tab-button active" data-tab="tire_movements">สต็อกยาง</button>
+    <button class="tab-button" data-tab="wheel_movements">สต็อกแม็ก</button>
+</div>
+
+<div id="tire_movements" class="tab-content {{ 'active' if active_tab == 'tire_movements' }}">
+    <h3>จัดการสต็อกยาง</h3>
+    <div class="form-section">
+        <form action="{{ url_for('stock_movement') }}" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="submit_type" value="tire_movement">
+            <div class="form-row">
+                <div class="form-group half-width">
+                    <label for="tire_id">เลือกยาง (ยี่ห้อ รุ่น เบอร์ยาง):</label>
+                    <select id="tire_id" name="tire_id" required>
+                        <option value="">-- เลือกยาง --</option>
+                        {% for tire in tires %}
+                            <option value="{{ tire.id }}">{{ tire.brand }} {{ tire.model }} {{ tire.size }} (คงเหลือ: {{ tire.quantity }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group quarter-width">
+                    <label for="type">ประเภท:</label>
+                    <select id="type" name="type" required>
+                        <option value="IN">รับเข้า</option>
+                        <option value="OUT">จ่ายออก</option>
+                    </select>
+                </div>
+                <div class="form-group quarter-width">
+                    <label for="quantity">จำนวน (เส้น):</label>
+                    <input type="number" id="quantity" name="quantity" min="1" required>
+    
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="notes">หมายเหตุ (ถ้ามี):</label>
+                <input type="text" id="notes" name="notes">
+            </div>
+			
+			<div class="form-group">
+            <label for="tire_bill_image">อัปโหลดรูปบิล (ถ้ามี):</label>
+            <input type="file" id="tire_bill_image" name="bill_image" accept="image/*">
+        </div>
+		
+        <button type="submit" class="btn btn-primary">บันทึกการเคลื่อนไหว</button>
+    </form>
+</div>
+
+    <h3>ประวัติการเคลื่อนไหวล่าสุดของยาง</h3>
+    {% if tire_movements %}
+        <div class="table-responsive">
+            <table>
+                 <thead>
+                <tr>
+                    <th>เวลา</th>
+                    <th>ข้อมูลยาง</th> {# Changed from ID ยาง #}
+                    <th>ประเภท</th>
+                    <th>จำนวน</th>
+                    <th>คงเหลือ</th>
+                    <th>หมายเหตุ</th>
+                    <th>พนักงาน</th> {# MODIFIED: เพิ่มและย้าย "พนักงาน" #}
+                    <th>หลักฐาน</th>
+                </tr>
+            </thead>
+                <tbody>
+                    {% for movement in tire_movements %}
+                    <tr>
+                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        <td>{{ movement.brand }} {{ movement.model }} {{ movement.size }}</td>
+                        <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
+                        <td>{{ movement.quantity_change }}</td>
+                        <td>{{ movement.remaining_quantity }}</td>
+                        <td>
+                            {% if movement.notes %}
+                                {{ movement.notes }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# MODIFIED: แสดง user_username #}
+                        <td>
+                            {% if movement.image_filename %}
+                                <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>ยังไม่มีประวัติการเคลื่อนไหวของยาง</p>
+    {% endif %}
+</div>
+
+<div id="wheel_movements" class="tab-content {{ 'active' if active_tab == 'wheel_movements' }}">
+    <h3>จัดการสต็อกแม็ก</h3>
+    <div class="form-section">
+        <form action="{{ url_for('stock_movement') }}" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="submit_type" value="wheel_movement">
+            <div class="form-row">
+                <div class="form-group half-width">
+                    <label for="wheel_id">เลือกแม็ก (ยี่ห้อ ลาย ขอบ):</label>
+                    <select id="wheel_id" name="wheel_id" required>
+                        <option value="">-- เลือกแม็ก --</option>
+                        {% for wheel in wheels %}
+                            <option value="{{ wheel.id }}">{{ wheel.brand }} {{ wheel.model }} {{ "%.1f"|format(wheel.diameter) }} นิ้ว (คงเหลือ: {{ wheel.quantity }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group quarter-width">
+                    <label for="type">ประเภท:</label>
+                    <select id="type" name="type" required>
+                        <option value="IN">รับเข้า</option>
+                        <option value="OUT">จ่ายออก</option>
+                    </select>
+                </div>
+                <div class="form-group quarter-width">
+                    <label for="quantity">จำนวน (วง):</label>
+                    <input type="number" id="quantity" name="quantity" min="1" required>
+    
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="notes">หมายเหตุ (ถ้ามี):</label>
+                <input type="text" id="notes" name="notes">
+            </div>
+			
+			<div class="form-group">
+            <label for="wheel_bill_image">อัปโหลดรูปบิล (ถ้ามี):</label>
+            <input type="file" id="wheel_bill_image" name="bill_image" accept="image/*">
+        </div>
+			 <button type="submit" class="btn btn-primary">บันทึกการเคลื่อนไหว</button>
+        </form>
+    </div>
+
+    <h3>ประวัติการเคลื่อนไหวล่าสุดของแม็ก</h3>
+    {% if wheel_movements %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                <tr>
+                    <th>เวลา</th>
+                    <th>ข้อมูลแม็ก</th> {# Changed from ID แม็ก #}
+                    <th>ประเภท</th>
+                    <th>จำนวน</th>
+                    <th>คงเหลือ</th>
+                    <th>หมายเหตุ</th>
+                    <th>พนักงาน</th> {# MODIFIED: เพิ่มและย้าย "พนักงาน" #}
+                    <th>หลักฐาน</th>
+                </tr>
+            </thead>
+                <tbody>
+                     {% for movement in wheel_movements %}
+                    <tr>
+                        <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        <td>{{ movement.brand }} {{ movement.model }} {{ "%.1f"|format(movement.diameter) }} นิ้ว</td> {# Removed ID #}
+                        <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
+                        <td>{{ movement.quantity_change }}</td>
+                        <td>{{ movement.remaining_quantity }}</td>
+                        <td>
+                            {% if movement.notes %}
+                                {{ movement.notes }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ movement.user_username if movement.user_username else '-' }}</td> {# MODIFIED: แสดง user_username #}
+                        <td>
+                            {% if movement.image_filename %}
+                                <a href="{{ movement.image_filename }}" target="_blank">ดูบิล</a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>ยังไม่มีประวัติการเคลื่อนไหวของแม็ก</p>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        function switchTab(tabId) {
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+            });
+            tabButtons.forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // Activate the selected tab
+            const targetContent = document.getElementById(tabId);
+            const targetButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+            if (targetContent) targetContent.classList.add('active');
+            if (targetButton) targetButton.classList.add('active');
+
+            // อัปเดต URL เพื่อให้จดจำแท็บ
+            history.pushState(null, '', `?tab=${tabId}`);
+
+            // NEW: Re-initialize/resize Select2 when tab changes
+            if (tabId === 'tire_movements') {
+                // For tire_id, ensure Select2 is initialized/refreshed
+                $('#tire_id').select2({
+                    placeholder: "-- เลือกยาง --",
+                    allowClear: true
+                });
+            } else if (tabId === 'wheel_movements') {
+                // For wheel_id, ensure Select2 is initialized/refreshed
+                // It's crucial to ensure it's not already initialized to avoid errors
+                // We can use .select2('destroy') first if unsure, then re-initialize
+                if ($('#wheel_id').data('select2')) { // Check if Select2 is already initialized
+                    $('#wheel_id').select2('destroy'); // Destroy existing instance
+                }
+                $('#wheel_id').select2({
+                    placeholder: "-- เลือกแม็ก --",
+                    allowClear: true
+                });
+                // Trigger a resize if the problem is still related to hidden element rendering
+                $('#wheel_id').select2('open'); // Briefly open to trigger resize
+                $('#wheel_id').select2('close'); // Then immediately close
+            }
+        }
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+                switchTab(tabId);
+            });
+        });
+
+        // ตรวจสอบ URL เพื่อเปิดแท็บที่ถูกต้องเมื่อโหลดหน้าเว็บ
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTabFromUrl = urlParams.get('tab');
+        const flaskActiveTab = "{{ active_tab }}"; 
+
+        if (flaskActiveTab && flaskActiveTab !== 'None') { 
+            switchTab(flaskActiveTab);
+        } else if (activeTabFromUrl) {
+            switchTab(activeTabFromUrl);
+        } else {
+            switchTab('tire_movements'); 
+        }
+
+        // เพิ่มการตรวจสอบ active_tab จาก Flask เพื่อให้แสดงผลถูกต้องเมื่อเกิด error
+        {% if active_tab %}
+        // Call switchTab to ensure the active tab is correctly set and Select2 is initialized
+        switchTab('{{ active_tab }}');
+        {% endif %}
+
+        // Initial Select2 setup for both on page load
+        // This runs only once when DOM is ready
+        $('#tire_id').select2({
+            placeholder: "-- เลือกยาง --",
+            allowClear: true
+        });
+        $('#wheel_id').select2({
+            placeholder: "-- เลือกแม็ก --",
+            allowClear: true
+        });
+
+        // Ensure Select2 is resized when tabs are switched, especially if hidden.
+        // This is a common workaround for Select2 with tabs.
+        $('a[data-tab]').on('shown.bs.tab', function (e) { // If you use Bootstrap tabs
+             $('#tire_id').select2('close'); // Close any open select2
+             $('#wheel_id').select2('close'); // Close any open select2
+             $($.fn.select2.amd.require('select2/selection/single')).each(function() {
+                if ($(this).data('select2')) {
+                    $(this).data('select2').dropdown._resizeDropdown();
+                }
+             });
+        });
+
+        // Alternatively, manually trigger resize on tab switch if the above doesn't work
+        // This is a more direct way:
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+                setTimeout(() => { // Give browser a moment to render the tab
+                    if (tabId === 'tire_movements' && $('#tire_id').data('select2')) {
+                        $('#tire_id').select2('open').select2('close'); // Open and close to force resize
+                    } else if (tabId === 'wheel_movements' && $('#wheel_id').data('select2')) {
+                        $('#wheel_id').select2('open').select2('close'); // Open and close to force resize
+                    }
+                }, 100); // Small delay might be needed
+            });
+        });
+    });
+</script>
+{% endblock %}
