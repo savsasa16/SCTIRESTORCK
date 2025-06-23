@@ -1357,7 +1357,6 @@ def daily_stock_report():
         cursor.execute(distinct_tire_ids_query_all_history, (sql_date_filter_end_of_day,))
         rows = cursor.fetchall() 
     else:
-        # CORRECTED: เก็บผลลัพธ์จาก conn.execute() ลงในตัวแปรก่อนเรียก fetchall() [cite: 2025-06-23]
         query_result_obj = conn.execute(distinct_tire_ids_query_all_history.replace('%s', '?'), (sql_date_filter_end_of_day,))
         rows = query_result_obj.fetchall() 
     
@@ -1376,7 +1375,6 @@ def daily_stock_report():
             cursor.execute(history_query_up_to_day_before, (tire_id, day_before_report_iso))
             moves = cursor.fetchall() 
         else:
-            # CORRECTED: เก็บผลลัพธ์จาก conn.execute() ลงในตัวแปรก่อนเรียก fetchall() [cite: 2025-06-23]
             query_result_obj = conn.execute(history_query_up_to_day_before.replace('%s', '?'), (tire_id, day_before_report_iso,))
             moves = query_result_obj.fetchall() 
         
@@ -1507,7 +1505,6 @@ def daily_stock_report():
         cursor_wheel.execute(distinct_wheel_ids_query_all_history, (sql_date_filter_end_of_day,))
         rows = cursor_wheel.fetchall() 
     else:
-        # CORRECTED: เก็บผลลัพธ์จาก conn.execute() ลงในตัวแปรก่อนเรียก fetchall() [cite: 2025-06-23]
         query_result_obj = conn.execute(distinct_wheel_ids_query_all_history.replace('%s', '?'), (sql_date_filter_end_of_day,))
         rows = query_result_obj.fetchall() 
     
@@ -1526,7 +1523,6 @@ def daily_stock_report():
             cursor_wheel.execute(history_query_up_to_day_before, (wheel_id, day_before_report_iso))
             moves = cursor_wheel.fetchall() 
         else:
-            # CORRECTED: เก็บผลลัพธ์จาก conn.execute() ลงในตัวแปรก่อนเรียก fetchall() [cite: 2025-06-23]
             query_result_obj = conn.execute(history_query_up_to_day_before.replace('%s', '?'), (wheel_id, day_before_report_iso,))
             moves = query_result_obj.fetchall() 
         
@@ -1802,10 +1798,11 @@ def summary_stock_report():
         WHERE timestamp < %s;
     """
     if is_psycopg2_conn:
-        if 'cursor_wheel' not in locals(): # Ensure cursor_wheel is defined for psycopg2 here too [cite: 2025-06-22]
-            cursor_wheel = conn.cursor() 
-        cursor_wheel.execute(query_overall_initial_wheels, (start_of_period_iso,))
-        overall_wheel_initial = cursor_wheel.fetchone()[0] or 0
+        # Ensure cursor_wheel is defined for psycopg2 here too. Renamed to cursor_wheel_summary for clarity.
+        if 'cursor_wheel_summary' not in locals(): # Use a separate cursor for wheels in summary function [cite: 2025-06-22]
+            cursor_wheel_summary = conn.cursor() 
+        cursor_wheel_summary.execute(query_overall_initial_wheels, (start_of_period_iso,))
+        overall_wheel_initial = cursor_wheel_summary.fetchone()[0] or 0
     else:
         query_result_obj = conn.execute(query_overall_initial_wheels.replace('%s', '?'), (start_of_period_iso,))
         overall_wheel_initial = query_result_obj.fetchone()[0] or 0
@@ -1881,10 +1878,10 @@ def summary_stock_report():
         ORDER BY w.brand, w.model, w.diameter;
     """
     if is_psycopg2_conn:
-        if 'cursor_wheel' not in locals(): # Ensure cursor_wheel is defined for psycopg2 here too [cite: 2025-06-22]
-            cursor_wheel = conn.cursor() 
-        cursor_wheel.execute(wheel_detailed_movements_query, (start_of_period_iso, start_of_period_iso, end_of_period_iso))
-        wheel_detailed_movements_raw = cursor_wheel.fetchall()
+        if 'cursor_wheel_summary' not in locals(): # Use cursor_wheel_summary here consistently [cite: 2025-06-22]
+            cursor_wheel_summary = conn.cursor() 
+        cursor_wheel_summary.execute(wheel_detailed_movements_query, (start_of_period_iso, start_of_period_iso, end_of_period_iso))
+        wheel_detailed_movements_raw = cursor_wheel_summary.fetchall()
     else:
         query_result_obj = conn.execute(wheel_detailed_movements_query.replace('%s', '?'), (start_of_period_iso, start_of_period_iso, end_of_period_iso))
         wheel_detailed_movements_raw = query_result_obj.fetchall()
@@ -1896,7 +1893,7 @@ def summary_stock_report():
         if brand not in wheels_by_brand_for_summary_report:
             wheels_by_brand_for_summary_report[brand] = []
         
-        initial_qty = row['initial_qty_before_period'] if row['initial_qty_period'] is not None else 0 # Bug: should be initial_qty_before_period
+        initial_qty = row['initial_qty_before_period'] if row['initial_qty_before_period'] is not None else 0 # FIXED: Corrected key name from initial_qty_period to initial_qty_before_period
         final_qty = initial_qty + row['IN_qty'] - row['OUT_qty']
 
         wheels_by_brand_for_summary_report[brand].append({
@@ -1922,7 +1919,8 @@ def summary_stock_report():
             WHERE t.brand = %s AND tm.timestamp < %s;
         """
         if is_psycopg2_conn:
-            if 'cursor' not in locals(): 
+            # ตรวจสอบว่า cursor ถูกสร้างแล้วหรือยัง
+            if 'cursor' not in locals() :
                  cursor = conn.cursor()
             cursor.execute(query_brand_initial_tire, (brand, start_of_period_iso))
             brand_initial_qty = cursor.fetchone()[0] or 0
@@ -1953,10 +1951,10 @@ def summary_stock_report():
             WHERE w.brand = %s AND wm.timestamp < %s;
         """
         if is_psycopg2_conn:
-            if 'cursor_wheel' not in locals():
-                cursor_wheel = conn.cursor()
-            cursor_wheel.execute(query_brand_initial_wheel, (brand, start_of_period_iso))
-            brand_initial_qty = cursor_wheel.fetchone()[0] or 0
+            if 'cursor_wheel_summary' not in locals(): # Ensure cursor_wheel_summary is defined
+                cursor_wheel_summary = conn.cursor()
+            cursor_wheel_summary.execute(query_brand_initial_wheel, (brand, start_of_period_iso))
+            brand_initial_qty = cursor_wheel_summary.fetchone()[0] or 0
         else:
             query_result_obj = conn.execute(query_brand_initial_wheel.replace('%s', '?'), (brand, start_of_period_iso))
             brand_initial_qty = query_result_obj.fetchone()[0] or 0
