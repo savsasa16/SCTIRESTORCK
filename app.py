@@ -1718,7 +1718,6 @@ def summary_stock_report():
     end_of_period_iso = end_date_obj.isoformat()
     is_psycopg2_conn = "psycopg2" in str(type(conn))
 
-    # Establish a single cursor for psycopg2 if needed for this function [cite: 2025-06-22]
     if is_psycopg2_conn:
         cursor = conn.cursor()
     else:
@@ -1741,8 +1740,8 @@ def summary_stock_report():
         tire_movements_by_brand_raw = query_result_obj.fetchall()
     
     tire_movements_by_brand = defaultdict(lambda: {'IN': 0, 'OUT': 0})
-    for movement_row in tire_movements_by_brand_raw: # เปลี่ยนชื่อตัวแปรเป็น movement_row เพื่อความชัดเจน
-        row_data = dict(movement_row) # แปลงเป็น dict เสมอ [cite: 2025-06-23]
+    for movement_row in tire_movements_by_brand_raw: 
+        row_data = dict(movement_row) 
         brand = row_data['brand']
         move_type = row_data['type']
         total_qty = row_data['total_quantity']
@@ -1758,6 +1757,8 @@ def summary_stock_report():
         ORDER BY w.brand, wm.type;
     """
     if is_psycopg2_conn:
+        if 'cursor' not in locals(): 
+            cursor = conn.cursor() 
         cursor.execute(wheel_movements_query_sql, (start_of_period_iso, end_of_period_iso))
         wheel_movements_by_brand_raw = cursor.fetchall()
     else: # SQLite
@@ -1765,8 +1766,8 @@ def summary_stock_report():
         wheel_movements_by_brand_raw = query_result_obj.fetchall()
     
     wheel_movements_by_brand = defaultdict(lambda: {'IN': 0, 'OUT': 0})
-    for movement_row in wheel_movements_by_brand_raw: # เปลี่ยนชื่อตัวแปรเป็น movement_row
-        row_data = dict(movement_row) # แปลงเป็น dict เสมอ [cite: 2025-06-23]
+    for row in wheel_movements_by_brand_raw: 
+        row_data = dict(row) 
         brand = row_data['brand']
         move_type = row_data['type']
         total_qty = row_data['total_quantity']
@@ -1785,6 +1786,8 @@ def summary_stock_report():
         WHERE timestamp < %s;
     """
     if is_psycopg2_conn:
+        if 'cursor' not in locals(): 
+            cursor = conn.cursor() 
         cursor.execute(query_overall_initial_tires, (start_of_period_iso,))
         overall_tire_initial = cursor.fetchone()[0] or 0
     else:
@@ -1797,6 +1800,8 @@ def summary_stock_report():
         WHERE timestamp < %s;
     """
     if is_psycopg2_conn:
+        if 'cursor' not in locals(): 
+            cursor = conn.cursor() 
         cursor.execute(query_overall_initial_wheels, (start_of_period_iso,))
         overall_wheel_initial = cursor.fetchone()[0] or 0
     else:
@@ -1808,11 +1813,18 @@ def summary_stock_report():
     overall_wheel_final = overall_wheel_initial + overall_wheel_in_period - overall_wheel_out_period
 
     # --- NEW: สำหรับรายงานการเคลื่อนไหวสต็อกยางตามยี่ห้อและขนาด (tires_by_brand_for_summary_report) ---
+    # Binding parameters for tire_detailed_movements_query:
+    # 1. initial_qty_before_period: (%s) -> start_of_period_iso
+    # 2. IN_qty: (%s, %s) -> start_of_period_iso, end_of_period_iso
+    # 3. OUT_qty: (%s, %s) -> start_of_period_iso, end_of_period_iso
+    # 4. INNER JOIN: (%s, %s) -> start_of_period_iso, end_of_period_iso
+    # 5. HAVING: (%s, %s) -> start_of_period_iso, end_of_period_iso
+    # Total: 1 + 2 + 2 + 2 + 2 = 9 bindings.
     tire_detailed_movements_query = f"""
         SELECT
             t.brand, t.model, t.size,
-            COALESCE(SUM(CASE WHEN tm.type = 'IN' AND tm.timestamp BETWEEN %s AND %s THEN tm.quantity_change ELSE 0 END), 0) AS IN_qty,
-            COALESCE(SUM(CASE WHEN tm.type = 'OUT' AND tm.timestamp BETWEEN %s AND %s THEN tm.quantity_change ELSE 0 END), 0) AS OUT_qty,
+            COALESCE(SUM(CASE WHEN tm.type = 'IN' AND tm.timestamp BETWEEN %s AND %s THEN tm.quantity_change ELSE 0 END), 0) AS IN_qty,  
+            COALESCE(SUM(CASE WHEN tm.type = 'OUT' AND tm.timestamp BETWEEN %s AND %s THEN tm.quantity_change ELSE 0 END), 0) AS OUT_qty, 
             COALESCE(( 
                 SELECT SUM(CASE WHEN prev_tm.type = 'IN' THEN prev_tm.quantity_change ELSE -prev_tm.quantity_change END)
                 FROM tire_movements prev_tm
@@ -1820,30 +1832,40 @@ def summary_stock_report():
             ), 0) AS initial_qty_before_period,
             t.id AS tire_id 
         FROM tires t 
-        LEFT JOIN tire_movements tm ON tm.tire_id = t.id 
+        INNER JOIN tire_movements tm ON tm.tire_id = t.id AND tm.timestamp BETWEEN %s AND %s 
         WHERE t.is_deleted = FALSE 
         GROUP BY t.id, t.brand, t.model, t.size 
+        HAVING SUM(CASE WHEN tm.timestamp BETWEEN %s AND %s THEN tm.quantity_change ELSE 0 END) > 0 
         ORDER BY t.brand, t.model, t.size;
     """
     
+    # Corrected parameter list based on 9 bindings required [cite: 2025-06-23]
+    tire_params = (
+        start_of_period_iso, end_of_period_iso, # for IN_qty SUM
+        start_of_period_iso, end_of_period_iso, # for OUT_qty SUM
+        start_of_period_iso, # for initial_qty_before_period subquery
+        start_of_period_iso, end_of_period_iso, # for INNER JOIN ON clause
+        start_of_period_iso, end_of_period_iso  # for HAVING clause
+    )
+
     if is_psycopg2_conn:
-        cursor.execute(tire_detailed_movements_query, (start_of_period_iso, end_of_period_iso, start_of_period_iso, end_of_period_iso, start_of_period_iso))
+        cursor.execute(tire_detailed_movements_query, tire_params)
         tire_detailed_movements_raw = cursor.fetchall()
     else:
-        query_result_obj = conn.execute(tire_detailed_movements_query.replace('%s', '?'), (start_of_period_iso, end_of_period_iso, start_of_period_iso, end_of_period_iso, start_of_period_iso))
+        query_result_obj = conn.execute(tire_detailed_movements_query.replace('%s', '?'), tire_params)
         tire_detailed_movements_raw = query_result_obj.fetchall()
 
     # ประมวลผลข้อมูลสำหรับ tires_by_brand_for_summary_report
     tires_by_brand_for_summary_report = OrderedDict()
-    for row_data_raw in tire_detailed_movements_raw: # เปลี่ยนชื่อตัวแปรเป็น row_data_raw
-        row = dict(row_data_raw) # แปลงเป็น dict เสมอ [cite: 2025-06-23]
+    for row_data_raw in tire_detailed_movements_raw: 
+        row = dict(row_data_raw) 
         brand = row['brand']
         if brand not in tires_by_brand_for_summary_report:
             tires_by_brand_for_summary_report[brand] = []
         
-        initial_qty = int(row.get('initial_qty_before_period', 0)) # ใช้ .get() [cite: 2025-06-23]
-        in_qty = int(row.get('IN_qty', 0)) # ใช้ .get() [cite: 2025-06-23]
-        out_qty = int(row.get('OUT_qty', 0)) # ใช้ .get() [cite: 2025-06-23]
+        initial_qty = int(row.get('initial_qty_before_period', 0)) 
+        in_qty = int(row.get('IN_qty', 0)) 
+        out_qty = int(row.get('OUT_qty', 0)) 
         
         final_qty = initial_qty + in_qty - out_qty 
 
@@ -1857,11 +1879,18 @@ def summary_stock_report():
         })
     
     # --- NEW: สำหรับรายงานการเคลื่อนไหวสต็อกล้อแม็กตามยี่ห้อและขนาด (wheels_by_brand_for_summary_report) ---
+    # Binding parameters for wheel_detailed_movements_query:
+    # 1. initial_qty_before_period: (%s) -> start_of_period_iso
+    # 2. IN_qty: (%s, %s) -> start_of_period_iso, end_of_period_iso
+    # 3. OUT_qty: (%s, %s) -> start_of_period_iso, end_of_period_iso
+    # 4. INNER JOIN: (%s, %s) -> start_of_period_iso, end_of_period_iso
+    # 5. HAVING: (%s, %s) -> start_of_period_iso, end_of_period_iso
+    # Total: 1 + 2 + 2 + 2 + 2 = 9 bindings.
     wheel_detailed_movements_query = f"""
         SELECT
             w.brand, w.model, w.diameter, w.pcd, w.width,
-            COALESCE(SUM(CASE WHEN wm.type = 'IN' AND wm.timestamp BETWEEN %s AND %s THEN wm.quantity_change ELSE 0 END), 0) AS IN_qty,  -- Filter by timestamp in SUM [cite: 2025-06-23]
-            COALESCE(SUM(CASE WHEN wm.type = 'OUT' AND wm.timestamp BETWEEN %s AND %s THEN wm.quantity_change ELSE 0 END), 0) AS OUT_qty, -- Filter by timestamp in SUM [cite: 2025-06-23]
+            COALESCE(SUM(CASE WHEN wm.type = 'IN' AND wm.timestamp BETWEEN %s AND %s THEN wm.quantity_change ELSE 0 END), 0) AS IN_qty,  
+            COALESCE(SUM(CASE WHEN wm.type = 'OUT' AND wm.timestamp BETWEEN %s AND %s THEN wm.quantity_change ELSE 0 END), 0) AS OUT_qty, 
             COALESCE(( 
                 SELECT SUM(CASE WHEN prev_wm.type = 'IN' THEN prev_wm.quantity_change ELSE -prev_wm.quantity_change END)
                 FROM wheel_movements prev_wm
@@ -1869,22 +1898,32 @@ def summary_stock_report():
             ), 0) AS initial_qty_before_period,
             w.id AS wheel_id
         FROM wheels w 
-        LEFT JOIN wheel_movements wm ON wm.wheel_id = w.id 
+        INNER JOIN wheel_movements wm ON wm.wheel_id = w.id AND wm.timestamp BETWEEN %s AND %s 
         WHERE w.is_deleted = FALSE 
         GROUP BY w.id, w.brand, w.model, w.diameter, w.pcd, w.width
+        HAVING SUM(CASE WHEN wm.timestamp BETWEEN %s AND %s THEN wm.quantity_change ELSE 0 END) > 0 
         ORDER BY w.brand, w.model, w.diameter;
     """
+    # Corrected parameter list based on 9 bindings required [cite: 2025-06-23]
+    wheel_params = (
+        start_of_period_iso, end_of_period_iso, # for IN_qty SUM
+        start_of_period_iso, end_of_period_iso, # for OUT_qty SUM
+        start_of_period_iso, # for initial_qty_before_period subquery
+        start_of_period_iso, end_of_period_iso, # for INNER JOIN ON clause
+        start_of_period_iso, end_of_period_iso  # for HAVING clause
+    )
+
     if is_psycopg2_conn:
-        cursor.execute(wheel_detailed_movements_query, (start_of_period_iso, end_of_period_iso, start_of_period_iso, end_of_period_iso, start_of_period_iso))
+        cursor.execute(wheel_detailed_movements_query, wheel_params)
         wheel_detailed_movements_raw = cursor.fetchall()
     else:
-        query_result_obj = conn.execute(wheel_detailed_movements_query.replace('%s', '?'), (start_of_period_iso, start_of_period_iso, end_of_period_iso, start_of_period_iso, end_of_period_iso))
+        query_result_obj = conn.execute(wheel_detailed_movements_query.replace('%s', '?'), wheel_params)
         wheel_detailed_movements_raw = query_result_obj.fetchall()
 
     # ประมวลผลข้อมูลสำหรับ wheels_by_brand_for_summary_report
     wheels_by_brand_for_summary_report = OrderedDict()
-    for row_data_raw in wheel_detailed_movements_raw: # เปลี่ยนชื่อตัวแปรเป็น row_data_raw
-        row = dict(row_data_raw) # แปลงเป็น dict เสมอ [cite: 2025-06-23]
+    for row_data_raw in wheel_detailed_movements_raw: 
+        row = dict(row_data_raw) 
         brand = row['brand']
         if brand not in wheels_by_brand_for_summary_report:
             wheels_by_brand_for_summary_report[brand] = []
