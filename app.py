@@ -547,10 +547,9 @@ def add_item():
                     flash(f'แม็ก {brand.title()} ลาย {model.title()} ขนาด {diameter}x{width} มีอยู่ในระบบแล้ว', 'warning')
                 else:
                     new_wheel_id = database.add_wheel(conn, brand, model, diameter, pcd, width, et, color, 
-                                                    quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url)
+                                                    quantity, cost, cost_online, wholesale_price1, wholesale_price2, retail_price, image_url, user_id=current_user.id)
                     if scanned_barcode_for_add:
                         database.add_wheel_barcode(conn, new_wheel_id, scanned_barcode_for_add, is_primary=True)
-                    database.add_wheel_movement(conn, new_wheel_id, 'IN', quantity, quantity, "Initial Stock (Manual Add)", None, user_id=current_user.id)
                     conn.commit()
                     flash(f'เพิ่มแม็ก {brand.title()} ลาย {model.title()} จำนวน {quantity} วง สำเร็จ!', 'success')
                 return redirect(url_for('index', tab='wheels'))
