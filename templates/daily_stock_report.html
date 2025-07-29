@@ -1,25 +1,307 @@
 {% extends 'base.html' %}
 
-{% block title %}รายงานสต็อกประจำวัน{% endblock %}
+{% block page_title %}รายงานสต็อกประจำวัน{% endblock %}
+
+{% block head_scripts %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+{% endblock %}
+
 
 {% block content %}
-<h2>รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d-%m-%Y') }}</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d-%m-%Y') }}</h1>
 
-<div class="date-navigation">
-    <a href="{{ url_for('daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary date-nav-button">
-        <i class="fas fa-chevron-left"></i> เมื่อวาน
-    </a>
-    <input type="text" id="reportDateInput" value="{{ report_date_param }}" placeholder="เลือกวันที่">
-    {% if report_date_obj < get_bkk_time().date() %}
-        <a href="{{ url_for('daily_stock_report', date=tomorrow_date_param) }}" class="btn btn-outline-secondary date-nav-button">
-            วันที่ถัดไป <i class="fas fa-chevron-right"></i>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-chevron-left"></i>
         </a>
-    {% endif %}
+        <input type="text" id="reportDateInput" class="form-control" style="width: 150px;" value="{{ report_date_param }}" placeholder="เลือกวันที่">
+        {% if report_date_obj < get_bkk_time().date() %}
+            <a href="{{ url_for('daily_stock_report', date=tomorrow_date_param) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        {% endif %}
+    </div>
 </div>
 
+<div class="row g-4 mb-4">
+    <div class="col-md-4"> {# Adjusted column size for 3 items #}
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title"><i class="fas fa-tire me-2 text-primary"></i>สรุปยาง</h5>
+                <p class="mb-1">รับเข้ารวม: <strong>{{ tire_total_in }}</strong> เส้น</p>
+                <p class="mb-1">จ่ายออกรวม: <strong>{{ tire_total_out }}</strong> เส้น</p>
+                <p class="mb-1">รับคืนรวม: <strong>{{ tire_total_return }}</strong> เส้น</p>
+                <hr>
+                <p class="mb-0">คงเหลือในคลังทั้งหมด: <strong class="fs-5">{{ tire_total_remaining }}</strong> เส้น</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4"> {# Adjusted column size for 3 items #}
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title"><i class="fas fa-compact-disc me-2 text-info"></i>สรุปแม็ก</h5>
+                <p class="mb-1">รับเข้ารวม: <strong>{{ wheel_total_in }}</strong> วง</p>
+                <p class="mb-1">จ่ายออกรวม: <strong>{{ wheel_total_out }}</strong> วง</p>
+                <p class="mb-1">รับคืนรวม: <strong>{{ wheel_total_return }}</strong> วง</p>
+                <hr>
+                <p class="mb-0">คงเหลือในคลังทั้งหมด: <strong class="fs-5">{{ wheel_total_remaining }}</strong> วง</p>
+            </div>
+        </div>
+    </div>
+    {# NEW: Spare Parts Summary Card #}
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title"><i class="fas fa-tools me-2 text-success"></i>สรุปอะไหล่</h5>
+                <p class="mb-1">รับเข้ารวม: <strong>{{ spare_part_total_in }}</strong> ชิ้น</p>
+                <p class="mb-1">จ่ายออกรวม: <strong>{{ spare_part_total_out }}</strong> ชิ้น</p>
+                <p class="mb-1">รับคืนรวม: <strong>{{ spare_part_total_return }}</strong> ชิ้น</p>
+                <hr>
+                <p class="mb-0">คงเหลือในคลังทั้งหมด: <strong class="fs-5">{{ spare_part_total_remaining }}</strong> ชิ้น</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs" id="stockMovementTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tire-tab" data-bs-toggle="tab" data-bs-target="#tire-tab-pane" type="button" role="tab" aria-controls="tire-tab-pane" aria-selected="true">
+                    <i class="fas fa-tire me-2"></i>ประวัติยาง
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="wheel-tab" data-bs-toggle="tab" data-bs-target="#wheel-tab-pane" type="button" role="tab" aria-controls="wheel-tab-pane" aria-selected="false">
+                    <i class="fas fa-compact-disc me-2"></i>ประวัติแม็ก
+                </button>
+            </li>
+            {# NEW: Spare Parts History Tab #}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="spare-part-tab" data-bs-toggle="tab" data-bs-target="#spare-part-tab-pane" type="button" role="tab" aria-controls="spare-part-tab-pane" aria-selected="false">
+                    <i class="fas fa-tools me-2"></i>ประวัติอะไหล่
+                </button>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+
+        {# --- START: ย้ายช่องค้นหามาไว้ตรงนี้ --- #}
+        <div class="mb-3">
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" id="universalSearchInput" class="form-control" placeholder="ค้นหาจาก ยี่ห้อ, รุ่น, เบอร์, ช่องทาง, ลูกค้า, พนักงาน...">
+            </div>
+        </div>
+        {# --- END: สิ้นสุดช่องค้นหา --- #}
+
+        <div class="tab-content" id="stockMovementTabContent">
+
+            <div class="tab-pane fade show active" id="tire-tab-pane" role="tabpanel" aria-labelledby="tire-tab" tabindex="0">
+                {% if tire_movements_raw %}
+                    <div class="table-responsive">
+                        <table id="tireMovementTable" class="table table-striped table-hover table-sm align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>เวลา</th>
+                                    <th>ประเภท</th>
+                                    <th>จำนวน</th>
+                                    <th>คงเหลือ</th>
+                                    <th>ยี่ห้อ/รุ่น</th>
+                                    <th>เบอร์ยาง</th>
+                                    <th>ช่องทาง/ลูกค้า</th>
+                                    <th>พนักงาน</th>
+                                    <th>หมายเหตุ</th>
+                                    <th class="text-center">หลักฐาน</th>
+                                    {% if current_user.is_admin() %}<th class="text-center">จัดการ</th>{% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for movement in tire_movements_raw %}
+                                    <tr>
+                                        <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td>
+                                        <td>
+                                            {% if movement.type == 'IN' %}<span class="badge text-bg-success">รับเข้า</span>
+                                            {% elif movement.type == 'OUT' %}<span class="badge text-bg-danger">จ่ายออก</span>
+                                            {% elif movement.type == 'RETURN' %}<span class="badge text-bg-info">รับคืน</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ movement.quantity_change }}</td>
+                                        <td>{{ movement.remaining_quantity }}</td>
+                                        <td><strong>{{ movement.brand }}</strong> {{ movement.model }}</td>
+                                        <td>{{ movement.size }}</td>
+                                        <td>
+                                            {% if movement.channel_name == 'ออนไลน์' %}{{ movement.online_platform_name | default('-') }}
+                                            {% elif movement.channel_name == 'ค้าส่ง' %}{{ movement.wholesale_customer_name | default('-') }}
+                                            {% elif movement.type == 'RETURN' and movement.return_customer_type %}{{ movement.return_customer_type }}
+                                            {% else %}{{ movement.channel_name | default('-') }}{% endif %}
+                                        </td>
+                                        <td>{{ movement.user_username | default('-') }}</td>
+                                        <td>{{ movement.notes | default('-') }}</td>
+                                        <td class="text-center">
+                                            {% if movement.image_filename %}<a href="{{ movement.image_filename }}" target="_blank"><i class="fas fa-image"></i></a>{% else %}-{% endif %}
+                                        </td>
+                                        {% if current_user.is_admin() %}
+                                        <td class="text-center">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <a href="{{ url_for('edit_tire_movement', movement_id=movement.id) }}" class="btn btn-warning btn-sm" title="แก้ไข"><i class="fas fa-edit"></i></a>
+                                                <form action="{{ url_for('delete_tire_movement_action', movement_id=movement.id) }}" method="POST" onsubmit="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้? การดำเนินการนี้จะปรับสต็อกคืนโดยอัตโนมัติ');" class="d-inline">
+                                                    <button type="submit" class="btn btn-danger btn-sm" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-center text-muted mt-3">ไม่มีการเคลื่อนไหวสต็อกยางในวันนี้</p>
+                {% endif %}
+            </div>
+
+            <div class="tab-pane fade" id="wheel-tab-pane" role="tabpanel" aria-labelledby="wheel-tab" tabindex="0">
+                 {% if wheel_movements_raw %}
+                    <div class="table-responsive">
+                        <table id="wheelMovementTable" class="table table-striped table-hover table-sm align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>เวลา</th>
+                                    <th>ประเภท</th>
+                                    <th>จำนวน</th>
+                                    <th>คงเหลือ</th>
+                                    <th>ยี่ห้อ/ลาย</th>
+                                    <th>ขนาด/รู</th>
+                                    <th>ช่องทาง/ลูกค้า</th>
+                                    <th>พนักงาน</th>
+                                    <th>หมายเหตุ</th>
+                                    <th class="text-center">หลักฐาน</th>
+                                    {% if current_user.is_admin() %}<th class="text-center">จัดการ</th>{% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for movement in wheel_movements_raw %}
+                                    <tr>
+                                        <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td>
+                                        <td>
+                                            {% if movement.type == 'IN' %}<span class="badge text-bg-success">รับเข้า</span>
+                                            {% elif movement.type == 'OUT' %}<span class="badge text-bg-danger">จ่ายออก</span>
+                                            {% elif movement.type == 'RETURN' %}<span class="badge text-bg-info">รับคืน</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ movement.quantity_change }}</td>
+                                        <td>{{ movement.remaining_quantity }}</td>
+                                        <td><strong>{{ movement.brand }}</strong> {{ movement.model }}</td>
+                                        <td>{{ "%.1f"|format(movement.diameter) }}x{{ "%.1f"|format(movement.width) }} {{ movement.pcd | default('-') }}</td>
+                                        <td>
+                                            {% if movement.channel_name == 'ออนไลน์' %}{{ movement.online_platform_name | default('-') }}
+                                            {% elif movement.channel_name == 'ค้าส่ง' %}{{ movement.wholesale_customer_name | default('-') }}
+                                            {% elif movement.type == 'RETURN' and movement.return_customer_type %}{{ movement.return_customer_type }}
+                                            {% else %}{{ movement.channel_name | default('-') }}{% endif %}
+                                        </td>
+                                        <td>{{ movement.user_username | default('-') }}</td>
+                                        <td>{{ movement.notes | default('-') }}</td>
+                                        <td class="text-center">
+                                            {% if movement.image_filename %}<a href="{{ movement.image_filename }}" target="_blank"><i class="fas fa-image"></i></a>{% else %}-{% endif %}
+                                        </td>
+                                        {% if current_user.is_admin() %}
+                                        <td class="text-center">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <a href="{{ url_for('edit_wheel_movement', movement_id=movement.id) }}" class="btn btn-warning btn-sm" title="แก้ไข"><i class="fas fa-edit"></i></a>
+                                                <form action="{{ url_for('delete_wheel_movement_action', movement_id=movement.id) }}" method="POST" onsubmit="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายการเคลื่อนไหวนี้? การดำเนินการนี้จะปรับสต็อกคืนโดยอัตโนมัติ');" class="d-inline">
+                                                    <button type="submit" class="btn btn-danger btn-sm" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-center text-muted mt-3">ไม่มีการเคลื่อนไหวสต็อกแม็กในวันนี้</p>
+                {% endif %}
+            </div>
+
+            {# NEW: Spare Parts History Pane #}
+            <div class="tab-pane fade" id="spare-part-tab-pane" role="tabpanel" aria-labelledby="spare-part-tab" tabindex="0">
+                {% if spare_part_movements_raw %}
+                    <div class="table-responsive">
+                        <table id="sparePartMovementTable" class="table table-striped table-hover table-sm align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>เวลา</th>
+                                    <th>ประเภท</th>
+                                    <th>จำนวน</th>
+                                    <th>คงเหลือ</th>
+                                    <th>ชื่ออะไหล่</th>
+                                    <th>Part No./ยี่ห้อ</th>
+                                    <th>ช่องทาง/ลูกค้า</th>
+                                    <th>พนักงาน</th>
+                                    <th>หมายเหตุ</th>
+                                    <th class="text-center">หลักฐาน</th>
+                                    {% if current_user.is_admin() %}<th class="text-center">จัดการ</th>{% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for movement in spare_part_movements_raw %}
+                                    <tr>
+                                        <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td>
+                                        <td>
+                                            {% if movement.type == 'IN' %}<span class="badge text-bg-success">รับเข้า</span>
+                                            {% elif movement.type == 'OUT' %}<span class="badge text-bg-danger">จ่ายออก</span>
+                                            {% elif movement.type == 'RETURN' %}<span class="badge text-bg-info">รับคืน</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ movement.quantity_change }}</td>
+                                        <td>{{ movement.remaining_quantity }}</td>
+                                        <td><strong>{{ movement.spare_part_name }}</strong></td>
+                                        <td>{{ movement.part_number if movement.part_number else movement.spare_part_brand | title if movement.spare_part_brand else '-' }}</td>
+                                        <td>
+                                            {% if movement.channel_name == 'ออนไลน์' %}{{ movement.online_platform_name | default('-') }}
+                                            {% elif movement.channel_name == 'ค้าส่ง' %}{{ movement.wholesale_customer_name | default('-') }}
+                                            {% elif movement.type == 'RETURN' and movement.return_customer_type %}{{ movement.return_customer_type }}
+                                            {% else %}{{ movement.channel_name | default('-') }}{% endif %}
+                                        </td>
+                                        <td>{{ movement.user_username | default('-') }}</td>
+                                        <td>{{ movement.notes | default('-') }}</td>
+                                        <td class="text-center">
+                                            {% if movement.image_filename %}<a href="{{ movement.image_filename }}" target="_blank"><i class="fas fa-image"></i></a>{% else %}-{% endif %}
+                                        </td>
+                                        {% if current_user.is_admin() %}
+                                        <td class="text-center">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <a href="{{ url_for('edit_spare_part_movement', movement_id=movement.id) }}" class="btn btn-warning btn-sm" title="แก้ไข"><i class="fas fa-edit"></i></a>
+                                                <form action="{{ url_for('delete_spare_part_movement_action', movement_id=movement.id) }}" method="POST" onsubmit="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายการเคลื่อนไหวนี้? การดำเนินการนี้จะปรับสต็อกคืนโดยอัตโนมัติ');" class="d-inline">
+                                                    <button type="submit" class="btn btn-danger btn-sm" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-center text-muted mt-3">ไม่มีการเคลื่อนไหวสต็อกอะไหล่ในวันนี้</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{{ url_for('stock_movement') }}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>กลับไปหน้าจัดการสต็อก</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         flatpickr("#reportDateInput", {
@@ -33,283 +315,78 @@
                 window.location.href = "{{ url_for('daily_stock_report') }}?date=" + dateStr;
             }
         });
+
+        const searchInput = document.getElementById('universalSearchInput');
+        const tireTableBody = document.querySelector('#tireMovementTable tbody');
+        const wheelTableBody = document.querySelector('#wheelMovementTable tbody');
+        const sparePartTableBody = document.querySelector('#sparePartMovementTable tbody'); // NEW
+
+        const noTireDataMessage = document.querySelector('#tire-tab-pane p.text-muted');
+        const noWheelDataMessage = document.querySelector('#wheel-tab-pane p.text-muted');
+        const noSparePartDataMessage = document.querySelector('#spare-part-tab-pane p.text-muted'); // NEW
+
+        searchInput.addEventListener('keyup', function() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            filterTable(searchTerm, tireTableBody, noTireDataMessage);
+            filterTable(searchTerm, wheelTableBody, noWheelDataMessage);
+            filterTable(searchTerm, sparePartTableBody, noSparePartDataMessage); // NEW
+        });
+
+        function filterTable(term, tableBody, noDataMessage) {
+            if (!tableBody) return;
+
+            const rows = tableBody.getElementsByTagName('tr');
+            let visibleRowCount = 0;
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const rowText = row.textContent.toLowerCase();
+
+                if (rowText.includes(term)) {
+                    row.style.display = '';
+                    visibleRowCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+
+            if(noDataMessage) {
+                if (visibleRowCount > 0) {
+                    noDataMessage.style.display = 'none';
+                } else {
+                    noDataMessage.style.display = 'block';
+                    noDataMessage.textContent = 'ไม่พบข้อมูลที่ตรงกับการค้นหา';
+                }
+            }
+        }
+
+        // Handle tab switching for initial display
+        const stockMovementTab = document.getElementById('stockMovementTab');
+        stockMovementTab.addEventListener('shown.bs.tab', function (event) {
+            const targetPaneId = event.target.getAttribute('data-bs-target'); // e.g., #tire-tab-pane
+            const panes = ['#tire-tab-pane', '#wheel-tab-pane', '#spare-part-tab-pane']; // NEW
+            panes.forEach(paneId => {
+                if (paneId === targetPaneId) {
+                    document.querySelector(paneId).classList.add('show', 'active');
+                } else {
+                    document.querySelector(paneId).classList.remove('show', 'active');
+                }
+            });
+            // Re-apply filter when tab changes
+            filterTable(searchInput.value.toLowerCase().trim(), tireTableBody, noTireDataMessage);
+            filterTable(searchInput.value.toLowerCase().trim(), wheelTableBody, noWheelDataMessage);
+            filterTable(searchInput.value.toLowerCase().trim(), sparePartTableBody, noSparePartDataMessage); // NEW
+        });
+
+        // Initialize active tab based on a URL parameter or default to tire
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTabParam = urlParams.get('tab');
+        if (activeTabParam) {
+            const tabButton = document.getElementById(activeTabParam); // e.g. 'tire-tab'
+            if (tabButton) {
+                new bootstrap.Tab(tabButton).show();
+            }
+        }
     });
 </script>
-
-<style>
-    /* CSS สำหรับ date-navigation */
-    .date-navigation {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        margin-bottom: 20px;
-        gap: 10px;
-        width: 100%;
-    }
-    .date-navigation input[type="text"] {
-        padding: 8px 10px;
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
-        font-size: 1em;
-        cursor: pointer;
-        width: auto;
-        flex-grow: 0;
-    }
-    .date-nav-button {
-        padding: 8px 12px;
-        font-size: 1em;
-        text-decoration: none;
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        color: var(--text-light);
-    }
-    .date-nav-button:hover {
-        background-color: var(--bg-hover-light);
-        text-decoration: none;
-    }
-
-
-    /* CSS สำหรับ summary-card-container และ summary-card */
-    .summary-card-container {
-        display: flex;
-        justify-content: space-around;
-        gap: 20px;
-        margin-bottom: 30px;
-    }
-    .summary-card {
-        background-color: var(--bg-white);
-        padding: 20px;
-        border-radius: var(--border-radius-md);
-        box-shadow: var(--shadow-light);
-        flex: 1;
-        text-align: center;
-    }
-    .summary-card h4 {
-        color: var(--primary-color);
-        margin-top: 0;
-        margin-bottom: 15px;
-        font-weight: 600;
-    }
-    .summary-card p {
-        margin: 5px 0;
-        font-size: 1.1em;
-        color: var(--text-dark);
-    }
-    .summary-card strong {
-        color: var(--text-dark);
-        font-size: 1.2em;
-    }
-
-    /* CSS สำหรับ report-section และตาราง */
-    .report-section {
-        background-color: var(--bg-white);
-        padding: 20px;
-        border-radius: var(--border-radius-md);
-        box-shadow: var(--shadow-light);
-        margin-bottom: 30px;
-    }
-    .report-section h3 {
-        color: var(--text-dark);
-        margin-bottom: 15px;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 10px;
-        font-weight: 600;
-    }
-    .report-section table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 15px;
-    }
-    .report-section th, .report-section td {
-        border: 1px solid var(--border-color);
-        padding: 10px;
-        text-align: left;
-    }
-    .report-section th {
-        background-color: #f8f8f8;
-        color: var(--text-dark);
-    }
-    .report-section tbody tr:nth-child(even) {
-        background-color: var(--bg-stripe);
-    }
-    /* Style for summary rows WITHIN the table (ยอดรวมยี่ห้อ) */
-    .summary-row {
-        background-color: var(--primary-color) !important;
-        color: var(--text-white) !important;
-        font-weight: bold;
-        border-top: 2px solid var(--primary-dark);
-        border-bottom: 2px solid var(--primary-dark);
-    }
-    .summary-row td {
-        padding: 12px 10px;
-    }
-
-    /* CSS เพิ่มเติมสำหรับปุ่มจัดการในตาราง */
-    .btn-small {
-        padding: 5px 10px;
-        font-size: 0.85em;
-    }
-    .btn-warning {
-        background-color: var(--accent-color);
-        color: var(--text-dark);
-        border: 1px solid var(--accent-color);
-    }
-    .btn-warning:hover {
-        background-color: #e09200;
-        border-color: #e09200;
-    }
-    .btn-secondary {
-        background-color: #6c757d;
-        color: white;
-    }
-    .btn-secondary:hover {
-        background-color: #5a6268;
-    }
-</style>
-
-{# ส่วนสรุปยางและแม็กแบบ Card #}
-<div class="summary-card-container">
-    <div class="summary-card">
-        <h4>สรุปยาง</h4>
-        <p>รับเข้ารวม: <strong>{{ tire_total_in }}</strong> เส้น</p>
-        <p>จ่ายออกรวม: <strong>{{ tire_total_out }}</strong> เส้น</p>
-        <p>คงเหลือในคลังทั้งหมด: <strong>{{ tire_total_remaining }}</strong> เส้น</p>
-    </div>
-    <div class="summary-card">
-        <h4>สรุปแม็ก</h4>
-        <p>รับเข้ารวม: <strong>{{ wheel_total_in }}</strong> วง</p>
-        <p>จ่ายออกรวม: <strong>{{ wheel_total_out }}</strong> วง</p>
-        <p>คงเหลือในคลังทั้งหมด: <strong>{{ wheel_total_remaining }}</strong> วง</p>
-    </div>
-</div>
-
-{# ส่วน "รายงานสต็อกยาง" และ "รายงานสต็อกแม็ก" (ตารางสรุปตามรุ่น) ถูกลบออกแล้ว #}
-
-<div class="report-section">
-    <h3>ประวัติการเคลื่อนไหวสต็อกยางโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d-%m-%Y') }}</h3>
-    {% if tire_movements_raw %}
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>เวลา</th>
-                        <th>ประเภท</th>
-                        <th>จำนวน</th>
-                        <th>คงเหลือ</th>
-                        <th>ยี่ห้อ</th>
-                        <th>รุ่น</th>
-                        <th>เบอร์ยาง</th>
-                        <th>หมายเหตุ</th>
-                        <th>พนักงาน</th>
-                        <th>หลักฐาน</th>
-                        {% if current_user.is_admin() %}
-                        <th>จัดการ</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {# ตัดตัวเรียง Jinja2 ออกแล้ว โดยจะใช้การเรียงลำดับจาก Backend แทน #}
-                    {% for movement in tire_movements_raw %}
-                        <tr>
-                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td>
-                            <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
-                            <td>{{ movement.quantity_change }}</td>
-                            <td>{{ movement.remaining_quantity }}</td>
-                            <td>{{ movement.brand }}</td>
-                            <td>{{ movement.model }}</td>
-                            <td>{{ movement.size }}</td>
-                            <td>{{ movement.notes if movement.notes else '-' }}</td>
-                            <td>{{ movement.user_username if movement.user_username else '-' }}</td>
-                            <td>
-                                {% if movement.image_filename %}
-                                    <a href="{{ movement.image_filename }}" target="_blank">
-                                        <i class="fas fa-image"></i> ดูบิล
-                                    </a>
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            {% if current_user.is_admin() %}
-                            <td>
-                                <a href="{{ url_for('edit_tire_movement', movement_id=movement.id) }}" class="btn btn-warning btn-small">แก้ไข</a>
-                            </td>
-                            {% endif %}
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <p>ไม่มีการเคลื่อนไหวสต็อกยางในวันนี้</p>
-    {% endif %}
-</div>
-
-<div class="report-section" style="margin-top: 30px;">
-    <h3>ประวัติการเคลื่อนไหวสต็อกแม็กโดยละเอียดสำหรับวันที่ {{ report_date_obj.strftime('%d-%m-%Y') }}</h3>
-    {% if wheel_movements_raw %}
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>เวลา</th>
-                        <th>ประเภท</th>
-                        <th>จำนวน</th>
-                        <th>คงเหลือ</th>
-                        <th>ยี่ห้อ</th>
-                        <th>ลาย</th>
-                        <th>ขอบ</th>
-                        <th>รู</th>
-                        <th>หมายเหตุ</th>
-                        <th>พนักงาน</th>
-                        <th>หลักฐาน</th>
-                        {% if current_user.is_admin() %}
-                        <th>จัดการ</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {# ตัดตัวเรียง Jinja2 ออกแล้ว โดยจะใช้การเรียงลำดับจาก Backend แทน #}
-                    {% for movement in wheel_movements_raw %}
-                        <tr>
-                            <td>{{ movement.timestamp.strftime('%H:%M:%S') if movement.timestamp else '-' }}</td>
-                            <td>{{ 'รับเข้า' if movement.type == 'IN' else 'จ่ายออก' }}</td>
-                            <td>{{ movement.quantity_change }}</td>
-                            <td>{{ movement.remaining_quantity }}</td>
-                            <td>{{ movement.brand }}</td>
-                            <td>{{ movement.model }}</td>
-                            <td>{{ "%.1f"|format(movement.diameter) }}</td>
-                            <td>{{ movement.pcd if movement.pcd else '-' }}</td>
-                            <td>{{ movement.notes if movement.notes else '-' }}</td>
-                            <td>{{ movement.user_username if movement.user_username else '-' }}</td>
-                            <td>
-                                {% if movement.image_filename %}
-                                    <a href="{{ movement.image_filename }}" target="_blank">
-                                        <i class="fas fa-image"></i> ดูบิล
-                                    </a>
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            {% if current_user.is_admin() %}
-                            <td>
-                                <a href="{{ url_for('edit_wheel_movement', movement_id=movement.id) }}" class="btn btn-warning btn-small">แก้ไข</a>
-                            </td>
-                            {% endif %}
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <p>ไม่มีการเคลื่อนไหวสต็อกแม็กในวันนี้</p>
-    {% endif %}
-</div>
-
-<div class="back-link">
-    <a href="{{ url_for('stock_movement') }}" class="btn btn-secondary" style="margin-top: 20px;">กลับไปหน้าจัดการสต็อก</a>
-</div>
-
 {% endblock %}

@@ -1,75 +1,100 @@
 {% extends 'base.html' %}
 
-{% block title %}Admin Dashboard{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
 
 {% block content %}
-<h2 class="text-primary">Admin Dashboard</h2>
-<p class="lead">ยินดีต้อนรับสู่แผงควบคุมสำหรับผู้ดูแลระบบ</p>
-
-<div class="admin-tools-grid">
-    <div class="tool-card">
-        <h3><i class="fas fa-users"></i> จัดการผู้ใช้</h3>
-        <p>เพิ่ม แก้ไข หรือลบผู้ใช้ในระบบ รวมถึงการเปลี่ยนบทบาทของผู้ใช้</p>
-        <a href="{{ url_for('manage_users') }}" class="btn btn-primary">ไปที่หน้าจัดการผู้ใช้</a>
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Admin Dashboard</h1>
     </div>
 
-    <div class="tool-card">
-        <h3><i class="fas fa-trash-alt"></i> รายการสินค้าที่ถูกลบ</h3>
-        <p>ตรวจสอบและกู้คืนรายการยางหรือแม็กที่ถูกทำเครื่องหมายว่าถูกลบ</p>
-        <a href="{{ url_for('admin_deleted_items') }}" class="btn btn-primary">ไปที่หน้ารายการสินค้าที่ถูกลบ</a>
-    </div>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
 
-    {# สามารถเพิ่ม Tool Card อื่นๆ สำหรับ Admin ในอนาคตได้ที่นี่ #}
-    {# ตัวอย่าง:
-    <div class="tool-card">
-        <h3><i class="fas fa-cogs"></i> ตั้งค่าระบบ</h3>
-        <p>ปรับแต่งการตั้งค่าและพฤติกรรมของระบบ</p>
-        <a href="#" class="btn btn-primary">ไปที่หน้าตั้งค่า</a>
-    </div>
-    #}
+        <div class="col">
+            <a href="{{ url_for('manage_users') }}" class="text-decoration-none text-dark">
+                <div class="card h-100 shadow-sm card-hover">
+                    <div class="card-body text-center p-4">
+                        <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                        <h5 class="card-title">จัดการผู้ใช้</h5>
+                        <p class="card-text text-muted">เพิ่ม, แก้ไข, ลบผู้ใช้และกำหนดสิทธิ์</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col">
+            <a href="{{ url_for('promotions') }}" class="text-decoration-none text-dark">
+                <div class="card h-100 shadow-sm card-hover">
+                    <div class="card-body text-center p-4">
+                        <i class="fas fa-tags fa-3x text-success mb-3"></i>
+                        <h5 class="card-title">จัดการโปรโมชัน</h5>
+                        <p class="card-text text-muted">สร้างและจัดการโปรโมชันส่วนลด</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col">
+            <a href="{{ url_for('manage_wholesale_customers') }}" class="text-decoration-none text-dark">
+                <div class="card h-100 shadow-sm card-hover">
+                    <div class="card-body text-center p-4">
+                        <i class="fas fa-store fa-3x text-info mb-3"></i>
+                        <h5 class="card-title">จัดการลูกค้าค้าส่ง</h5>
+                        <p class="card-text text-muted">เพิ่ม, แก้ไข, ลบข้อมูลร้านค้าส่ง</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col">
+            <a href="{{ url_for('export_import') }}" class="text-decoration-none text-dark">
+                <div class="card h-100 shadow-sm card-hover">
+                    <div class="card-body text-center p-4">
+                        <i class="fas fa-file-export fa-3x text-warning mb-3"></i>
+                        <h5 class="card-title">นำเข้า/ส่งออกข้อมูล</h5>
+                        <p class="card-text text-muted">สำรองและกู้คืนข้อมูลสต็อก</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col">
+            <a href="{{ url_for('admin_deleted_items') }}" class="text-decoration-none text-dark">
+                <div class="card h-100 shadow-sm card-hover">
+                    <div class="card-body text-center p-4">
+                        <i class="fas fa-trash-restore-alt fa-3x text-danger mb-3"></i>
+                        <h5 class="card-title">รายการที่ถูกลบ</h5>
+                        <p class="card-text text-muted">ดูและกู้คืนสินค้าที่ถูกลบ</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col">
+            <a href="{{ url_for('fix_history') }}" class="text-decoration-none text-dark">
+                <div class="card h-100 shadow-sm card-hover">
+                    <div class="card-body text-center p-4">
+                        <i class="fas fa-wrench fa-3x text-secondary mb-3"></i>
+                        <h5 class="card-title">ซ่อมแซมข้อมูล</h5>
+                        <p class="card-text text-muted">คำนวณค่า "คงเหลือ" ในประวัติการทำรายการใหม่ทั้งหมด</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+	
+        </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <style>
-    .admin-tools-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 25px;
-        margin-top: 30px;
-    }
-    .tool-card {
-        background-color: var(--bg-white);
-        padding: 25px;
-        border-radius: var(--border-radius-md);
-        box-shadow: var(--shadow-light);
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between; /* Push button to bottom */
-        align-items: center;
-    }
-    .tool-card h3 {
-        color: var(--text-dark);
-        margin-top: 0;
-        margin-bottom: 15px;
-        font-weight: 600;
-    }
-    .tool-card h3 i {
-        margin-right: 10px;
-        color: var(--primary-color);
-        font-size: 1.5em;
-    }
-    .tool-card p {
-        color: var(--text-muted);
-        font-size: 0.95em;
-        line-height: 1.5;
-        margin-bottom: 20px;
-        flex-grow: 1; /* Allow paragraph to take up available space */
-    }
-    .tool-card .btn {
-        width: 80%; /* Make button wider */
-        padding: 10px 15px;
-        font-size: 1em;
-        margin-top: auto; /* Push button to the bottom if content is short */
-    }
+/* เพิ่ม CSS เล็กน้อยเพื่อให้การ์ดดูน่าสนใจขึ้นเมื่อเอาเมาส์ไปชี้ */
+.card-hover {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15) !important;
+}
 </style>
 {% endblock %}
