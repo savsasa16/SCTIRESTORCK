@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+
+{% block page_title %}แก้ไขอะไหล่: {{ spare_part.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">
+            <i class="fas fa-tools me-2"></i>แก้ไขข้อมูลอะไหล่: {{ spare_part.name }}
+        </h4>
+        <a href="{{ url_for('stock.index', tab='spare_parts') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> กลับไปหน้าสต็อก
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form id="editSparePartForm" method="POST" action="{{ url_for('stock.edit_spare_part', spare_part_id=spare_part.id) }}" enctype="multipart/form-data">
+
+                        <h5 class="mb-3 border-bottom pb-2">ข้อมูลหลัก</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="spare_part_name" class="form-label">ชื่ออะไหล่*</label>
+                                <input type="text" class="form-control" id="spare_part_name" name="name" value="{{ spare_part.name }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="spare_part_part_number" class="form-label">Part Number (ถ้ามี)</label>
+                                <input type="text" class="form-control" id="spare_part_part_number" name="part_number" value="{{ spare_part.part_number if spare_part.part_number else '' }}">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="spare_part_brand" class="form-label">ยี่ห้อ (ถ้ามี)</label>
+                                <input type="text" class="form-control" id="spare_part_brand" name="brand" value="{{ spare_part.brand if spare_part.brand else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="spare_part_category_id" class="form-label">หมวดหมู่*</label>
+                                <select class="form-select" id="spare_part_category_id" name="category_id" required>
+                                    <option value="none">-- เลือกหมวดหมู่ --</option>
+                                    {% for category in all_spare_part_categories %}
+                                        <option value="{{ category.id }}" {% if spare_part.category_id == category.id %}selected{% endif %}>
+                                            {{ category.name_display }}
+                                        </option>
+                                        {% if category.children %}
+                                            {% for sub_category in category.children %}
+                                                <option value="{{ sub_category.id }}" {% if spare_part.category_id == sub_category.id %}selected{% endif %}>
+                                                    &mdash; {{ sub_category.name_display }}
+                                                </option>
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">หากไม่มีหมวดหมู่ที่ต้องการ <a href="{{ url_for('stock.manage_spare_part_categories') }}" target="_blank">สร้างหมวดหมู่ใหม่ที่นี่</a></div>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="spare_part_description" class="form-label">คำอธิบายเพิ่มเติม</label>
+                                <textarea class="form-control" id="spare_part_description" name="description" rows="3">{{ spare_part.description if spare_part.description else '' }}</textarea>
+                            </div>
+
+                            <hr class="my-4">
+                            <h5 class="mb-3 border-bottom pb-2">ต้นทุนและราคาขาย (ไม่บังคับ)</h5>
+                            
+                            <div class="col-md-6">
+                                <label for="spare_part_cost" class="form-label">ทุน</label>
+                                <input type="number" class="form-control" step="0.01" id="spare_part_cost" name="cost" value="{{ spare_part.cost if spare_part.cost is not none else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="spare_part_cost_online" class="form-label">ทุน Online</label>
+                                <input type="number" class="form-control" step="0.01" id="spare_part_cost_online" name="cost_online" value="{{ spare_part.cost_online if spare_part.cost_online is not none else '' }}">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="spare_part_wholesale_price1" class="form-label">ราคาส่ง 1</label>
+                                <input type="number" class="form-control" step="0.01" id="spare_part_wholesale_price1" name="wholesale_price1" value="{{ spare_part.wholesale_price1 if spare_part.wholesale_price1 is not none else '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="spare_part_wholesale_price2" class="form-label">ราคาส่ง 2</label>
+                                <input type="number" class="form-control" step="0.01" id="spare_part_wholesale_price2" name="wholesale_price2" value="{{ spare_part.wholesale_price2 if spare_part.wholesale_price2 is not none else '' }}">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="spare_part_retail_price" class="form-label">ราคาขายปลีก*</label>
+                                <input type="number" class="form-control" step="0.01" id="spare_part_retail_price" name="retail_price" value="{{ spare_part.retail_price }}" required>
+                            </div>
+
+                            <hr class="my-4">
+                            <h5 class="mb-3 border-bottom pb-2">รูปภาพ</h5>
+                            <div class="col-md-6">
+                                <label for="spare_part_image_file" class="form-label">อัปโหลดรูปภาพใหม่</label>
+                                <input class="form-control" type="file" id="spare_part_image_file" name="image_file" accept="image/png, image/jpeg, image/gif">
+                            </div>
+                            <div class="col-md-6">
+                                {% if spare_part.image_filename %}
+                                    <div class="mt-2">
+                                        <p class="mb-1">รูปภาพปัจจุบัน:</p>
+                                        <img src="{{ spare_part.image_filename }}" alt="Current Spare Part Image" class="img-thumbnail" style="max-width: 150px;">
+                                        <input type="hidden" name="existing_image_url" value="{{ spare_part.image_filename }}">
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light text-end mt-4">
+                            <a href="{{ url_for('stock.index', tab='spare_parts') }}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>ยกเลิก</a>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>บันทึกการแก้ไข</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-barcode me-2"></i>จัดการ Barcode ID</h5>
+                    <a href="{{ url_for('stock.print_barcodes', item_type='spare_part', item_id=spare_part.id) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-print me-1"></i> พิมพ์
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div id="barcodeStatus"></div>
+                    <div class="mb-3">
+                        <label for="new_barcode" class="form-label">เพิ่ม Barcode ID ใหม่:</label>
+                        <div class="input-group">
+                            <input type="text" id="new_barcode" class="form-control" placeholder="ยิงหรือพิมพ์ Barcode ID ใหม่">
+                            <button id="gen_barcode_btn" class="btn btn-outline-primary" type="button" title="สร้างเลข Barcode ใหม่">สร้างบาร์โค้ด</button>
+                            <button id="add_barcode_btn" class="btn btn-outline-success" type="button">เพิ่ม</button>
+                        </div>
+                    </div>
+
+                    <h6>Barcode ID ที่ผูกอยู่:</h6>
+                    <ul id="barcodes_list" class="list-group">
+                        </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sparePartId = {{ spare_part.id }};
+        const newBarcodeInput = document.getElementById('new_barcode');
+        const addBarcodeBtn = document.getElementById('add_barcode_btn');
+        const barcodesList = document.getElementById('barcodes_list');
+        const barcodeStatusDiv = document.getElementById('barcodeStatus');
+        const genBarcodeBtn = document.getElementById('gen_barcode_btn');
+
+        function showBarcodeStatus(message, type = 'info') {
+            barcodeStatusDiv.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                                            ${message}
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                          </div>`;
+        }
+
+        function renderBarcodes(barcodes) {
+            barcodesList.innerHTML = '';
+            if (!barcodes || barcodes.length === 0) {
+                barcodesList.innerHTML = '<li class="list-group-item text-muted">ยังไม่มี Barcode ID ผูกอยู่</li>';
+                return;
+            }
+            barcodes.forEach(barcode_item => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                
+                const primaryBadge = barcode_item.is_primary_barcode 
+                    ? '<span class="badge text-bg-primary ms-2">หลัก</span>' 
+                    : '';
+
+                li.innerHTML = `
+                    <span class="fw-bold font-monospace">${barcode_item.barcode_string} ${primaryBadge}</span>
+                    <button class="btn btn-danger btn-sm delete-barcode-btn" data-barcode="${barcode_item.barcode_string}" title="ลบ Barcode">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                `;
+                barcodesList.appendChild(li);
+            });
+            addDeleteBarcodeEventListeners();
+        }
+
+        async function fetchBarcodesAndRender() {
+            try {
+                const response = await fetch(`/api/spare_part/${sparePartId}/barcodes`);
+                const data = await response.json();
+                if (data.success) {
+                    renderBarcodes(data.barcodes);
+                } else {
+                    showBarcodeStatus(data.message || 'ไม่สามารถโหลดรายการบาร์โค้ดได้', 'danger');
+                }
+            } catch (error) {
+                console.error('Error fetching barcodes:', error);
+                showBarcodeStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเพื่อโหลดบาร์โค้ด', 'danger');
+            }
+        }
+
+        function addDeleteBarcodeEventListeners() {
+            document.querySelectorAll('.delete-barcode-btn').forEach(button => {
+                button.onclick = function() {
+                    const barcodeToDelete = this.dataset.barcode;
+                    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบ Barcode ID: ${barcodeToDelete} ?`)) {
+                        fetch(`/api/spare_part/${sparePartId}/barcodes`, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ barcode_string: barcodeToDelete })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            showBarcodeStatus(data.message, data.success ? 'success' : 'danger');
+                            if (data.success) {
+                                fetchBarcodesAndRender();
+                            }
+                        });
+                    }
+                };
+            });
+        }
+        
+        addBarcodeBtn.addEventListener('click', function() {
+            const newBarcode = newBarcodeInput.value.trim();
+            if (!newBarcode) {
+                showBarcodeStatus('กรุณากรอก Barcode ID', 'warning');
+                return;
+            }
+
+            fetch(`/api/spare_part/${sparePartId}/barcodes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ barcode_string: newBarcode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showBarcodeStatus(data.message, data.success ? 'success' : 'danger');
+                if (data.success) {
+                    newBarcodeInput.value = '';
+                    fetchBarcodesAndRender();
+                }
+            });
+        });
+
+        genBarcodeBtn.addEventListener('click', async function() {
+            newBarcodeInput.value = 'กำลังสร้าง...';
+            genBarcodeBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/generate_unique_barcode/spare_part');
+                const data = await response.json();
+
+                if (data.success) {
+                    newBarcodeInput.value = data.new_barcode;
+                } else {
+                    newBarcodeInput.value = '';
+                    showBarcodeStatus(data.message || 'ไม่สามารถสร้างบาร์โค้ดได้', 'danger');
+                }
+            } catch (error) {
+                newBarcodeInput.value = '';
+                showBarcodeStatus('การเชื่อมต่อเพื่อสร้างบาร์โค้ดล้มเหลว', 'danger');
+            } finally {
+                genBarcodeBtn.disabled = false;
+            }
+        });
+
+        // Initial load of barcodes
+        fetchBarcodesAndRender();
+    });
+</script>
+{% endblock %}

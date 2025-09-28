@@ -1,0 +1,113 @@
+<div class="card-item-container bg-white position-relative">
+    {# Status Badge (Critical/Warning/Normal) #}
+    <span class="status-badge 
+        {% if item.urgency == 'critical' %} status-critical
+        {% elif item.urgency == 'warning' %} status-warning
+        {% else %} status-normal {% endif %}">
+        {% if item.urgency == 'critical' %}
+            <i class="fas fa-fire me-1"></i> เร่งด่วน
+        {% elif item.urgency == 'warning' %}
+            <i class="fas fa-exclamation me-1"></i> ควรสั่งเพิ่ม
+        {% else %}
+            <i class="fas fa-leaf me-1"></i> ปกติ
+        {% endif %}
+    </span>
+
+    <div class="card-body p-3">
+        <div class="row align-items-center">
+            {# --- Left Column: Item Description & Sales --- #}
+            <div class="col-md-7 border-end pe-md-4">
+                <h6 class="mb-1 text-truncate d-flex align-items-center fs-5" data-brand="{{ item.brand }}">
+                    <span class="flex-grow-1">
+                        {{ item.item_description }}
+                        {% if item.item_type == 'tire' and item.year_of_manufacture %}
+                            <span class="text-muted fw-normal small">ปี{{ item.year_of_manufacture }}</span>
+                        {% endif %}
+                    </span>
+                </h6>
+
+                <div class="d-flex justify-content-between align-items-baseline mb-2 mt-1">
+                    <div>
+                        <span class="small text-muted me-1">สต็อกปัจจุบัน:</span>
+                        <strong class="fs-5 current-stock-value">{{ item.current_stock }}</strong>
+                    </div>
+                    <div>
+                        <span class="small text-muted me-1">ขายเฉลี่ย:</span>
+                        <strong class="fs-5">{{ "%.2f"|format(item.wma_velocity) }}</strong>
+                        <span class="small text-muted"> ชิ้น/วัน</span>
+                    </div>
+                </div>
+
+                {# Progress Bar for Stock Visualisation #}
+                <div class="progress" style="height: 10px;">
+                    <div class="progress-bar progress-bar-stock" role="progressbar" 
+                        aria-valuenow="{{ item.current_stock }}" 
+                        aria-valuemin="0" 
+                        aria-valuemax="{{ item.reorder_point }}">
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between small text-muted mt-1">
+                    <span>
+                        สต็อกควรมี: <span class="safety-stock-value">{{ item.safety_stock }}</span>
+                    </span>
+                    <span>
+                        ควรสั่งเมื่อต่ำกว่า: <span class="reorder-point-value">{{ item.reorder_point }}</span>
+                    </span>
+                </div>
+            </div>
+            
+            {# ⭐⭐⭐ เพิ่มเส้นคั่นที่จะแสดงผลเฉพาะในจอมือถือ ⭐⭐⭐ #}
+            <div class="col-12 d-md-none">
+                <hr class="my-3">
+            </div>
+
+            {# --- Right Column: Analysis & Actions --- #}
+            <div class="col-md-5 ps-md-4">
+                <div class="row text-center mb-2">
+                    <div class="col-6">
+                        <div class="small text-muted">ของจะหมดใน</div>
+                        <strong class="fs-5">
+                            {% if item.days_of_stock_left < 999 %}
+                                {{ item.days_of_stock_left }} <span class="small">วัน</span>
+                            {% else %}
+                                &infin;
+                            {% endif %}
+                        </strong>
+                    </div>
+                    <div class="col-6">
+                        <div class="small text-muted">ระยะเวลารอสินค้า</div>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control text-center lead-time-input" value="{{ item.lead_time_used }}"
+                                data-item-id="{{ item.item_id }}" data-item-type="{{ item.item_type }}" style="padding: 0.25rem;">
+                            <button class="btn btn-outline-secondary recalculate-btn" type="button" data-bs-toggle="tooltip" title="คำนวณใหม่">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert text-center small py-2 recommendation-message
+                    {% if 'ด่วน' in item.recommendation_msg %} alert-danger text-white
+                    {% elif 'ควรสั่งเพิ่ม' in item.recommendation_msg %} alert-warning
+                    {% else %} alert-success {% endif %}" role="alert">
+                    {% if item.recommendation_msg %}
+                        <strong>
+                            {% if 'ด่วน' in item.recommendation_msg %} <i class="fas fa-exclamation-triangle me-1"></i>
+                            {% elif 'ควรสั่งเพิ่ม' in item.recommendation_msg %} <i class="fas fa-box-open me-1"></i>
+                            {% else %} <i class="fas fa-check-circle me-1"></i> {% endif %}
+                            {{ item.recommendation_msg }}
+                        </strong>
+                    {% else %}
+                        <strong><i class="fas fa-check-circle me-1"></i> สต็อกเพียงพอ</strong>
+                    {% endif %}
+                </div>
+                <div class="d-grid">
+                    <button class="btn btn-sm btn-outline-dark ignore-btn" type="button"
+                            data-item-id="{{ item.item_id }}" data-item-type="{{ item.item_type }}">
+                        <i class="fas fa-eye-slash me-2"></i>ซ่อนรายการ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block page_title %}จัดการผู้ใช้{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">จัดการผู้ใช้</h4>
+        <a href="{{ url_for('stock.add_new_user') }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-user-plus me-2"></i>เพิ่มผู้ใช้ใหม่
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col" style="width: 5%;">ID</th>
+                        <th scope="col">ชื่อผู้ใช้</th>
+                        <th scope="col" style="width: 35%;">บทบาท</th>
+                        <th scope="col" style="width: 15%;" class="text-center">การดำเนินการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>
+                                {% if user.id == current_user.id %}
+                                    <select name="role" class="form-select form-select-sm" disabled>
+                                        <option>{{ user.role|title }}</option>
+                                    </select>
+                                    <small class="text-muted d-block mt-1">ไม่สามารถเปลี่ยนบทบาทของตัวเองได้</small>
+                                {% else %}
+                                    <form action="{{ url_for('stock.edit_user_role', user_id=user.id) }}" method="post" class="m-0">
+                                        <select name="role" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <option value="viewer" {% if user.role == 'viewer' %}selected{% endif %}>เซลล์ (salesman)</option>
+                                            <option value="retail_sales" {% if user.role == 'retail_sales' %}selected{% endif %}>พนักงานขาย (Retail Sales)</option>
+                                            <option value="wholesale_sales" {% if user.role == 'wholesale_sales' %}selected{% endif %}>พนักงานค้าส่ง (Wholesale Sales)</option>
+                                            <option value="editor" {% if user.role == 'editor' %}selected{% endif %}>พนักงานขายที่ปรับสต๊อกได้ (Editor)</option>
+                                            <option value="accountant" {% if user.role == 'accountant' %}selected{% endif %}>พนักงานบัญชี(Accountant)</option>
+                                            <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>ผู้ดูแลระบบ (Admin)</option>
+                                        </select>
+                                    </form>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#changePasswordModal{{ user.id }}" title="เปลี่ยนรหัสผ่าน">
+                                    <i class="fas fa-key"></i>
+                                </button>
+
+                                {% if user.id != current_user.id %}
+                                    <form class="delete-form d-inline" action="{{ url_for('stock.delete_user', user_id=user.id) }}" method="post" onsubmit="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้ {{ user.username }}?');">
+                                        <button type="submit" class="btn btn-danger btn-sm" title="ลบผู้ใช้">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                <div class="modal fade" id="changePasswordModal{{ user.id }}" tabindex="-1" aria-labelledby="changePasswordModalLabel{{ user.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form action="{{ url_for('stock.change_password', user_id=user.id) }}" method="post">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="changePasswordModalLabel{{ user.id }}">เปลี่ยนรหัสผ่านสำหรับ: {{ user.username }}</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label for="new_password_{{ user.id }}" class="form-label">รหัสผ่านใหม่</label>
+                                                        <input type="password" class="form-control" id="new_password_{{ user.id }}" name="new_password" required>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="confirm_password_{{ user.id }}" class="form-label">ยืนยันรหัสผ่านใหม่</label>
+                                                        <input type="password" class="form-control" id="confirm_password_{{ user.id }}" name="confirm_password" required>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                                                    <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

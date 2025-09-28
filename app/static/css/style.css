@@ -1,0 +1,156 @@
+/* --- Root Variables (ตัวแปรสำหรับปรับแต่งดีไซน์) --- */
+:root {
+    /* Colors */
+    --bs-primary-rgb: 52, 152, 219; /* Override Bootstrap Primary (Blue) */
+    --bs-secondary-rgb: 108, 117, 125; /* Override Bootstrap Secondary (Gray) */
+    --bs-success-rgb: 40, 167, 69;   /* Override Bootstrap Success (Green) */
+    --bs-danger-rgb: 220, 53, 69;    /* Override Bootstrap Danger (Red) */
+    --bs-info-rgb: 0, 180, 245;      /* Override Bootstrap Info (Sky Blue for Promo) */
+
+    --text-dark: #2c3e50;
+    --bg-light: #f9fafd;
+    --border-color: #dee2e6;
+    --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+    /* Border Radii */
+    --bs-border-radius: 0.5rem;      /* 8px */
+    --bs-border-radius-sm: 0.25rem;  /* 4px */
+    --bs-border-radius-lg: 1rem;       /* 16px */
+    --bs-border-radius-xl: 1.25rem;
+
+    /* Transitions */
+    --transition-speed: 0.3s;
+    --transition-ease: ease;
+}
+
+/* --- Base Typography & Layout --- */
+body {
+    font-family: 'Prompt', sans-serif;
+    background-color: var(--bg-light);
+    color: #555;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Custom Component Styles (ใช้ร่วมกัน) --- */
+.custom-tabs .nav-link {
+    font-weight: 600;
+}
+.brand-group-container .brand-header {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+.summary-row td {
+    font-weight: bold;
+}
+.summary-row .summary-brand-text {
+    font-size: 1.05em;
+}
+.promo-badge {
+    font-weight: 600;
+    cursor: help;
+}
+.table .text-nowrap {
+    white-space: nowrap;
+}
+.table td img {
+    max-width: 60px;
+    height: auto;
+    border-radius: var(--bs-border-radius-sm);
+}
+
+/* Override text-success to make it bold */
+.text-success {
+    color: var(--bs-success) !important;
+    font-weight: 600;
+}
+
+
+/* --- DESKTOP ONLY STYLES (หน้าจอใหญ่กว่า 992px) --- */
+@media (min-width: 992px) {
+
+    /* DESKTOP: Auto-hide Sidebar on Hover */
+
+    /* สถานะปกติ (ยุบอยู่) */
+    .sidebar-fixed {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 80px; /* ความกว้างเมื่อยุบ */
+        z-index: 1030;
+        overflow-x: hidden;
+        transition: width 0.3s ease;
+    }
+
+    .sidebar-fixed .sidebar-text {
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        white-space: nowrap; /* ป้องกันข้อความตกบรรทัดตอนยุบ */
+    }
+
+    .sidebar-fixed .nav-link {
+        justify-content: center;
+    }
+    .sidebar-fixed .nav-link .me-2 {
+        margin-right: 0 !important;
+    }
+
+    /* สถานะเมื่อเอาเมาส์ไปชี้ (ขยายออก) */
+    .sidebar-fixed:hover {
+        width: 280px; /* ความกว้างเมื่อขยายเต็ม */
+    }
+
+    .sidebar-fixed:hover .sidebar-text {
+        visibility: visible;
+        opacity: 1;
+        transition-delay: 0.1s; /* หน่วงเวลาให้ขยายเสร็จก่อนข้อความจะปรากฏ */
+    }
+
+    .sidebar-fixed:hover .nav-link {
+        justify-content: flex-start;
+    }
+    .sidebar-fixed:hover .nav-link .me-2 {
+        margin-right: 0.5rem !important; /* เอาระยะห่างกลับมา */
+    }
+
+
+    /* Main Content and Footer Layout for Desktop */
+    .main-content {
+        margin-left: 80px; /* เว้นที่สำหรับ Sidebar ที่ยุบอยู่ */
+        transition: margin-left 0.3s ease;
+    }
+    
+    .main-footer {
+        text-align: center;
+        padding: 1.5rem;
+        margin-top: 2rem;
+        background-color: #ffffff;
+        border-top: 1px solid var(--border-color);
+        /* ไม่ต้องกำหนด margin-left ที่นี่แล้ว เพราะมันอยู่ข้างใน main-content */
+    }
+    
+    /* เมื่อ Sidebar ขยายออก ให้ขยับเนื้อหาตาม */
+    .sidebar-fixed:hover ~ .main-content {
+        margin-left: 280px;
+    }
+}
+
+
+/* --- MOBILE ONLY STYLES (หน้าจอเล็กกว่า 992px) --- */
+@media (max-width: 991.98px) {
+    /* Reset layout for mobile, letting Bootstrap's offcanvas work */
+    .main-content,
+    .main-footer {
+        margin-left: 0; /* บนมือถือต้องไม่มีระยะห่างด้านซ้าย */
+    }
+
+    .main-footer {
+        text-align: center;
+        padding: 1.5rem;
+        margin-top: 2rem;
+        background-color: #ffffff;
+        border-top: 1px solid var(--border-color);
+    }
+}

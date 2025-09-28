@@ -1,169 +1,227 @@
-# document_generator.py
+import os
+import json
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
-from reportlab.lib.colors import black, grey, lightgrey
-import requests
+from reportlab.lib.colors import black, grey, lightgrey, whitesmoke
 from io import BytesIO
+from collections import defaultdict
 
-# เพิ่มฟอนต์ไทย (TH Sarabun New)
+# --- ส่วนของการตั้งค่าฟอนต์ ---
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-# ตรวจสอบและลงทะเบียนฟอนต์หากยังไม่ได้ทำ
-# ตรวจสอบให้แน่ใจว่าไฟล์ THSarabunNew.ttf และ THSarabunNew-Bold.ttf อยู่ใน directory เดียวกันกับไฟล์นี้
 THAI_FONT_LOADED = False
 try:
     pdfmetrics.registerFont(TTFont('Sarabun', 'THSarabunNew.ttf'))
-    pdfmetrics.registerFont(TTFont('Sarabun-Bold', 'THSarabunNew-Bold.ttf'))
+    pdfmetrics.registerFont(TTFont('Sarabun-Bold', 'THSarabunNew Bold.ttf'))
     THAI_FONT_LOADED = True
 except Exception as e:
-    print(f"Warning: THSarabunNew.ttf or THSarabunNew-Bold.ttf not found. Please ensure fonts are in the same directory or accessible path. Error: {e}")
-    print("Falling back to Helvetica fonts. Thai characters will NOT display correctly.")
+    print(f"Warning: Thai fonts not found. Falling back to Helvetica. Error: {e}")
 
 styles = getSampleStyleSheet()
+normal_font = 'Sarabun' if THAI_FONT_LOADED else 'Helvetica'
+bold_font = 'Sarabun-Bold' if THAI_FONT_LOADED else 'Helvetica-Bold'
 
-# กำหนด FontName ที่จะใช้ตามว่าโหลดฟอนต์ไทยได้หรือไม่
-if THAI_FONT_LOADED:
-    normal_font = 'Sarabun'
-    bold_font = 'Sarabun-Bold'
-else:
-    normal_font = 'Helvetica'
-    bold_font = 'Helvetica-Bold'
-
-# อัปเดตสไตล์ที่มีอยู่แล้ว และเพิ่มสไตล์ใหม่ที่จำเป็น
-# ไม่ใช้ styles.add() สำหรับสไตล์ที่มีอยู่แล้วใน getSampleStyleSheet()
-
-# อัปเดต TitleStyle (อันนี้เราสร้างเอง ไม่ได้มาจาก SampleStyleSheet)
 styles.add(ParagraphStyle(name='TitleStyle', fontName=bold_font, fontSize=20, alignment=TA_CENTER, spaceAfter=14))
-
-# อัปเดต Heading1 (มีอยู่แล้วใน SampleStyleSheet)
-styles['Heading1'].fontName = bold_font
-styles['Heading1'].fontSize = 14
-styles['Heading1'].spaceAfter = 8
-styles['Heading1'].alignment = TA_LEFT # เพิ่มการจัดตำแหน่งให้ชัดเจน
-
-# อัปเดต Normal (มีอยู่แล้วใน SampleStyleSheet)
 styles['Normal'].fontName = normal_font
 styles['Normal'].fontSize = 12
-styles['Normal'].spaceAfter = 6
-styles['Normal'].alignment = TA_LEFT # เพิ่มการจัดตำแหน่งให้ชัดเจน
-
-# เพิ่มสไตล์ใหม่ที่ไม่มีใน SampleStyleSheet
-styles.add(ParagraphStyle(name='NormalRight', fontName=normal_font, fontSize=12, alignment=TA_RIGHT, spaceAfter=6))
-styles.add(ParagraphStyle(name='NormalCenter', fontName=normal_font, fontSize=12, alignment=TA_CENTER, spaceAfter=6))
-styles.add(ParagraphStyle(name='SmallText', fontName=normal_font, fontSize=10, spaceAfter=4))
-styles.add(ParagraphStyle(name='BoldSmallText', fontName=bold_font, fontSize=10, spaceAfter=4))
+styles.add(ParagraphStyle(name='SmallText', fontName=normal_font, fontSize=10, leading=12))
+styles.add(ParagraphStyle(name='NormalRight', fontName=normal_font, fontSize=12, alignment=TA_RIGHT))
+styles.add(ParagraphStyle(name='NormalCenter', fontName=normal_font, fontSize=12, alignment=TA_CENTER))
+styles.add(ParagraphStyle(name='BoldSmallText', fontName=bold_font, fontSize=10))
+# --- สิ้นสุดส่วนตั้งค่าฟอนต์ ---
 
 
-def generate_document_pdf(doc_type, doc_data):
-    # ... โค้ดส่วนที่เหลือเหมือนเดิมทั้งหมด ...
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
-    Story = []
-
-    # Title
-    title_text = "ใบรับสินค้า" if doc_type == "GR" else "ใบส่งสินค้า"
-    Story.append(Paragraph(title_text, styles['TitleStyle']))
-    Story.append(Spacer(1, 0.5*cm))
-
-    # Header Info
-    Story.append(Paragraph(f"<b>เลขที่เอกสาร:</b> {doc_data['document_number']}", styles['Normal']))
-    Story.append(Paragraph(f"<b>วันที่:</b> {doc_data['document_date']}", styles['Normal']))
+### Helper Function: สร้างตารางรายการสินค้า (ใช้ร่วมกัน) ###
+def _build_items_table(options, job_items_list):
+    table_columns_options = options.get('table_columns', [])
+    visible_columns = [col for col in table_columns_options if col.get('show')]
     
-    if doc_type == "GR":
-        Story.append(Paragraph(f"<b>จาก:</b> {doc_data.get('contact_name', '')}", styles['Normal']))
-    else: # GI
-        Story.append(Paragraph(f"<b>ถึง:</b> {doc_data.get('contact_name', '')}", styles['Normal']))
-    
-    Story.append(Spacer(1, 0.8*cm))
+    if not visible_columns:
+        return Spacer(0, 0)
 
-    # Items Table
-    table_data = [['ลำดับ', 'รายการสินค้า', 'จำนวน', 'ราคาต่อหน่วย (ถ้ามี)', 'รวม (ถ้ามี)']]
-    
-    total_quantity_all_items = 0
-    total_sum_all_items = 0
-    
-    for i, item in enumerate(doc_data['items']):
-        item_unit_price = f"{item['unit_price']:,.2f}" if item.get('unit_price') is not None else '-'
-        item_total = f"{item['total']:,.2f}" if item.get('total') is not None else '-'
-        
-        table_data.append([
-            str(i + 1),
-            Paragraph(item['name'], styles['Normal']),
-            item['quantity'],
-            item_unit_price,
-            item_total
-        ])
-        total_quantity_all_items += item['quantity']
-        if item.get('total') is not None:
-            total_sum_all_items += item['total']
+    table_headers = [Paragraph('<b>#</b>', styles['NormalCenter'])]
+    col_widths = [1.5*cm]
+    available_width = 16.5*cm
 
-    # Add total row
-    table_data.append([
-        '',
-        Paragraph("<b>รวม</b>", styles['NormalRight']),
-        Paragraph(f"<b>{total_quantity_all_items}</b>", styles['NormalCenter']),
-        '',
-        Paragraph(f"<b>{total_sum_all_items:,.2f}</b>" if total_sum_all_items > 0 else '-', styles['NormalRight'])
-    ])
-
-    table = Table(table_data, colWidths=[1.5*cm, 7*cm, 2*cm, 3*cm, 3*cm])
+    num_visible = len(visible_columns)
+    desc_width_ratio = 0.45
+    non_desc_width = available_width * (1 - desc_width_ratio)
+    other_col_width = non_desc_width / (num_visible - 1 if num_visible > 1 else 1)
     
-    # กำหนดฟอนต์สำหรับสไตล์ตารางตามที่โหลดได้
-    # ไม่ต้องมี if-else ซ้ำซ้อนที่นี่แล้ว เพราะ normal_font/bold_font ถูกกำหนดไว้แล้ว
-    table_font_normal = normal_font
-    table_font_bold = bold_font
+    for col in visible_columns:
+        table_headers.append(Paragraph(f"<b>{col.get('label', '')}</b>", styles['NormalCenter']))
+        if col.get('key') == 'description': col_widths.append(available_width * desc_width_ratio)
+        else: col_widths.append(other_col_width)
 
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), lightgrey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), black),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('ALIGN', (1, 0), (1, -1), 'LEFT'), # Item name left align
-        ('ALIGN', (3, 0), (3, -1), 'RIGHT'), # Unit price right align
-        ('ALIGN', (4, 0), (4, -1), 'RIGHT'), # Total price right align
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTNAME', (0, 0), (-1, 0), table_font_bold), # Header
-        ('FONTNAME', (0, 1), (-1, -2), table_font_normal), # Data rows
-        ('FONTNAME', (0, -1), (-1, -1), table_font_bold), # Total row
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 0.5, grey),
-        ('BOX', (0, 0), (-1, -1), 1, black),
+    table_data = [table_headers]
+    for i, item in enumerate(job_items_list):
+        row_data = [str(i+1)]
+        for col in visible_columns:
+            key = col.get('key')
+            original_price = item.get('original_unit_price', item.get('unit_price', 0)) or 0
+            final_price = item.get('unit_price', 0) or 0
+            quantity = item.get('quantity', 0) or 0
+            total_discount = (original_price - final_price) * quantity
+
+            if key == 'description':
+                row_data.append(Paragraph(item.get('description', ''), styles['SmallText']))
+            elif key == 'quantity':
+                row_data.append(Paragraph(str(quantity), styles['NormalCenter']))
+            elif key == 'unit_price':
+                row_data.append(Paragraph(f"{original_price:,.2f}", styles['NormalRight']))
+            elif key == 'discount':
+                row_data.append(Paragraph(f"{total_discount:,.2f}" if total_discount > 0 else '-', styles['NormalRight']))
+            elif key == 'total_price':
+                row_data.append(Paragraph(f"{item.get('total_price', 0):,.2f}", styles['NormalRight']))
+        table_data.append(row_data)
+
+    items_table = Table(table_data, colWidths=col_widths)
+    items_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), whitesmoke),
+        ('GRID', (0,0), (-1,-1), 1, grey),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('FONTNAME', (0,0), (-1,-1), normal_font),
+        ('FONTSIZE', (0,1), (-1,-1), 9),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ('TOPPADDING', (0,0), (-1,-1), 8),
+        ('ALIGN', (1,1), (1,-1), 'LEFT'),
     ]))
-    Story.append(table)
-    Story.append(Spacer(1, 0.8*cm))
+    return items_table
 
-    # Notes
-    if doc_data.get('notes'):
-        Story.append(Paragraph(f"<b>หมายเหตุ:</b> {doc_data['notes']}", styles['Normal']))
+
+### ฟังก์ชันสำหรับ "ใบรับรถ" (Layout มาตรฐาน) ###
+def generate_job_order_pdf(job_data, template_data):
+    try:
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=1.5*cm, leftMargin=1.5*cm, topMargin=1.5*cm, bottomMargin=1.5*cm)
+        Story = []
+        
+        options = template_data.get('options', {})
+
+        shop_info = f"<b>{template_data.get('shop_name') or 'ชื่อร้านของคุณ'}</b><br/><font size='9'>{template_data.get('shop_details') or 'ที่อยู่และเบอร์โทรศัพท์'}</font>"
+        header_title = template_data.get('header_text') or 'ใบรับรถ / ใบแจ้งซ่อม'
+
+        header_data = [[Paragraph(shop_info, styles['NormalCenter']), Paragraph(f"<b>{header_title}</b><br/>Job Order", styles['TitleStyle'])]]
+        header_table = Table(header_data, colWidths=[9*cm, 9*cm], style=[('VALIGN', (0,0), (-1,-1), 'TOP'), ('ALIGN', (1,0), (1,0), 'RIGHT')])
+        Story.append(header_table)
+
+        customer_info = f"<b>ลูกค้า:</b> {job_data.get('customer_name') or '-'}<br/><b>เบอร์โทร:</b> {job_data.get('customer_phone') or '-'}<br/><b>ทะเบียนรถ:</b> {job_data.get('car_plate') or '-'}<br/><b>รุ่นรถ:</b> {job_data.get('car_brand') or '-'}"
+        doc_info = f"<b>เลขที่เอกสาร:</b> {job_data['job_number']}<br/><b>วันที่:</b> {job_data['created_at'].strftime('%d/%m/%Y %H:%M')}<br/><b>พนักงาน:</b> {job_data.get('created_by_username') or '-'}<br/><b>ช่างผู้รับผิดชอบ:</b> {job_data.get('technician_name') or 'ยังไม่ระบุ'}"
+        info_table = Table([[Paragraph(customer_info, styles['SmallText']), Paragraph(doc_info, styles['SmallText'])]], colWidths=[9*cm, 9*cm], spaceBefore=10)
+        info_table.setStyle(TableStyle([
+            ('BOX', (0,0), (-1,-1), 1, grey), ('LEFTPADDING', (0,0), (-1,-1), 10), ('RIGHTPADDING', (0,0), (-1,-1), 10),
+            ('TOPPADDING', (0,0), (-1,-1), 10), ('BOTTOMPADDING', (0,0), (-1,-1), 10), ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ]))
+        Story.append(info_table)
+        Story.append(Spacer(1, 0.5*cm))
+        Story.append(Paragraph("<b><u>รายการบริการ / สินค้า</u></b>", styles['Normal']))
+        Story.append(Spacer(1, 0.2*cm))
+        
+        items_table = _build_items_table(options, job_data['job_items_list'])
+        Story.append(items_table)
+
+        notes_and_terms_data = [
+            [Paragraph(f"<b>หมายเหตุ / อาการที่ลูกค้าแจ้ง:</b><br/>{job_data.get('notes') or 'ไม่มี'}", styles['SmallText'])],
+            [Paragraph("<b>ข้อตกลงและเงื่อนไข:</b><br/><font size='8'>1. ทางร้านจะไม่รับผิดชอบทรัพย์สินมีค่าที่ไม่ได้นำฝากไว้กับพนักงาน<br/>2. กรุณาตรวจสอบสภาพรถยนต์และรายการซ่อมก่อนออกจากร้าน</font>", styles['SmallText'])]
+        ]
+        notes_and_terms_table = Table(notes_and_terms_data, colWidths=[18*cm], spaceBefore=10, style=[
+            ('BOX', (0,0), (-1,-1), 1, grey), ('LEFTPADDING', (0,0), (-1,-1), 10), ('RIGHTPADDING', (0,0), (-1,-1), 10),
+            ('TOPPADDING', (0,0), (-1,-1), 10), ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+        ])
+        Story.append(notes_and_terms_table)
+        Story.append(Spacer(1, 1*cm))
+
+        footer_sig_1 = template_data.get('footer_signature_1') or '(ลูกค้า)'
+        footer_sig_2 = template_data.get('footer_signature_2') or '(พนักงานรับรถ)'
+        footer_data = [
+            [Paragraph("", styles['NormalCenter']), Paragraph("", styles['NormalCenter'])],
+            [Paragraph('.......................................', styles['NormalCenter']), Paragraph('.......................................', styles['NormalCenter'])],
+            [Paragraph(footer_sig_1, styles['NormalCenter']), Paragraph(footer_sig_2 , styles['NormalCenter'])]
+        ]
+        footer_table = Table(footer_data, colWidths=[9*cm, 9*cm], rowHeights=[1*cm, 0.5*cm, 0.5*cm])
+        Story.append(footer_table)
+
+        doc.build(Story)
+        buffer.seek(0)
+        return buffer
+    except Exception as e:
+        print(f"!!! PDF Generation FAILED for Job Order {job_data.get('job_number')} !!!")
+        print(e)
+        return None
+
+
+### ฟังก์ชันสำหรับ "ใบเสร็จรับเงิน" ###
+def generate_receipt_pdf(job_data, template_data):
+    try:
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=1.5*cm, leftMargin=1.5*cm, topMargin=1.5*cm, bottomMargin=1.5*cm)
+        Story = []
+        
+        options = template_data.get('options', {})
+
+        shop_info = f"<b>{template_data.get('shop_name') or 'ชื่อร้านของคุณ'}</b><br/><font size='9'>{template_data.get('shop_details') or 'ที่อยู่และเบอร์โทรศัพท์'}</font>"
+        header_title = template_data.get('header_text') or 'ใบเสร็จรับเงิน'
+        
+        header_data = [[Paragraph(shop_info, styles['NormalCenter']), Paragraph(f"<b>{header_title}</b><br/>Receipt", styles['TitleStyle'])]]
+        header_table = Table(header_data, colWidths=[9*cm, 9*cm], style=[('VALIGN', (0,0), (-1,-1), 'TOP'), ('ALIGN', (1,0), (1,0), 'RIGHT')])
+        Story.append(header_table)
+
+        completed_date_str = job_data['completed_at'].strftime('%d/%m/%Y') if job_data.get('completed_at') else 'N/A'
+        
+        customer_info = f"<b>ลูกค้า:</b> {job_data.get('customer_name') or '-'}<br/><b>เบอร์โทร:</b> {job_data.get('customer_phone') or '-'}<br/><b>ทะเบียนรถ:</b> {job_data.get('car_plate') or '-'}<br/><b>รุ่นรถ:</b> {job_data.get('car_brand') or '-'}"
+        doc_info = f"<b>เลขที่เอกสาร:</b> {job_data['job_number']}<br/><b>วันที่ชำระเงิน:</b> {completed_date_str}<br/><b>ผู้รับเงิน:</b> {job_data.get('created_by_username') or '-'}"
+        info_table = Table([[Paragraph(customer_info, styles['SmallText']), Paragraph(doc_info, styles['SmallText'])]], colWidths=[9*cm, 9*cm], spaceBefore=10)
+        info_table.setStyle(TableStyle([
+            ('BOX', (0,0), (-1,-1), 1, grey), ('LEFTPADDING', (0,0), (-1,-1), 10), ('RIGHTPADDING', (0,0), (-1,-1), 10),
+            ('TOPPADDING', (0,0), (-1,-1), 10), ('BOTTOMPADDING', (0,0), (-1,-1), 10), ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ]))
+        Story.append(info_table)
         Story.append(Spacer(1, 0.5*cm))
 
-    # Bill Image (if provided)
-    if doc_data.get('bill_image_url'):
-        try:
-            response = requests.get(doc_data['bill_image_url'])
-            if response.status_code == 200:
-                img_data = BytesIO(response.content)
-                img = Image(img_data)
-                img._restrictSize(10*cm, 10*cm) # Limit image size
-                Story.append(Paragraph("<b>รูปภาพอ้างอิง:</b>", styles['Normal']))
-                Story.append(img)
-                Story.append(Spacer(1, 0.5*cm))
-            else:
-                Story.append(Paragraph(f"<i>ไม่สามารถโหลดรูปภาพบิลได้: {response.status_code}</i>", styles['SmallText']))
-        except requests.exceptions.RequestException as e:
-            Story.append(Paragraph(f"<i>เกิดข้อผิดพลาดในการโหลดรูปภาพบิล: {e}</i>", styles['SmallText']))
-        Story.append(Spacer(1, 0.5*cm))
+        Story.append(Paragraph("<b><u>รายการ</u></b>", styles['Normal']))
+        Story.append(Spacer(1, 0.2*cm))
 
+        items_table = _build_items_table(options, job_data['job_items_list'])
+        Story.append(items_table)
+        Story.append(Spacer(1, 0.2*cm))
 
-    # Footer (Signatures)
-    Story.append(Spacer(1, 1.5*cm))
-    Story.append(Paragraph(f"ผู้จัดทำเอกสาร: {doc_data['issuer_name']}", styles['NormalRight']))
-    Story.append(Paragraph("ลงชื่อ: ................................................", styles['NormalRight']))
+        summary_data = [['', Paragraph('<b>ยอดรวมก่อนภาษี</b>', styles['NormalRight']), f"{job_data['sub_total']:,.2f}"]]
+        if job_data['vat'] > 0:
+            summary_data.append(['', Paragraph('<b>ภาษีมูลค่าเพิ่ม (7%)</b>', styles['NormalRight']), f"{job_data['vat']:,.2f}"])
+        summary_data.append(['', Paragraph('<b>ยอดชำระทั้งสิ้น</b>', styles['BoldSmallText']), Paragraph(f"<b>{job_data['grand_total']:,.2f}</b>", styles['NormalRight'])])
+        
+        available_page_width = A4[0] - 3*cm
+        summary_label_width = 3.5*cm
+        summary_value_width = 3.5*cm
+        summary_spacer_width = available_page_width - summary_label_width - summary_value_width
+        
+        summary_table = Table(summary_data, colWidths=[summary_spacer_width, summary_label_width, summary_value_width])
+        summary_table.setStyle(TableStyle([
+            ('ALIGN', (1,0), (-1,-1), 'RIGHT'), ('FONTNAME', (0,0), (-1,-1), normal_font),
+            ('GRID', (1,-1), (-1,-1), 1, black), ('BACKGROUND', (1,-1), (-1,-1), lightgrey),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6), ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        Story.append(summary_table)
+        Story.append(Spacer(1, 1*cm))
 
-    doc.build(Story)
-    buffer.seek(0)
-    return buffer
+        footer_sig_1 = template_data.get('footer_signature_1') or '(ลูกค้า)'
+        footer_sig_2 = template_data.get('footer_signature_2') or '(ผู้รับเงิน)'
+        footer_data = [
+            [Paragraph("", styles['NormalCenter']), Paragraph("", styles['NormalCenter'])],
+            [Paragraph('.......................................', styles['NormalCenter']), Paragraph('.......................................', styles['NormalCenter'])],
+            [Paragraph(footer_sig_1, styles['NormalCenter']), Paragraph(footer_sig_2 , styles['NormalCenter'])]
+        ]
+        footer_table = Table(footer_data, colWidths=[9*cm, 9*cm], rowHeights=[1*cm, 0.5*cm, 0.5*cm])
+        Story.append(footer_table)
+
+        doc.build(Story)
+        buffer.seek(0)
+        return buffer
+    except Exception as e:
+        print(f"!!! PDF Generation FAILED for Receipt {job_data.get('job_number')} !!!")
+        print(e)
+        return None

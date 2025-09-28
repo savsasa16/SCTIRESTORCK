@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}SC ระบบจัดการหน้าร้าน{% endblock %}
+
+{% block navigation %}
+<ul class="nav nav-pills flex-column mb-auto">
+    <li class="nav-item">
+        <a href="{{ url_for('service.index') }}" class="nav-link text-white {% if request.endpoint == 'service.index' %}active{% endif %}" aria-current="page">
+            <i class="fas fa-tools me-2"></i><span class="sidebar-text">หน้าหลัก (Service)</span>
+        </a>
+    </li>
+       
+        <a href="{{ url_for('service.create_job') }}" class="nav-link text-white {% if request.endpoint == 'service.create_job' %}active{% endif %}">
+            <i class="fas fa-plus-circle me-2"></i><span class="sidebar-text">เปิดจ๊อป</span>
+        </a>
+    </li>
+
+    <a href="{{ url_for('service.jobs_list') }}" class="nav-link text-white {% if request.endpoint == 'service.jobs_list' %}active{% endif %}">
+        <i class="fas fa-history me-2"></i><span class="sidebar-text">รายการจ๊อป</span>
+    </a>
+
+    <a href="{{ url_for('service.manage_spare_parts') }}" class="nav-link text-white {% if request.endpoint == 'service.manage_spare_parts' %}active{% endif %}">
+        <i class="fas fa-cogs me-2"></i><span class="sidebar-text">จัดการอะไหล่</span>
+    </a>
+
+    {% if current_user.is_authenticated and current_user.is_admin() %}
+    <li>
+        <a href="{{ url_for('service.service_reports') }}" class="nav-link text-white {% if request.endpoint == 'service.service_reports' %}active{% endif %}">
+            <i class="fas fa-chart-line me-2"></i><span class="sidebar-text">รายงาน (Service)</span>
+        </a>
+    </li>
+    {% endif %}
+</ul>
+{% endblock %}
+
+{% block mobile_navigation %}
+<ul class="nav nav-pills flex-column mb-auto">
+    <li class="nav-item">
+        <a href="{{ url_for('service.index') }}" class="nav-link text-white {% if request.endpoint == 'service.index' %}active{% endif %}">
+            <i class="fas fa-tools me-2"></i> หน้าหลัก (Service)
+        </a>
+    </li>
+    <li>
+        <a href="{{ url_for('service.create_job') }}" class="nav-link text-white {% if request.endpoint == 'service.create_job' %}active{% endif %}">
+            <i class="fas fa-plus-circle me-2"></i> เปิดจ๊อป
+        </a>
+    </li>
+    <li>
+        <a href="{{ url_for('service.jobs_list') }}" class="nav-link text-white {% if request.endpoint == 'service.jobs_list' %}active{% endif %}">
+            <i class="fas fa-history me-2"></i> รายการจ๊อป
+        </a>
+    </li>
+    <li>
+        <a href="{{ url_for('service.manage_spare_parts') }}" class="nav-link text-white {% if request.endpoint == 'service.manage_spare_parts' %}active{% endif %}">
+            <i class="fas fa-cogs me-2"></i> จัดการอะไหล่
+        </a>
+    </li>
+    {% if current_user.is_authenticated and current_user.is_admin() %}
+    <li>
+        <a href="{{ url_for('service.service_reports') }}" class="nav-link text-white {% if request.endpoint == 'service.service_reports' %}active{% endif %}">
+            <i class="fas fa-chart-line me-2"></i> รายงาน (Service)
+        </a>
+    </li>
+    {% endif %}
+</ul>
+{% endblock %}

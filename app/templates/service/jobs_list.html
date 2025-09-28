@@ -1,0 +1,111 @@
+{% extends 'service/base_service.html' %}
+
+{% block title %}รายการใบงาน{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-list-alt me-2"></i> รายการใบงาน</h1>
+        <a href="{{ url_for('service.create_job') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> สร้างใบงานใหม่
+        </a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <i class="fas fa-filter"></i> ตัวกรองข้อมูล
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('service.jobs_list') }}" class="row g-3 align-items-end">
+                <div class="col-lg-3">
+                    <label for="q" class="form-label">ค้นหา</label>
+                    <input type="text" id="q" name="q" class="form-control" placeholder="เลขที่, ลูกค้า, ทะเบียน..." value="{{ search_query or '' }}">
+                </div>
+                <div class="col-lg-2">
+                    <label for="status_filter" class="form-label">สถานะ</label>
+                    <select id="status_filter" name="status_filter" class="form-select">
+                        <option value="">-- ทุกสถานะ --</option>
+                        <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+                        <option value="open" {% if status_filter == 'open' %}selected{% endif %}>Open</option>
+                        <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-lg-2">
+                    <label for="start_date" class="form-label">จากวันที่</label>
+                    <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date or '' }}">
+                </div>
+                <div class="col-lg-2">
+                    <label for="end_date" class="form-label">ถึงวันที่</label>
+                    <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date or '' }}">
+                </div>
+                <div class="col-lg-3">
+                    <button class="btn btn-primary w-100" type="submit"><i class="fas fa-search"></i> ค้นหาและกรอง</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>เลขที่ใบงาน</th>
+                            <th>วันที่สร้าง</th>
+                            <th>ลูกค้า</th>
+                            <th>ทะเบียนรถ</th>
+                            <th>ช่างผู้รับผิดชอบ</th>
+                            <th class="text-end">ยอดรวม</th>
+                            <th class="text-center">สถานะ</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in jobs %}
+                        <tr>
+                            <td><a href="{{ url_for('service.view_job', job_id=job.id) }}">{{ job.job_number }}</a></td>
+                            <td>{{ job.created_at.strftime('%d/%m/%y %H:%M') }}</td>
+                            <td>{{ job.customer_name }}</td>
+                            <td>{{ job.car_plate or '-' }}</td>
+                            <!-- ★★★ แก้ไข: แสดงชื่อช่าง ★★★ -->
+                            <td>{{ job.technician_name or '-' }}</td>
+                            <td class="text-end">{{ "%.2f"|format(job.grand_total) }}</td>
+                            <td class="text-center">
+                                {% if job.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif job.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                {% elif job.status == 'open' %}
+                                     <span class="badge bg-primary">Open</span>
+                                {% elif job.status == 'draft' %}
+                                     <span class="badge bg-secondary">Draft</span>
+                                {% else %}
+                                     <span class="badge bg-warning text-dark">{{ job.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{{ url_for('service.view_job', job_id=job.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> ดู
+                                </a>
+                                {% if job.status in ['draft', 'open'] and current_user.can_edit() %}
+                                <a href="{{ url_for('service.edit_job', job_id=job.id) }}" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-edit"></i> แก้ไข
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center">ไม่พบข้อมูลใบงานที่ตรงกับเงื่อนไข</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

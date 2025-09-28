@@ -13,3 +13,10 @@ Flask-Caching
 redis
 python-barcode
 qrcode[pil]
+reportlab
+requests
+Pillow
+sentry-sdk
+gspread
+oauth2client
+Flask-Cors

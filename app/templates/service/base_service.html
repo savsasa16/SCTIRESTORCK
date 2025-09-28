@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{# --- Block 1: ตั้งชื่อ Title หลักของ Browser Tab --- #}
+{% block title %}{% block service_title %}ระบบงานบริการ{% endblock %} - SC Service{% endblock %}
+
+{# --- Block 2: ตั้งชื่อ Title ที่แสดงบน Header ของหน้าเว็บ --- #}
+{% block page_title %}{% block service_page_title %}ระบบงานบริการหน้าร้าน{% endblock %}{% endblock %}
+
+
+{# --- Block 3: เขียนทับเมนู Sidebar สำหรับ Desktop --- #}
+{% block navigation %}
+<ul class="nav nav-pills flex-column mb-auto">
+    <li class="nav-item">
+        <a href="{{ url_for('service.index') }}" class="nav-link text-white {% if request.endpoint == 'service.index' %}active{% endif %}" aria-current="page">
+            <i class="fas fa-home me-2"></i><span class="sidebar-text">หน้าหลัก (บริการ)</span>
+        </a>
+    </li>
+
+    {% if current_user.is_authenticated and current_user.can_edit() %}
+    <li>
+        <a href="{{ url_for('service.create_job') }}" class="nav-link text-white {% if 'create_job' in request.endpoint %}active{% endif %}">
+            <i class="fas fa-plus-circle me-2"></i><span class="sidebar-text">เปิดจ๊อปใหม่</span>
+        </a>
+    </li>
+    {% endif %}
+
+    <li>
+        <a href="{{ url_for('service.jobs_list') }}" class="nav-link text-white {% if request.endpoint in ['service.jobs_list', 'service.view_job', 'service.edit_job'] %}active{% endif %}">
+            <i class="fas fa-history me-2"></i><span class="sidebar-text">รายการจ๊อป</span>
+        </a>
+    </li>
+
+    <li>
+        <a href="{{ url_for('service.manage_spare_parts') }}" class="nav-link text-white {% if request.endpoint == 'service.manage_spare_parts' %}active{% endif %}">
+            <i class="fas fa-cogs me-2"></i><span class="sidebar-text">จัดการอะไหล่</span>
+        </a>
+    </li>
+    
+    {# --- เมนูสำหรับ Admin เท่านั้น --- #}
+    {% if current_user.is_authenticated and current_user.is_admin() %}
+    <hr class="sidebar-divider">
+    <div class="sidebar-heading text-secondary" style="font-size: 0.9em; padding-left: 0.5rem;">สำหรับผู้ดูแล</div>
+    <li>
+        <a href="{{ url_for('service.manage_personnel') }}" class="nav-link text-white {% if 'manage_personnel' in request.endpoint %}active{% endif %}">
+            <i class="fas fa-users-cog me-2"></i><span class="sidebar-text">จัดการพนักงาน</span>
+        </a>
+    </li>
+    <li>
+        <a href="{{ url_for('service.manage_job_template') }}" class="nav-link text-white {% if 'manage_job_template' in request.endpoint %}active{% endif %}">
+            <i class="fas fa-file-invoice me-2"></i><span class="sidebar-text">จัดการ Template</span>
+        </a>
+    </li>
+    <li>
+        <a href="{{ url_for('service.service_reports') }}" class="nav-link text-white {% if 'service_reports' in request.endpoint %}active{% endif %}">
+            <i class="fas fa-chart-line me-2"></i><span class="sidebar-text">รายงาน</span>
+        </a>
+    </li>
+    {% endif %}
+</ul>
+{% endblock %}
+
+
+{# --- Block 4: เขียนทับเมนู Offcanvas Sidebar สำหรับ Mobile --- #}
+{% block mobile_navigation %}
+<ul class="nav nav-pills flex-column mb-auto">
+    <li class="nav-item">
+        <a href="{{ url_for('service.index') }}" class="nav-link text-white {% if request.endpoint == 'service.index' %}active{% endif %}">
+            <i class="fas fa-home me-2"></i> หน้าหลัก (บริการ)
+        </a>
+    </li>
+
+    {% if current_user.is_authenticated and current_user.can_edit() %}
+    <li>
+        <a href="{{ url_for('service.create_job') }}" class="nav-link text-white {% if 'create_job' in request.endpoint %}active{% endif %}">
+            <i class="fas fa-plus-circle me-2"></i> เปิดจ๊อปใหม่
+        </a>
+    </li>
+    {% endif %}
+
+    <li>
+        <a href="{{ url_for('service.jobs_list') }}" class="nav-link text-white {% if request.endpoint in ['service.jobs_list', 'service.view_job', 'service.edit_job'] %}active{% endif %}">
+            <i class="fas fa-history me-2"></i> รายการจ๊อป
+        </a>
+    </li>
+
+    <li>
+        <a href="{{ url_for('service.manage_spare_parts') }}" class="nav-link text-white {% if request.endpoint == 'service.manage_spare_parts' %}active{% endif %}">
+            <i class="fas fa-cogs me-2"></i> จัดการอะไหล่
+        </a>
+    </li>
+    
+    {# --- เมนูสำหรับ Admin เท่านั้น --- #}
+    {% if current_user.is_authenticated and current_user.is_admin() %}
+    <hr>
+    <div class="text-secondary mb-2" style="font-size: 0.9em;">สำหรับผู้ดูแล</div>
+    <li>
+        <a href="{{ url_for('service.manage_personnel') }}" class="nav-link text-white {% if 'manage_personnel' in request.endpoint %}active{% endif %}">
+            <i class="fas fa-users-cog me-2"></i> จัดการพนักงาน
+        </a>
+    </li>
+    <li>
+        <a href="{{ url_for('service.manage_job_template') }}" class="nav-link text-white {% if 'manage_job_template' in request.endpoint %}active{% endif %}">
+            <i class="fas fa-file-invoice me-2"></i> จัดการ Template
+        </a>
+    </li>
+    <li>
+        <a href="{{ url_for('service.service_reports') }}" class="nav-link text-white {% if 'service_reports' in request.endpoint %}active{% endif %}">
+            <i class="fas fa-chart-line me-2"></i> รายงาน
+        </a>
+    </li>
+    {% endif %}
+
+    {# --- เมนูกลับหน้าหลัก จะยังคงอยู่เหมือนเดิมจาก base.html หลัก --- #}
+    <hr>
+     <li>
+        <a href="{{ url_for('selector.select_module') }}" class="nav-link text-white">
+            <i class="fas fa-th-large me-2"></i> กลับหน้าหลัก
+        </a>
+    </li>
+</ul>
+{% endblock %}

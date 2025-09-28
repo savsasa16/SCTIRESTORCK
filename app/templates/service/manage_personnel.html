@@ -1,0 +1,238 @@
+{% extends 'service/base_service.html' %}
+
+{% block title %}จัดการรายชื่อพนักงาน{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">จัดการรายชื่อพนักงาน (ช่างและพนักงานขาย)</h1>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">เพิ่มพนักงานใหม่</h5>
+                </div>
+                <div class="card-body">
+                    <form id="add-personnel-form">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">ชื่อ-สกุล</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="type" class="form-label">ประเภท</label>
+                            <select class="form-select" id="type" name="type" required>
+                                <option value="" selected disabled>-- เลือกประเภท --</option>
+                                <option value="technician">ช่าง (Technician)</option>
+                                <option value="salesperson">พนักงานขาย (Salesperson)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-plus-circle me-2"></i>เพิ่มรายชื่อ
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">รายชื่อทั้งหมด</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ชื่อ-สกุล</th>
+                                    <th>ประเภท</th>
+                                    <th>สถานะ</th>
+                                    <th class="text-end">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in personnel %}
+                                <tr id="person-row-{{ p.type }}-{{ p.id }}" class="{{ 'table-secondary text-muted' if not p.is_active else '' }}">
+                                    <td>{{ p.name }}</td>
+                                    <td>
+                                        {% if p.type == 'technician' %}
+                                            <span class="badge bg-info">ช่าง</span>
+                                        {% else %}
+                                            <span class="badge bg-success">พนักงานขาย</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {{ 'bg-success' if p.is_active else 'bg-danger' }}">
+                                            {{ 'ใช้งาน' if p.is_active else 'ไม่ใช้งาน' }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-warning edit-btn"
+                                                data-id="{{ p.id }}"
+                                                data-type="{{ p.type }}"
+                                                data-name="{{ p.name }}">
+                                            <i class="fas fa-edit"></i> แก้ไข
+                                        </button>
+                                        <button class="btn btn-sm {{ 'btn-danger' if p.is_active else 'btn-success' }} toggle-status-btn"
+                                                data-id="{{ p.id }}"
+                                                data-type="{{ p.type }}"
+                                                data-name="{{ p.name }}"
+                                                data-current-active="{{ 'true' if p.is_active else 'false' }}">
+                                            <i class="fas {{ 'fa-toggle-off' if p.is_active else 'fa-toggle-on' }}"></i>
+                                            {{ 'ปิดใช้งาน' if p.is_active else 'เปิดใช้งาน' }}
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">ยังไม่มีข้อมูลพนักงาน</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editModalLabel">แก้ไขชื่อพนักงาน</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="edit-personnel-form">
+            <input type="hidden" id="edit-id">
+            <input type="hidden" id="edit-type">
+            <div class="mb-3">
+                <label for="edit-name" class="form-label">ชื่อใหม่</label>
+                <input type="text" class="form-control" id="edit-name" required>
+            </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+        <button type="button" class="btn btn-primary" id="save-edit-btn">บันทึกการเปลี่ยนแปลง</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const addForm = document.getElementById('add-personnel-form');
+    const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+    const editForm = document.getElementById('edit-personnel-form');
+
+    // --- จัดการการเพิ่มพนักงานใหม่ ---
+    addForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const formData = new FormData(addForm);
+        const data = {
+            name: formData.get('name'),
+            type: formData.get('type')
+        };
+
+        try {
+            const response = await fetch('{{ url_for("service.api_add_personnel") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                window.location.reload(); // รีโหลดหน้าเพื่อให้ Flash message แสดง
+            } else {
+                alert('เกิดข้อผิดพลาด: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+        }
+    });
+
+    // --- ฟังก์ชันกลางสำหรับอัปเดตข้อมูล ---
+    async function updatePersonnel(id, type, name, isActive) {
+        try {
+            const response = await fetch('{{ url_for("service.api_update_personnel") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, type, name, is_active: isActive })
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                return true;
+            } else {
+                alert('เกิดข้อผิดพลาด: ' + result.message);
+                return false;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+            return false;
+        }
+    }
+
+    // --- จัดการการเปิด/ปิด สถานะ ---
+    document.querySelectorAll('.toggle-status-btn').forEach(button => {
+        button.addEventListener('click', async function () {
+            const id = this.dataset.id;
+            const type = this.dataset.type;
+            const name = this.dataset.name;
+            const currentActive = this.dataset.currentActive === 'true';
+            const newActive = !currentActive;
+            const actionText = newActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+
+            if (confirm(`คุณต้องการ ${actionText} "${name}" ใช่หรือไม่?`)) {
+                const success = await updatePersonnel(id, type, name, newActive);
+                if (success) {
+                    location.reload();
+                }
+            }
+        });
+    });
+
+    // --- จัดการการแก้ไขชื่อ (เปิด Modal) ---
+    document.querySelectorAll('.edit-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            document.getElementById('edit-id').value = this.dataset.id;
+            document.getElementById('edit-type').value = this.dataset.type;
+            document.getElementById('edit-name').value = this.dataset.name;
+            editModal.show();
+        });
+    });
+
+    // --- จัดการการบันทึกชื่อที่แก้ไข ---
+    document.getElementById('save-edit-btn').addEventListener('click', async function () {
+        const id = document.getElementById('edit-id').value;
+        const type = document.getElementById('edit-type').value;
+        const newName = document.getElementById('edit-name').value.trim();
+        
+        if (!newName) {
+            alert('กรุณากรอกชื่อใหม่');
+            return;
+        }
+
+        // เราต้องรู้สถานะ is_active ปัจจุบันเพื่อส่งกลับไปให้ครบ
+        const row = document.getElementById(`person-row-${type}-${id}`);
+        const toggleBtn = row.querySelector('.toggle-status-btn');
+        const isActive = toggleBtn.dataset.currentActive === 'true';
+
+        const success = await updatePersonnel(id, type, newName, isActive);
+        if (success) {
+            editModal.hide();
+            location.reload();
+        }
+    });
+
+});
+</script>
+{% endblock %}

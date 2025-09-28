@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block page_title %}เพิ่มผู้ใช้ใหม่{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h4 class="mb-0">เพิ่มผู้ใช้ใหม่</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('stock.add_new_user') }}">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="username" class="form-label">ชื่อผู้ใช้ (Username) <span class="text-danger">*</span></label>
+                            <input type="text" id="username" name="username" class="form-control" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="password" class="form-label">รหัสผ่าน <span class="text-danger">*</span></label>
+                            <input type="password" id="password" name="password" class="form-control" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="confirm_password" class="form-label">ยืนยันรหัสผ่าน <span class="text-danger">*</span></label>
+                            <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+                        </div>
+
+                        <div class="col-12">
+                            <label for="role" class="form-label">บทบาท (Role) <span class="text-danger">*</span></label>
+                            <select id="role" name="role" class="form-select">
+                                <option value="viewer">เซลล์ (salesman)</option>
+                                <option value="retail_sales">พนักงานขาย (Retail Sales)</option>
+                                <option value="wholesale_sales">พนักงานค้าส่ง (Wholesale Sales)</option>
+                                <option value="editor">พนักงานขายที่ปรับสต๊อกได้ (Editor)</option>
+                                <option value="accountant">พนักงานบัญชี(Accountant)</option>
+                                <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>เพิ่มผู้ใช้
+                        </button>
+                        <a href="{{ url_for('stock.manage_users') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>ยกเลิก
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

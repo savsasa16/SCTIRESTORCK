@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block page_title %}ประวัติการใช้งานระบบ{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">ประวัติการใช้งานระบบ</h1>
+    
+    {#--- ฟอร์มสำหรับกรองข้อมูล ---#}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ url_for('stock.view_activity_logs') }}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="start_date" class="form-label"><strong>ตั้งแต่วันที่:</strong></label>
+                        <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date_filter or '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="end_date" class="form-label"><strong>ถึงวันที่:</strong></label>
+                        <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date_filter or '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="user_id" class="form-label"><strong>ผู้ใช้งาน:</strong></label>
+                        <select name="user_id" id="user_id" class="form-select">
+                            <option value="">-- ทั้งหมด --</option>
+                            {% for user in all_users %}
+                            <option value="{{ user.id }}" {% if user_id_filter == user.id %}selected{% endif %}>{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="method" class="form-label"><strong>ประเภท:</strong></label>
+                        <select name="method" id="method" class="form-select">
+                            <option value="">-- ทั้งหมด --</option>
+                            <option value="GET" {% if method_filter == 'GET' %}selected{% endif %}>ดูข้อมูล</option>
+                            <option value="POST" {% if method_filter == 'POST' %}selected{% endif %}>สร้าง/แก้ไข</option>
+                            <option value="DELETE" {% if method_filter == 'DELETE' %}selected{% endif %}>ลบข้อมูล</option>
+                            <option value="PUT" {% if method_filter == 'PUT' %}selected{% endif %}>อัปเดตข้อมูล</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-2"></i>กรอง</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {#--- ตารางแสดงผล ---#}
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">เวลา</th>
+                            <th>ผู้ใช้</th>
+                            <th>ประเภท</th>
+                            <th class="pe-3">การกระทำ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td class="ps-3 text-nowrap">{{ log.timestamp.strftime('%d/%m/%y %H:%M:%S') }}</td>
+                            <td>{{ log.username or 'N/A' }}</td>
+                            <td>
+                                {% if log.method == 'POST' %}
+                                    <span class="badge bg-warning text-dark">สร้าง/แก้ไข</span>
+                                {% elif log.method == 'DELETE' %}
+                                    <span class="badge bg-danger">ลบข้อมูล</span>
+                                {% elif log.method == 'PUT' %}
+                                     <span class="badge bg-info text-dark">อัปเดต</span>
+                                {% else %}
+                                    {# เปลี่ยนจาก bg-light เป็น bg-primary #}
+                                    <span class="badge bg-primary">ดูข้อมูล</span>
+                                {% endif %}
+                            </td>
+                            {# แสดงชื่อที่แปลแล้ว และลบคอลัมน์ URL #}
+                            <td class="pe-3">{{ log.friendly_endpoint }}</td>
+                        </tr>
+                        {% else %}
+                        {# แก้ไข colspan จาก 5 เป็น 4 #}
+                        <tr><td colspan="4" class="text-center p-5">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {#--- ส่วนของการแบ่งหน้า (Pagination) ที่แก้ไขแล้ว ---#}
+    {% if total_pages > 1 %}
+    <div class="p-3">
+        {# เพิ่ม class overflow-x-auto เพื่อให้เลื่อนแนวนอนได้ถ้า Pagination ล้นจอ #}
+        <div class="overflow-x-auto"> 
+            <nav aria-label="Page navigation" class="d-flex justify-content-center">
+                {# เพิ่ม flex-nowrap เพื่อป้องกันไม่ให้ pagination ขึ้นบรรทัดใหม่ #}
+                <ul class="pagination mb-0 flex-nowrap"> 
+                    
+                    {# ลิงก์ 'ก่อนหน้า' #}
+                    <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('stock.view_activity_logs', page=current_page-1, start_date=start_date_filter, end_date=end_date_filter, user_id=user_id_filter, method=method_filter) }}">ก่อนหน้า</a>
+                    </li>
+
+                    {# Logic เพื่อจำกัดจำนวนหน้าที่จะแสดง: หน้าแรก, หน้าสุดท้าย, และ 4 หน้าที่อยู่รอบหน้าปัจจุบัน #}
+                    {% set max_pages = 5 %} {# จำนวนหมายเลขหน้าสูงสุดที่คุณต้องการแสดงรอบๆ หน้าปัจจุบัน #}
+                    {% set half_max = (max_pages // 2) %}
+                    {% set start_page = current_page - half_max %}
+                    {% set end_page = current_page + half_max %}
+
+                    {# ปรับ start_page/end_page ให้ไม่ล้นขอบ #}
+                    {% if start_page < 1 %}
+                        {% set end_page = end_page + (1 - start_page) %}
+                        {% set start_page = 1 %}
+                    {% endif %}
+
+                    {% if end_page > total_pages %}
+                        {% set start_page = start_page - (end_page - total_pages) %}
+                        {% set end_page = total_pages %}
+                    {% endif %}
+
+                    {# ตรวจสอบให้แน่ใจว่า start_page ไม่ต่ำกว่า 1 อีกครั้ง #}
+                    {% set start_page = start_page if start_page > 0 else 1 %}
+
+                    {# แสดงลิงก์ไปหน้าแรก (ถ้าจำเป็น) #}
+                    {% if start_page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('stock.view_activity_logs', page=1, start_date=start_date_filter, end_date=end_date_filter, user_id=user_id_filter, method=method_filter) }}">1</a>
+                    </li>
+                        {% if start_page > 2 %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endif %}
+
+                    {# วนลูปแสดงหมายเลขหน้า #}
+                    {% for page_num in range(start_page, end_page + 1) %}
+                    <li class="page-item {% if page_num == current_page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('stock.view_activity_logs', page=page_num, start_date=start_date_filter, end_date=end_date_filter, user_id=user_id_filter, method=method_filter) }}">{{ page_num }}</a>
+                    </li>
+                    {% endfor %}
+
+                    {# แสดงลิงก์ไปหน้าสุดท้าย (ถ้าจำเป็น) #}
+                    {% if end_page < total_pages %}
+                        {% if end_page < total_pages - 1 %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('stock.view_activity_logs', page=total_pages, start_date=start_date_filter, end_date=end_date_filter, user_id=user_id_filter, method=method_filter) }}">{{ total_pages }}</a>
+                    </li>
+                    {% endif %}
+
+                    {# ลิงก์ 'ถัดไป' #}
+                    <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('stock.view_activity_logs', page=current_page+1, start_date=start_date_filter, end_date=end_date_filter, user_id=user_id_filter, method=method_filter) }}">ถัดไป</a>
+                    </li>
+
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const flatpickrConfig = {
+            locale: "th",
+            dateFormat: "Y-m-d",
+            allowInput: true
+        };
+        flatpickr("#start_date", flatpickrConfig);
+        flatpickr("#end_date", flatpickrConfig);
+    });
+</script>
+{% endblock %}

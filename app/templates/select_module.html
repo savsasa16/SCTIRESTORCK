@@ -1,0 +1,127 @@
+{% extends 'layout_module_selector.html' %}
+
+{% block title %}เลือกระบบ{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="p-4 p-md-5 bg-white rounded-3 shadow-sm">
+
+        <div class="d-flex align-items-center mb-4">
+            <div class="me-3">
+                <i class="fas fa-user-circle fa-4x text-secondary"></i>
+            </div>
+            <div>
+                วันที่ {{ get_bkk_time().strftime('%d %b %Y') }}
+                <h2 class="h4 mb-0">สวัสดี <strong>{{ current_user.username }}</strong></h2>
+                <p class="mb-0 text-muted">
+                     เลือกระบบที่ต้องการใช้งานได้เลย
+                </p>
+            </div>
+        </div>
+        {% if current_user.can_edit() %}
+        <hr class="mb-4"> <div class="row justify-content-center g-4">
+            <div class="col-md-6 col-lg-4">
+                <a href="{{ url_for('service.index') }}" class="text-decoration-none">
+                    <div class="module-card">
+                        <div class="module-card__icon module-card--service">
+                            <i class="fas fa-tools fa-2x"></i>
+                        </div>
+                        <div class="module-card__content">
+                            <h4 class="card-title">ระบบงานบริการหน้าร้าน</h4>
+                            <p class="card-text text-muted">จัดการงานซ่อม, ออกใบงาน และใบเสร็จ</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        {% endif %}
+            <div class="col-md-6 col-lg-4">
+                <a href="{{ url_for('stock.index') }}" class="text-decoration-none">
+                    <div class="module-card">
+                        <div class="module-card__icon module-card--stock">
+                            <i class="fas fa-boxes fa-2x"></i>
+                        </div>
+                        <div class="module-card__content">
+                            <h4 class="card-title">ระบบจัดการสต็อก</h4>
+                            <p class="card-text text-muted">ดู/ค้นหา/แก้ไข สต็อกยาง, แม็ก, อะไหล่</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            {% if current_user.is_admin() %}
+            <div class="col-md-6 col-lg-4">
+                <a href="{{ url_for('stock.admin_dashboard') }}" class="text-decoration-none">
+                    <div class="module-card">
+                        <div class="module-card__icon module-card--admin">
+                            <i class="fas fa-cogs fa-2x"></i>
+                        </div>
+                        <div class="module-card__content">
+                            <h4 class="card-title">ตั้งค่าระบบ</h4>
+                            <p class="card-text text-muted">จัดการผู้ใช้, ลูกค้า, โปรโมชัน และอื่นๆ</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<style>
+    body {
+        background-color: #f4f7f6;
+    }
+
+    .module-card {
+        display: flex;
+        align-items: center;
+        background-color: #ffffff;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: 1px solid #e9ecef;
+    }
+
+    .module-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .module-card__icon {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        color: #fff;
+        margin-right: 1.5rem;
+    }
+
+    .module-card--stock {
+        background-color: #0d6efd;
+    }
+
+    .module-card--service {
+        background-color: #ff0000; /* สีเขียวสำหรับ Service */
+    }
+
+    .module-card--admin {
+        background-color: #6c757d;
+    }
+
+    .module-card__content .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .module-card__content .card-text {
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+</style>
+{% endblock %}

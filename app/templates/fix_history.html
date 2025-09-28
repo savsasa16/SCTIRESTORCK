@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block page_title %}เครื่องมือซ่อมแซมข้อมูล{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">เครื่องมือซ่อมแซมข้อมูล (สำหรับ Admin)</h1>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card border-warning mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <strong><i class="fas fa-history me-2"></i>ซ่อมแซมประวัติสต็อก (Recalculate Stock History)</strong>
+                </div>
+                <div class="card-body">
+                    <p>ใช้ในกรณีที่ยอดคงเหลือท้ายบิล (Remaining Quantity) ในหน้ารายงานแสดงผลผิดเพี้ยน ระบบจะทำการคำนวณประวัติการเคลื่อนไหวของสินค้าทุกชิ้นใหม่ทั้งหมด</p>
+                    <form action="{{ url_for('stock.fix_history') }}" method="POST" onsubmit="return confirm('คำเตือน: กระบวนการนี้อาจใช้เวลานานและส่งผลต่อประสิทธิภาพของระบบชั่วคราว คุณต้องการดำเนินการต่อใช่หรือไม่?');">
+                        <button type="submit" name="recalculate_stock" class="btn btn-warning">
+                            <i class="fas fa-calculator me-2"></i> เริ่มการคำนวณประวัติสต็อกใหม่
+                        </button>
+                    </form>
+                </div>
+                <div class="card-footer text-muted small">
+                    <strong>ข้อควรระวัง:</strong> ควรใช้เมื่อจำเป็นเท่านั้น และควรทำในช่วงเวลาที่มีผู้ใช้งานน้อย
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-danger mb-4">
+                <div class="card-header bg-danger text-white">
+                    <strong><i class="fas fa-tools me-2"></i>ซ่อมแซมข้อมูลคอมมิชชั่น</strong>
+                </div>
+                <div class="card-body">
+                    <p>ใช้เพื่อแก้ไขข้อมูลคอมมิชชั่นในอดีตที่อาจบันทึกผิดพลาด (เช่น รายการที่ถูกแก้ไขช่องทางขายในภายหลัง) ระบบจะตั้งค่าคอมมิชชั่นให้เป็น 0 สำหรับทุกรายการที่ไม่ได้ขายผ่าน "หน้าร้าน"</p>
+                    <form action="{{ url_for('stock.fix_history') }}" method="POST" onsubmit="return confirm('คุณต้องการเริ่มกระบวนการซ่อมแซมข้อมูลค่าคอมมิชชั่นในอดีตใช่หรือไม่?');">
+                        <button type="submit" name="fix_commissions" class="btn btn-danger">
+                            <i class="fas fa-wrench me-2"></i> เริ่มการซ่อมแซมข้อมูลคอมมิชชั่น
+                        </button>
+                    </form>
+                </div>
+                 <div class="card-footer text-muted small">
+                    <strong>หมายเหตุ:</strong> โดยปกติแล้วควรใช้ฟังก์ชันนี้เพียงครั้งเดียว หากต้องการใช้แนะนำให้แจ้งแอดมินก่อน
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SC STOCK 2.0 Beta{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/png" href="https://res.cloudinary.com/doi8m4e1o/image/upload/v1749883714/favicon-96x96_e50eyw.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="https://res.cloudinary.com/doi8m4e1o/image/upload/v1749883713/favicon_mq1iqu.svg" />
+    <link rel="shortcut icon" href="https://res.cloudinary.com/doi8m4e1o/image/upload/v1749883714/favicon_spqmcc.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://res.cloudinary.com/doi8m4e1o/image/upload/v1749883714/apple-touch-icon_c2me0k.png" />
+    <meta name="apple-mobile-web-app-title" content="SCSTOCK" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <link rel="manifest" href="https://res.cloudinary.com/doi8m4e1o/raw/upload/v1749883714/site_opcchd.webmanifest">
+
+    <style>
+        .notification-bell { position: relative; font-size: 1.25rem; color: #6c757d; text-decoration: none; }
+        .notification-bell:hover { color: #343a40; }
+        .notification-badge { position: absolute; top: -2px; right: -8px; padding: 2px 5px; border-radius: 50%; background: red; color: white; font-size: 0.65rem; font-weight: bold; line-height: 1; border: 1px solid white; }
+        #feedback-fixed-btn { position: fixed; bottom: 20px; right: 20px; z-index: 1050; background-color: var(--bs-primary); color: white; border-radius: var(--bs-border-radius); box-shadow: 0 4px 12px rgba(0,0,0,.15); padding: 10px 15px; white-space: nowrap; }
+        #feedback-fixed-btn:hover { opacity: 0.9; }
+        #back-fixed-btn { position: fixed; bottom: 20px; left: 20px; z-index: 1050; background-color: var(--bs-secondary); color: white; border-radius: var(--bs-border-radius); box-shadow: 0 4px 12px rgba(0,0,0,.15); padding: 10px 15px; white-space: nowrap; text-decoration: none; transition: left 0.3s ease; }
+        #back-fixed-btn:hover { opacity: 0.9; }
+        @media (min-width: 992px) { #back-fixed-btn { left: 100px; } .sidebar-fixed:hover ~ #back-fixed-btn { left: 300px; } }
+        #reconciliation-fixed-actions { position: fixed; bottom: 20px; right: calc(20px + 150px + 15px); z-index: 1049; background-color: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: .5rem; box-shadow: 0 4px 12px rgba(0,0,0,.15); display: flex; gap: 10px; display: none; }
+        body { padding-bottom: 100px; }
+    </style>
+    
+    {% block head_scripts %}{% endblock %}
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    <div class="d-none d-lg-flex flex-column flex-shrink-0 p-3 bg-dark text-white sidebar-fixed">
+        <a href="{{ url_for('stock.index') }}" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
+            <i class="fas fa-warehouse me-2 fs-4"></i>
+            <span class="fs-5 fw-bold sidebar-text">SC STOCK</span>
+        </a>
+        <hr>
+        {% block navigation %}
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li class="nav-item">
+                <a href="{{ url_for('stock.index') }}" class="nav-link text-white {% if request.endpoint == 'index' %}active{% endif %}" aria-current="page">
+                    <i class="fas fa-home me-2"></i><span class="sidebar-text">ภาพรวมสต๊อก</span>
+                </a>
+            </li>
+            {% if current_user.is_authenticated and current_user.is_admin() %}
+            <li><a href="{{ url_for('stock.add_item') }}" class="nav-link text-white {% if request.endpoint == 'add_item' %}active{% endif %}"><i class="fas fa-plus-circle me-2"></i><span class="sidebar-text">เพิ่มสินค้า</span></a></li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.can_edit() %}
+            <li><a href="{{ url_for('stock.stock_movement') }}" class="nav-link text-white {% if request.endpoint == 'stock_movement' %}active{% endif %}"><i class="fas fa-exchange-alt me-2"></i><span class="sidebar-text">รับเข้า/จ่ายออก</span></a></li>
+            <li><a href="{{ url_for('stock.barcode_scanner_page') }}" class="nav-link text-white {% if request.endpoint == 'barcode_scanner_page' %}active{% endif %}"><i class="fas fa-barcode me-2"></i><span class="sidebar-text">ตัดสต๊อกด้วยบาร์โค้ด</span></a></li>
+            {% endif %}
+            
+            {% if current_user.is_authenticated and (current_user.can_edit() or current_user.is_accountant()) %}
+            <li>
+                <a href="#reports-submenu" data-bs-toggle="collapse" class="nav-link text-white d-flex justify-content-between align-items-center {% if 'report' in request.endpoint or request.endpoint == 'reconciliation' or request.endpoint == 'sales_history_search' or request.endpoint == 'commission_summary_report' %}active{% endif %}">
+                    <div><i class="fas fa-chart-line me-2"></i><span class="sidebar-text">รายงาน</span></div>
+                    <i class="fas fa-chevron-down ms-auto sidebar-text"></i>
+                </a>
+                <ul class="collapse list-unstyled ps-3 {% if 'report' in request.endpoint or request.endpoint == 'reconciliation' or request.endpoint == 'sales_history_search' or request.endpoint == 'commission_summary_report' %}show{% endif %}" id="reports-submenu">
+                    <li><a href="{{ url_for('stock.daily_stock_report') }}" class="nav-link text-white {% if request.endpoint == 'daily_stock_report' %}active{% endif %}"><i class="fas fa-calendar-day me-2"></i><span class="sidebar-text">รายงานสต็อกประจำวัน</span></a></li>
+                    <li><a href="{{ url_for('stock.summary_stock_report') }}" class="nav-link text-white {% if request.endpoint == 'summary_stock_report' %}active{% endif %}"><i class="fas fa-chart-pie me-2"></i><span class="sidebar-text">สรุปยอดแบบละเอียด</span></a></li>
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
+                    <li><a href="{{ url_for('stock.reconciliation') }}" class="nav-link text-white {% if request.endpoint == 'reconciliation' %}active{% endif %}"><i class="fas fa-file-invoice me-2"></i><span class="sidebar-text">ปิดยอดสต๊อกประจำวัน</span></a></li>
+                    {% endif %}
+                    {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_accountant()) %}
+                    <li><a href="{{ url_for('stock.sales_history_search') }}" class="nav-link text-white {% if request.endpoint == 'sales_history_search' %}active{% endif %}"><i class="fas fa-search me-2"></i><span class="sidebar-text">ค้นหาประวัติการขาย</span></a></li>
+                    {% endif %}
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
+                    <li><a href="{{ url_for('stock.commission_summary_report') }}" class="nav-link text-white {% if request.endpoint == 'commission_summary_report' %}active{% endif %}"><i class="fas fa-donate me-2"></i><span class="sidebar-text">รายงานคอมมิชชั่น</span></a></li>
+                    <li><a href="{{ url_for('stock.product_analysis') }}" class="nav-link text-white {% if request.endpoint == 'product_analysis' %}active{% endif %}"><i class="fas fa-chart-line me-2"></i><span class="sidebar-text">วิเคราะห์สินค้า</span></a></li>
+                    {% endif %}
+                </ul>
+            </li>
+            <li><a href="{{ url_for('stock.summary_stock_report') }}#item-summary-pane" class="nav-link text-white"><i class="fas fa-list-alt me-2"></i><span class="sidebar-text">สรุปยอดรายสินค้า</span></a></li>
+            <li><a href="{{ url_for('stock.wholesale_dashboard') }}" class="nav-link text-white {% if 'wholesale_dashboard' in request.endpoint or 'wholesale_customer_detail' in request.endpoint %}active{% endif %}"><i class="fas fa-users me-2"></i><span class="sidebar-text">ลูกค้าค้าส่ง</span></a></li>
+            {% endif %}
+            
+            {% if current_user.is_authenticated and current_user.is_admin() %}
+            <li><a href="{{ url_for('stock.admin_dashboard') }}" class="nav-link text-white {% if 'admin_dashboard' in request.endpoint or 'manage_users' in request.endpoint or 'wholesale_customers' in request.endpoint or 'view_feedback' in request.endpoint or 'manage_announcements' in request.endpoint or 'manage_daily_commission' in request.endpoint or 'manage_spare_part_categories' in request.endpoint or 'view_activity_logs' in request.endpoint %}active{% endif %}"><i class="fas fa-tools me-2"></i><span class="sidebar-text">Admin Dashboard</span></a></li>
+            {% endif %}
+        </ul>
+        {% endblock %}
+        <a href="{{ url_for('selector.select_module') }}" class="nav-link text-white {% if 'admin_dashboard' in request.endpoint or 'manage_users' in request.endpoint or 'wholesale_customers' in request.endpoint or 'view_feedback' in request.endpoint or 'manage_announcements' in request.endpoint or 'manage_daily_commission' in request.endpoint or 'manage_spare_part_categories' in request.endpoint or 'view_activity_logs' in request.endpoint %}active{% endif %}">
+            <i class="fas fa-th-large me-2"></i><span class="sidebar-text">หน้าหลัก</span>
+        </a>
+        <hr>
+        <div class="dropdown">
+            {% if current_user.is_authenticated %}
+            <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
+                <img src="https://res.cloudinary.com/doi8m4e1o/image/upload/v1752224265/32X32_kzjpcx.jpg" alt="" width="32" height="32" class="rounded-circle me-2">
+                <strong class="sidebar-text">{{ current_user.username }} ({{ current_user.role }})</strong>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
+                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">ออกจากระบบ</a></li>
+            </ul>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}" class="d-flex align-items-center text-white text-decoration-none"><i class="fas fa-sign-in-alt me-2"></i><strong>เข้าสู่ระบบ</strong></a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="main-content">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom sticky-top">
+            <div class="container-fluid">
+                <button class="btn btn-outline-secondary d-lg-none me-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSidebar" aria-controls="offcanvasSidebar"><i class="fas fa-bars"></i></button>
+                <span class="navbar-brand mb-0 h1 text-dark fs-4 fw-bold">{% block page_title %}ภาพรวมสต็อกสินค้า{% endblock %}</span>
+                {% if current_user.is_authenticated and current_user.can_edit() %}
+                <div class="ms-auto d-flex align-items-center">
+                    <a class="notification-bell me-3" href="{{ url_for('stock.mark_notifications_read') }}">
+                        <i class="fas fa-bell"></i>
+                        {% if unread_notification_count > 0 %}<span class="notification-badge">{{ unread_notification_count }}</span>{% endif %}
+                    </a>
+                </div>
+                {% endif %}
+                <div class="d-none d-lg-block">
+                    {% if current_user.is_authenticated %}<span class="text-muted"><i class="fas fa-user-circle me-1"></i> สวัสดี, {{ current_user.username }} ({{ current_user.role }})!</span>{% endif %}
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid py-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            {% block content %}{% endblock %}
+        </div>
+
+        <div class="offcanvas offcanvas-start bg-dark text-white" tabindex="-1" id="offcanvasSidebar" aria-labelledby="offcanvasSidebarLabel">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title" id="offcanvasSidebarLabel"><i class="fas fa-warehouse me-2"></i> SC STOCK</h5>
+                <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body">
+                {% block mobile_navigation %}
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item"><a href="{{ url_for('stock.index') }}" class="nav-link text-white {% if request.endpoint == 'index' %}active{% endif %}"><i class="fas fa-home me-2"></i> ภาพรวมสต็อกสินค้า</a></li>
+                    {% if current_user.is_authenticated and current_user.can_edit() %}
+                    <li class="nav-item"><a href="{{ url_for('stock.mark_notifications_read') }}" class="nav-link text-white {% if request.endpoint == 'notifications' %}active{% endif %}"><i class="fas fa-bell me-2"></i><span>แจ้งเตือน</span>{% if unread_notification_count > 0 %}<span class="badge bg-danger rounded-pill ms-2">{{ unread_notification_count }}</span>{% endif %}</a></li>
+                    {% endif %}
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
+                    <li><a href="{{ url_for('stock.add_item') }}" class="nav-link text-white {% if request.endpoint == 'add_item' %}active{% endif %}"><i class="fas fa-plus-circle me-2"></i> เพิ่มสินค้า</a></li>
+                    {% endif %}
+                    {% if current_user.is_authenticated and current_user.can_edit() %}
+                    <li><a href="{{ url_for('stock.stock_movement') }}" class="nav-link text-white {% if request.endpoint == 'stock_movement' %}active{% endif %}"><i class="fas fa-exchange-alt me-2"></i> รับเข้า/จ่ายออก</a></li>
+                    <li><a href="{{ url_for('stock.barcode_scanner_page') }}" class="nav-link text-white {% if request.endpoint == 'barcode_scanner_page' %}active{% endif %}"><i class="fas fa-barcode me-2"></i> ตัดสต๊อกด้วยบาร์โค้ด</a></li>
+                    {% endif %}
+                    
+                    {% if current_user.is_authenticated and (current_user.can_edit() or current_user.is_accountant()) %}
+                    <li>
+                        <a href="#reports-submenu-mobile" data-bs-toggle="collapse" class="nav-link text-white d-flex justify-content-between align-items-center {% if 'report' in request.endpoint or request.endpoint == 'reconciliation' or request.endpoint == 'sales_history_search' or request.endpoint == 'commission_summary_report' %}active{% endif %}">
+                            <div><i class="fas fa-chart-line me-2"></i> รายงาน</div><i class="fas fa-chevron-down ms-auto"></i>
+                        </a>
+                        <ul class="collapse list-unstyled ps-3 {% if 'report' in request.endpoint or request.endpoint == 'reconciliation' or request.endpoint == 'sales_history_search' or request.endpoint == 'commission_summary_report' %}show{% endif %}" id="reports-submenu-mobile">
+                            <li><a href="{{ url_for('stock.daily_stock_report') }}" class="nav-link text-white {% if request.endpoint == 'daily_stock_report' %}active{% endif %}"><i class="fas fa-calendar-day me-2"></i> รายงานสต็อกประจำวัน</a></li>
+                            <li><a href="{{ url_for('stock.summary_stock_report') }}" class="nav-link text-white {% if request.endpoint == 'summary_stock_report' %}active{% endif %}"><i class="fas fa-chart-pie me-2"></i> สรุปยอดแบบละเอียด</a></li>
+                            {% if current_user.is_authenticated and current_user.is_admin() %}
+                            <li><a href="{{ url_for('stock.reconciliation') }}" class="nav-link text-white {% if request.endpoint == 'reconciliation' %}active{% endif %}"><i class="fas fa-file-invoice me-2"></i> ปิดยอดสต๊อกประจำวัน</a></li>
+                            {% endif %}
+                            {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_accountant()) %}
+                            <li><a href="{{ url_for('stock.sales_history_search') }}" class="nav-link text-white {% if request.endpoint == 'sales_history_search' %}active{% endif %}"><i class="fas fa-search me-2"></i><span class="sidebar-text">ค้นหาประวัติการขาย</span></a></li>
+                            {% endif %}
+                            {% if current_user.is_authenticated and current_user.is_admin() %}
+                            <li><a href="{{ url_for('stock.commission_summary_report') }}" class="nav-link text-white {% if request.endpoint == 'commission_summary_report' %}active{% endif %}"><i class="fas fa-donate me-2"></i><span class="sidebar-text">รายงานคอมมิชชั่น</span></a></li>
+                            <li><a href="{{ url_for('stock.product_analysis') }}" class="nav-link text-white {% if request.endpoint == 'product_analysis' %}active{% endif %}"><i class="fas fa-chart-line me-2"></i><span class="sidebar-text">วิเคราะห์สินค้า</span></a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    <li><a href="{{ url_for('stock.summary_stock_report') }}#item-summary-pane" class="nav-link text-white"><i class="fas fa-list-alt me-2"></i> สรุปยอดรายสินค้า</a></li>
+                    <li><a href="{{ url_for('stock.wholesale_dashboard') }}" class="nav-link text-white {% if 'wholesale_dashboard' in request.endpoint or 'wholesale_customer_detail' in request.endpoint %}active{% endif %}"><i class="fas fa-users me-2"></i> ลูกค้าค้าส่ง</a></li>
+                    {% endif %}
+                    
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
+                    <li><a href="{{ url_for('stock.admin_dashboard') }}" class="nav-link text-white {% if 'admin_dashboard' in request.endpoint or 'manage_users' in request.endpoint or 'wholesale_customers' in request.endpoint or 'view_feedback' in request.endpoint or 'manage_announcements' in request.endpoint or 'manage_daily_commission' in request.endpoint or 'manage_spare_part_categories' in request.endpoint or 'view_activity_logs' in request.endpoint %}active{% endif %}"><i class="fas fa-tools me-2"></i> Admin Dashboard</a></li>
+                    {% endif %}
+                    <li><a href="{{ url_for('selector.select_module') }}" class="nav-link text-white"><i class="fas fa-th-large me-2"></i> หน้าหลัก</a></li>
+                </ul>
+                {% endblock %}
+                <hr>
+                <div class="dropdown">
+                    {% if current_user.is_authenticated %}
+                    <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser2" data-bs-toggle="dropdown" aria-expanded="false">
+                        <img src="https://res.cloudinary.com/doi8m4e1o/image/upload/v1752224265/32X32_kzjpcx.jpg" alt="" width="32" height="32" class="rounded-circle me-2">
+                        <strong>{{ current_user.username }} ({{ current_user.role }})</strong>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser2">
+                        <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">ออกจากระบบ</a></li>
+                    </ul>
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="d-flex align-items-center text-white text-decoration-none"><i class="fas fa-sign-in-alt me-2"></i><strong>เข้าสู่ระบบ</strong></a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <footer class="main-footer"><p>&copy; {{ get_bkk_time().year }} ระบบจัดการสต็อกสินค้า V.2.0 Beta All rights reserved.</p></footer>
+    </div>
+
+    {% block extra_fixed_elements %}{% endblock %}
+    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    {% block scripts %}{% endblock %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- START: SweetAlert TOAST for Post-Action Messages ---
+            {% if session.get('post_action_sweetalert') %}
+            const alertData = {{ session.get('post_action_sweetalert') | tojson }};
+            
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+    
+            Toast.fire({
+                icon: alertData.icon || 'info',
+                title: alertData.message || 'ดำเนินการเรียบร้อย'
+            });
+    
+            {# เคลียร์ session ทิ้งหลังจากแสดงผลแล้ว #}
+            {% do session.pop('post_action_sweetalert', None) %}
+            {% endif %}
+            // --- END: SweetAlert TOAST for Post-Action Messages ---
+        });
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/static/sw.js')
+              .then(registration => { console.log('Service Worker registered: ', registration); })
+              .catch(err => { console.log('Service Worker registration failed: ', err); });
+          });
+        }
+    </script>
+
+    <a href="javascript:history.back()" class="btn btn-secondary" id="back-fixed-btn"><i class="fas fa-arrow-left me-2"></i>กลับ</a>
+    <button type="button" class="btn btn-primary" id="feedback-fixed-btn" data-bs-toggle="modal" data-bs-target="#feedbackModal"><i class="fas fa-comment-dots me-2"></i>ส่งข้อเสนอแนะ</button>
+    <div id="reconciliation-fixed-actions">
+        <button class="btn btn-info" id="compare-btn-base"><i class="fas fa-exchange-alt me-2"></i>เปรียบเทียบข้อมูล</button>
+        <button class="btn btn-success" id="save-ledger-btn-base"><i class="fas fa-save me-2"></i>บันทึกข้อมูล</button>
+        <form id="complete-reconciliation-form-base" method="POST" action=""><input type="hidden" name="reconciliation_id" id="reconciliation_id_hidden"><button type="button" class="btn btn-warning" id="complete-rec-btn-base"><i class="fas fa-check-circle me-2"></i>จบการทำงาน</button></form>
+    </div>
+    
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+        <div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="feedbackModalLabel">ส่งข้อเสนอแนะ / แจ้งปัญหา</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+        <form action="{{ url_for('stock.submit_feedback') }}" method="POST"><div class="modal-body"><div class="mb-3"><label for="feedback_type" class="form-label">ประเภท</label><select class="form-select" id="feedback_type" name="feedback_type" required><option value="Suggestion">เสนอไอเดีย / ฟีเจอร์ใหม่</option><option value="Bug">แจ้งปัญหา / บั๊ก</option></select></div><div class="mb-3"><label for="message" class="form-label">รายละเอียด</label><textarea class="form-control" id="message" name="message" rows="4" placeholder="กรุณาอธิบายรายละเอียดของปัญหาที่พบ หรือไอเดียที่ต้องการเสนอ..." required></textarea></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button><button type="submit" class="btn btn-primary">ส่ง</button></div></form></div></div>
+    </div>
+
+    {% if latest_announcement %}
+    <div class="modal fade" id="announcementModal" tabindex="-1" aria-labelledby="announcementModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="announcementModalLabel">{{ latest_announcement.title }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body">{{ latest_announcement.content | safe }}</div><div class="modal-footer"><button type="button" class="btn btn-primary" data-bs-dismiss="modal">รับทราบ</button></div></div></div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const announcementId = 'announcement-{{ latest_announcement.id }}';
+        const hasSeenAnnouncement = sessionStorage.getItem(announcementId);
+        if (hasSeenAnnouncement !== 'true') {
+            const announcementModal = new bootstrap.Modal(document.getElementById('announcementModal'));
+            announcementModal.show();
+            sessionStorage.setItem(announcementId, 'true');
+        }
+    });
+    
+    </script>
+    {% endif %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const backBtn = document.getElementById('back-fixed-btn');
+            if (window.history.length > 1) { backBtn.style.display = 'block'; } else { backBtn.style.display = 'none'; }
+        });
+    </script>
+    </body>
+</html>

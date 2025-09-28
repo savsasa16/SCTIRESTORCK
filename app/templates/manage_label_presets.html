@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}ตั้งค่ากระดาษสำหรับพิมพ์{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h2 class="mb-4">ตั้งค่าหน้ากระดาษ</h2>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">เพิ่ม / แก้ไขโปรไฟล์</h5>
+        </div>
+        <div class="card-body">
+            <form id="presetForm" action="{{ url_for('stock.manage_label_presets') }}" method="post">
+                <input type="hidden" name="action" id="formAction" value="add">
+                <input type="hidden" name="preset_id" id="presetId">
+
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label for="name" class="form-label">ชื่อโปรไฟล์*</label>
+                        <input type="text" class="form-control" id="name" name="name" required placeholder="">
+                    </div>
+                    <div class="col-md-6"><hr><h6>ขนาดกระดาษ (mm)</h6></div>
+                    <div class="col-md-6"><hr><h6>ขนาดสติกเกอร์ (mm)</h6></div>
+                    <div class="col-md-3">
+                        <label for="paper_width" class="form-label">ความกว้างกระดาษ*</label>
+                        <input type="number" step="0.1" class="form-control" id="paper_width" name="paper_width" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="paper_height" class="form-label">ความสูงกระดาษ*</label>
+                        <input type="number" step="0.1" class="form-control" id="paper_height" name="paper_height" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="label_width" class="form-label">ความกว้างสติกเกอร์*</label>
+                        <input type="number" step="0.1" class="form-control" id="label_width" name="label_width" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="label_height" class="form-label">ความสูงสติกเกอร์*</label>
+                        <input type="number" step="0.1" class="form-control" id="label_height" name="label_height" required>
+                    </div>
+                     <div class="col-md-12"><hr><h6>การจัดวางและระยะห่าง (mm)</h6></div>
+                    <div class="col-md-3">
+                        <label for="columns" class="form-label">จำนวนคอลัมน์*</label>
+                        <input type="number" class="form-control" id="columns" name="columns" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="column_gap" class="form-label">ระยะห่างคอลัมน์</label>
+                        <input type="number" step="0.1" class="form-control" id="column_gap" name="column_gap" value="0">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="row_gap" class="form-label">ระยะห่างแถว</label>
+                        <input type="number" step="0.1" class="form-control" id="row_gap" name="row_gap" value="0">
+                    </div>
+                     <div class="col-md-3">
+                        <label for="margin_left" class="form-label">ระยะขอบซ้าย</label>
+                        <input type="number" step="0.1" class="form-control" id="margin_left" name="margin_left" value="10">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">บันทึกหน้ากระดาษ</button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">ยกเลิก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">โปรไฟล์ทั้งหมด</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>ชื่อโปรไฟล์</th>
+                        <th>ขนาดสติกเกอร์ (กxส)</th>
+                        <th>คอลัมน์</th>
+                        <th>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in presets %}
+                    <tr>
+                        <td>{{ p.name }}</td>
+                        <td>{{ "%.1f"|format(p.label_width) }} x {{ "%.1f"|format(p.label_height) }} mm</td>
+                        <td>{{ p.columns }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick='editPreset({{ p|tojson }})'>แก้ไข</button>
+                            <form action="{{ url_for('stock.manage_label_presets') }}" method="post" class="d-inline" onsubmit="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบโปรไฟล์นี้?')">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="preset_id" value="{{ p.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">ลบ</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function editPreset(preset) {
+        document.getElementById('formAction').value = 'update';
+        document.getElementById('presetId').value = preset.id;
+        document.getElementById('name').value = preset.name;
+        document.getElementById('paper_width').value = preset.paper_width;
+        document.getElementById('paper_height').value = preset.paper_height;
+        document.getElementById('label_width').value = preset.label_width;
+        document.getElementById('label_height').value = preset.label_height;
+        document.getElementById('columns').value = preset.columns;
+        document.getElementById('row_gap').value = preset.row_gap;
+        document.getElementById('column_gap').value = preset.column_gap;
+        document.getElementById('margin_left').value = preset.margin_left;
+        window.scrollTo(0, 0);
+    }
+
+    function resetForm() {
+        document.getElementById('presetForm').reset();
+        document.getElementById('formAction').value = 'add';
+        document.getElementById('presetId').value = '';
+    }
+</script>
+{% endblock %}

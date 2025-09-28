@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>พิมพ์บาร์โค้ด</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style id="dynamic-print-style">
+        /* สไตล์สำหรับ @page จะถูกสร้างโดย JavaScript ที่นี่ */
+    </style>
+    <style>
+        :root {
+            /* ค่าเริ่มต้นจะถูกเขียนทับโดย JS */
+            --paper-width: 210mm;
+            --paper-height: 297mm;
+            --label-width: 32mm;
+            --label-height: 25mm;
+            --column-gap: 2mm;
+            --row-gap: 3mm;
+            --margin-left: 2mm;
+            --margin-top: 0mm; 
+        }
+        body { background-color: #525659; }
+        .print-area {
+            background-color: white;
+            margin: 20px auto;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            box-sizing: border-box;
+            width: var(--paper-width);
+            aspect-ratio: var(--paper-width) / var(--paper-height);
+        }
+        .barcode-grid {
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: var(--row-gap) var(--column-gap);
+            padding-left: var(--margin-left);
+            padding-top: var(--margin-top);
+            height: 100%;
+        }
+        .barcode-label {
+            box-sizing: border-box;
+            width: var(--label-width);
+            height: var(--label-height);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5mm;
+            overflow: hidden;
+            border: 1px dashed #eee;
+            page-break-inside: avoid;
+        }
+        .svg-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; width: 100%; min-height: 0; }
+        .svg-container.barcode svg { max-width: 100%; height: auto; max-height: 50%; }
+        .svg-container.qrcode svg { width: 100%; height: 100%; object-fit: contain; aspect-ratio: 1/1; }
+        .label-text { width: 100%; text-align: center; }
+        .label-item-name { font-size: 7px; word-break: break-all; line-height: 1.1; font-weight: bold;}
+        .label-price { font-size: 9px; font-weight: bold; }
+        .barcode-text { font-family: 'Courier New', monospace; font-size: 8px; word-break: break-all; }
+
+        @media print {
+            body { background-color: white; }
+            .no-print { display: none !important; }
+            .print-area { margin: 0; padding: 0; box-shadow: none; aspect-ratio: auto; overflow: visible; }
+            .barcode-label { border: none; }
+        }
+    </style>
+</head>
+<body>
+    {% if not is_printing %}
+    <div class="container my-4 no-print">
+        <div class="card">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>เลือกบาร์โค้ด</h5>
+                {% if item_info.type == 'tire' %}
+                <a href="{{ url_for('stock.edit_tire', tire_id=item_info.id) }}" class="btn btn-outline-secondary">&larr; กลับไปหน้าแก้ไข</a>
+            {% elif item_info.type == 'wheel' %}
+                <a href="{{ url_for('stock.edit_wheel', wheel_id=item_info.id) }}" class="btn btn-outline-secondary">&larr; กลับไปหน้าแก้ไข</a>
+            {% elif item_info.type == 'spare_part' %}
+                <a href="{{ url_for('stock.edit_spare_part', spare_part_id=item_info.id) }}" class="btn btn-outline-secondary">&larr; กลับไปหน้าแก้ไข</a>
+            {% else %}
+                <a href="{{ request.referrer or url_for('stock.index') }}" class="btn btn-outline-secondary">&larr; กลับ</a>
+            {% endif %}
+            </div>
+            <div class="card-body">
+                 <h6 class="mb-3">สินค้า: <strong>{{ item_info.name }}</strong></h6>
+                <form action="{{ url_for('stock.print_barcodes', item_type=item_info.type, item_id=item_info.id) }}" method="post">
+                    <div class="row g-3 mb-4">
+                        {% for bc_string in barcodes_all %}
+                        <div class="col-sm-6 col-md-4 col-lg-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="selected_barcodes" value="{{ bc_string }}" id="barcode-{{ loop.index }}">
+                                <label class="form-check-label" for="barcode-{{ loop.index }}">{{ bc_string }}</label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-print me-2"></i>สร้างหน้าสำหรับพิมพ์</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if is_printing %}
+    <div class="container my-4 no-print">
+        <div class="card">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-print me-2"></i>ตั้งค่าการพิมพ์</h5>
+                <div class="d-flex gap-2">
+                    <a href="javascript:history.back()" class="btn btn-outline-secondary"><i class="fas fa-redo me-2"></i>เลือกใหม่</a>
+                    <button onclick="window.print()" class="btn btn-primary"><i class="fas fa-print me-2"></i>พิมพ์</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="presetSelector" class="form-label">เลือกโปรไฟล์การพิมพ์:</label>
+                        <select id="presetSelector" class="form-select">
+                            {% for preset in presets %}
+                            <option value="{{ preset.id }}">{{ preset.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                         <label class="form-label">จำนวนสติกเกอร์ที่ต้องการ:</label>
+                         <input type="number" id="quantityToPrint" class="form-control" value="{{ barcodes|length }}" min="1">
+                    </div>
+                </div>
+                 <div class="alert alert-warning mt-3 small">
+                    <strong>คำแนะนำ:</strong> ในหน้าต่างพิมพ์ ให้ตั้งค่า Scale เป็น 100% และ Margins เป็น None
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="print-area">
+        <div id="barcode-container" class="barcode-grid"></div>
+    </div>
+    {% endif %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const isPrintingMode = {{ 'true' if is_printing else 'false' }};
+            if (!isPrintingMode) return;
+
+            const presets = {{ presets|tojson }};
+            const barcodeData = {{ barcodes|tojson }};
+            const itemInfo = {{ item_info|tojson }};
+
+            const controls = {
+                presetSelector: document.getElementById('presetSelector'),
+                quantityInput: document.getElementById('quantityToPrint'),
+                container: document.getElementById('barcode-container'),
+                dynamicStyle: document.getElementById('dynamic-print-style'),
+                root: document.documentElement
+            };
+
+            function applyPreset(presetId) {
+                const preset = presets.find(p => p.id == presetId);
+                if (!preset) return;
+
+                controls.root.style.setProperty('--paper-width', `${preset.paper_width}mm`);
+                controls.root.style.setProperty('--paper-height', `${preset.paper_height}mm`);
+                controls.root.style.setProperty('--label-width', `${preset.label_width}mm`);
+                controls.root.style.setProperty('--label-height', `${preset.label_height}mm`);
+                controls.root.style.setProperty('--column-gap', `${preset.column_gap}mm`);
+                controls.root.style.setProperty('--row-gap', `${preset.row_gap}mm`);
+                controls.root.style.setProperty('--margin-left', `${preset.margin_left}mm`);
+                controls.root.style.setProperty('--margin-top', `0mm`); // top margin for roll paper is usually handled by printer driver
+
+                // Dynamically create @page rule
+                const pageHeight = preset.label_height + preset.row_gap;
+                controls.dynamicStyle.innerHTML = `@page { size: ${preset.paper_width}mm ${pageHeight}mm; margin: 0; }`;
+
+                generateLabels();
+            }
+
+            function generateLabels() {
+                controls.container.innerHTML = '';
+                if (!barcodeData.length) return;
+
+                const quantity = parseInt(controls.quantityInput.value, 10) || 0;
+
+                for (let i = 0; i < quantity; i++) {
+                    const currentBarcode = barcodeData[i % barcodeData.length]; // Cycle through selected barcodes
+
+                    const nameHTML = `<div class="label-item-name">${itemInfo.name}</div>`;
+                    const priceHTML = (itemInfo.price != null) ? `<div class="label-price">${parseFloat(itemInfo.price).toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}</div>` : '';
+                    const textHTML = `<div class="barcode-text">${currentBarcode.text}</div>`;
+
+                    const labelDiv = document.createElement('div');
+                    labelDiv.className = 'barcode-label';
+                    labelDiv.innerHTML = `
+                        <div class="label-text">${nameHTML}</div>
+                        <div class="svg-container barcode">${currentBarcode.svg_barcode}</div>
+                        <div class="label-text">${priceHTML}${textHTML}</div>
+                    `;
+                    controls.container.appendChild(labelDiv);
+                }
+            }
+
+            controls.presetSelector.addEventListener('change', () => applyPreset(controls.presetSelector.value));
+            controls.quantityInput.addEventListener('change', generateLabels);
+
+            // Initial load
+            if (presets.length > 0) {
+                applyPreset(presets[0].id);
+            }
+        });
+    </script>
+</body>
+</html>

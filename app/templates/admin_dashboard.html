@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block page_title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-lg-12">
+            <h2 class="mb-4">แผงควบคุมผู้ดูแลระบบ</h2>
+        </div>
+    </div>
+
+    {# ⭐️ ปรับให้เป็น 3 คอลัมน์สำหรับขนาดกลาง (md) ขึ้นไป #}
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4"> 
+        {# Card 1: จัดการผู้ใช้งาน #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-users-cog fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">จัดการผู้ใช้งาน</h5>
+                    <p class="card-text">เพิ่ม, แก้ไข, ลบ หรือจัดการสิทธิ์ผู้ใช้งาน</p>
+                    <a href="{{ url_for('stock.manage_users') }}" class="btn btn-primary stretched-link">ไปที่หน้าจัดการ</a>
+                </div>
+            </div>
+        </div>
+
+        {# Card 2: จัดการลูกค้าค้าส่ง #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-handshake fa-3x text-success mb-3"></i>
+                    <h5 class="card-title">จัดการลูกค้าค้าส่ง</h5>
+                    <p class="card-text">เพิ่ม, แก้ไข หรือดูข้อมูลลูกค้าค้าส่ง</p>
+                    <a href="{{ url_for('stock.manage_wholesale_customers') }}" class="btn btn-success stretched-link">ไปที่หน้าจัดการ</a>
+                </div>
+            </div>
+        </div>
+
+        {# Card 3: จัดการค่าคอมมิชชัน #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-money-bill-wave fa-3x text-success mb-3"></i>
+                    <h5 class="card-title">จัดการค่าคอมมิชชัน</h5>
+                    <p class="card-text">ตั้งค่าหรือตรวจสอบยอดค่าคอมมิชชันพนักงาน</p>
+                    <a href="{{ url_for('stock.manage_daily_commission') }}" class="btn btn-success stretched-link">จัดการคอมมิชชัน</a>
+                </div>
+            </div>
+        </div>
+
+        {# Card 4: เพิ่ม/ลบหมวดหมู่อะไหล่ #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-cogs fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">เพิ่ม/ลบหมวดหมู่อะไหล่</h5>
+                    <p class="card-text">สร้าง, แก้ไข, หรือลบหมวดหมู่อะไหล่ในระบบ</p>
+                    <a href="{{ url_for('stock.manage_spare_part_categories') }}" class="btn btn-warning stretched-link">ไปที่หน้าจัดการ</a>
+                </div>
+            </div>
+        </div>
+
+        {# Card 5: จัดการโปรโมชัน #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-tags fa-3x text-danger mb-3"></i>
+                    <h5 class="card-title">จัดการโปรโมชัน</h5>
+                    <p class="card-text">สร้าง, แก้ไข, ลบ โปรโมชันสินค้า</p>
+                    <a href="{{ url_for('stock.promotions') }}" class="btn btn-danger stretched-link">ไปที่หน้าจัดการ</a>
+                </div>
+            </div>
+        </div>
+
+        {# Card 6: นำเข้า/ส่งออก #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
+                    <h5 class="card-title">นำเข้า/ส่งออก</h5>
+                    <p class="card-text">จัดการการนำเข้าและส่งออกข้อมูลสินค้าด้วยไฟล์ Excel</p>
+                    <a href="{{ url_for('stock.export_import') }}" class="btn btn-success stretched-link">ไปที่หน้าจัดการ</a>
+                </div>
+            </div>
+        </div>
+        
+        {# Card 7: ตั้งค่ากระดาษสำหรับพิมพ์ #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-print fa-3x text-info mb-3"></i>
+                    <h5 class="card-title">ตั้งค่ากระดาษสำหรับพิมพ์</h5>
+                    <p class="card-text">ตั้งค่ารูปแบบและขนาดป้ายสำหรับพิมพ์บาร์โค้ด</p>
+                    <a href="{{ url_for('stock.manage_label_presets') }}" class="btn btn-info stretched-link">ไปที่หน้าจัดการ</a>
+                </div>
+            </div>
+        </div>
+
+        {# Card 8: จัดการประกาศ #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-bullhorn fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">จัดการประกาศ</h5>
+                    <p class="card-text">สร้าง, แก้ไข หรือลบประกาศที่แสดงบนหน้าแรก</p>
+                    <a href="{{ url_for('stock.manage_announcements') }}" class="btn btn-primary stretched-link">ไปที่หน้าจัดการ</a>
+                </div>
+            </div>
+        </div>
+
+        {# Card 9: UX Feedback (ออมสิน) #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-comments fa-3x text-info mb-3"></i>
+                    <h5 class="card-title">UX Feedback (ออมสิน)</h5>
+                    <p class="card-text">ดูข้อเสนอแนะและปัญหาที่ผู้ใช้งานส่งเข้ามา</p>
+                    <a href="{{ url_for('stock.view_feedback') }}" class="btn btn-info stretched-link">ดู Feedback</a>
+                </div>
+            </div>
+        </div>
+
+        {# Card 10: ประวัติการใช้งาน #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-history fa-3x text-secondary mb-3"></i>
+                    <h5 class="card-title">ประวัติการใช้งาน</h5>
+                    <p class="card-text">ตรวจสอบบันทึกกิจกรรมทั้งหมดของผู้ใช้งานในระบบ</p>
+                    <a href="{{ url_for('stock.view_activity_logs') }}" class="btn btn-secondary stretched-link">ดูประวัติ</a>
+                </div>
+            </div>
+        </div>
+
+        {# NEW Card for Fix History #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-wrench fa-3x text-danger mb-3"></i>
+                    <h5 class="card-title">ซ่อมแซมข้อมูล</h5>
+                    <p class="card-text">เรียกใช้ฟังก์ชันเพื่อซ่อมแซมข้อมูล</p>
+                    <a href="{{ url_for('stock.fix_history') }}" class="btn btn-danger stretched-link">ไปที่หน้าซ่อมแซม</a>
+                </div>
+            </div>
+        </div>
+
+        {# NEW Card for Admin Deleted Items #}
+        <div class="col">
+            <div class="card h-100 shadow-sm custom-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-trash-alt fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">รายการสินค้าที่ถูกลบ</h5>
+                    <p class="card-text">ดูและจัดการรายการยาง, แม็ก, อะไหล่ ที่ถูกลบไปแล้ว</p>
+                    <a href="{{ url_for('stock.admin_deleted_items') }}" class="btn btn-warning stretched-link">ดูรายการที่ถูกลบ</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* เพิ่ม CSS เล็กน้อยเพื่อให้การ์ดดูน่าสนใจขึ้นเมื่อเอาเมาส์ไปชี้ */
+.card-hover {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15) !important;
+}
+</style>
+{% endblock %}

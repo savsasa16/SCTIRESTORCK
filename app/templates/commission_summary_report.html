@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}รายงานค่าคอมมิชชัน{% endblock %}
+{% block page_title %}💰 รายงานค่าคอมมิชชัน{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card mb-4">
+        <div class="card-body">
+            <form id="date-form" method="GET" action="{{ url_for('stock.commission_summary_report') }}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md">
+                        <label for="start_date" class="form-label"><strong>ตั้งแต่วันที่</strong></label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date_filter }}">
+                    </div>
+                    <div class="col-md">
+                        <label for="end_date" class="form-label"><strong>ถึงวันที่</strong></label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date_filter }}">
+                    </div>
+                    <div class="col-md-auto">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-calculator me-2"></i> คำนวณ
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-file-invoice-dollar me-2"></i> 
+            <strong>ยอดขายและคอมมิชชั่น ช่วงวันที่ {{ start_date_filter }} ถึง {{ end_date_filter }}</strong>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">สินค้า (คลิกเพื่อดูรายละเอียด)</th>
+                        <th class="text-center">จำนวนที่ขาย (หน่วย)</th>
+                        <th class="text-end pe-3">ยอดคอมมิชชั่นรวม (บาท)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in summary_data %}
+                    <tr data-bs-toggle="collapse" href="#details-{{ loop.index }}" role="button" aria-expanded="false" aria-controls="details-{{ loop.index }}" class="accordion-toggle">
+                        <td class="ps-3">
+                            <i class="fas fa-chevron-down me-2"></i>{{ item.item_description }}
+                        </td>
+                        <td class="text-center">{{ item.total_units_sold | int }}</td>
+                        <td class="text-end pe-3 fw-bold">{{ "%.2f"|format(item.total_commission) }}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="p-0">
+                            <div class="collapse" id="details-{{ loop.index }}">
+                                <div class="p-3 bg-light">
+                                    <h6 class="mb-2"><strong>รายละเอียดการขาย:</strong> {{ item.item_description }}</h6>
+                                    <table class="table table-sm table-bordered bg-white">
+                                        <thead class="table-secondary">
+                                            <tr>
+                                                <th>วันที่ขาย</th>
+                                                <th>ช่องทาง</th>
+                                                <th class="text-center">จำนวน</th>
+                                                <th class="text-end">คอมมิชชั่น</th>
+                                                <th class="text-center">หลักฐาน</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for movement in grouped_movements[item.item_description] %}
+                                            <tr>
+                                                <td>{{ movement.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+                                                <td>{{ movement.channel_name or 'N/A' }}</td>
+                                                <td class="text-center">{{ movement.quantity_change | int }}</td>
+                                                <td class="text-end">{{ "%.2f"|format(movement.commission_amount) }}</td>
+                                                <td class="text-center">
+                                                    {# --- START: ส่วนที่แก้ไข (ปุ่มดูรูป) --- #}
+                                                    {% if movement.image_filename %}
+                                                    <button type="button" class="btn btn-outline-primary btn-sm"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#imageProofModal"
+                                                            data-image-url="{{ movement.image_filename }}">
+                                                        <i class="fas fa-image"></i>
+                                                    </button>
+                                                    {% else %}
+                                                    -
+                                                    {% endif %}
+                                                    {# --- END: ส่วนที่แก้ไข (ปุ่มดูรูป) --- #}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center text-muted p-5">ไม่พบข้อมูลการขายที่มีค่าคอมมิชชั่นในช่วงเวลานี้</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% if summary_data %}
+                <tfoot>
+                    {# --- START: ส่วนที่แก้ไข (สีแถบสรุป) --- #}
+                    <tr class="bg-success text-white">
+                        <td class="text-end fw-bold ps-3" colspan="2">รวมค่าคอมมิชชั่นทั้งหมด</td>
+                        <td class="text-end fw-bold pe-3">
+                            {{ "%.2f"|format(summary_data | sum(attribute='total_commission')) }}
+                        </td>
+                    </tr>
+                    {# --- END: ส่วนที่แก้ไข (สีแถบสรุป) --- #}
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+
+{# --- START: เพิ่มโค้ด Modal เข้ามาที่นี่ --- #}
+<div class="modal fade" id="imageProofModal" tabindex="-1" aria-labelledby="imageProofModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="imageProofModalLabel">หลักฐานการขาย</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img src="" id="modalImageProof" class="img-fluid" alt="Proof Image">
+      </div>
+    </div>
+  </div>
+</div>
+{# --- END: ส่วนของ Modal --- #}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // โค้ดสำหรับ Flatpickr (เหมือนเดิม)
+    const flatpickrConfig = {
+        locale: "th",
+        dateFormat: "Y-m-d",
+        allowInput: true
+    };
+    flatpickr("#start_date", flatpickrConfig);
+    flatpickr("#end_date", flatpickrConfig);
+
+    // --- START: เพิ่ม Script สำหรับจัดการ Modal ---
+    const imageProofModal = document.getElementById('imageProofModal');
+    if (imageProofModal) {
+        imageProofModal.addEventListener('show.bs.modal', function (event) {
+            // Button that triggered the modal
+            const button = event.relatedTarget;
+            // Extract image url from data-image-url attribute
+            const imageUrl = button.getAttribute('data-image-url');
+            
+            // Find the image tag inside the modal
+            const modalImage = imageProofModal.querySelector('#modalImageProof');
+            
+            // Update the modal's image source
+            modalImage.src = imageUrl;
+        });
+    }
+    // --- END: Script สำหรับจัดการ Modal ---
+});
+</script>
+{% endblock %}

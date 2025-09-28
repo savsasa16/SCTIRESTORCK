@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}ค้นหาประวัติการขาย{% endblock %}
+{% block page_title %}🔎 ค้นหาประวัติการขาย{% endblock %}
+
+{% block styles %}
+    {# เราจะใช้ block styles แทน head เพื่อความเป็นระเบียบ #}
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('stock.sales_history_search') }}">
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-3">
+                        <label for="tire-search" class="form-label"><strong>ค้นหาสินค้า</strong></label>
+                        <input type="text" name="tire_keyword_display" id="tire-search" class="form-control" placeholder="ยี่ห้อ/รุ่น/ขนาด..." value="{{ tire_keyword or '' }}">
+                        <input type="hidden" name="tire_id" id="tire-id-hidden" value="{{ request.args.get('tire_id', '') }}">
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <label for="customer-search" class="form-label"><strong>ค้นหาลูกค้า</strong></label>
+                        <input type="text" name="customer_keyword" id="customer-search" class="form-control" placeholder="ชื่อลูกค้า..." value="{{ customer_keyword or '' }}">
+                    </div>
+                    <div class="col-md-6 col-lg-2">
+                        <label for="start-date-picker" class="form-label"><strong>วันเริ่มต้น</strong></label>
+                        <input type="date" name="start_date" id="start-date-picker" class="form-control" placeholder="เลือกวันที่..." value="{{ start_date or '' }}">
+                    </div>
+                    <div class="col-md-6 col-lg-2">
+                        <label for="end-date-picker" class="form-label"><strong>วันสิ้นสุด</strong></label>
+                        <input type="date" name="end_date" id="end-date-picker" class="form-control" placeholder="เลือกวันที่..." value="{{ end_date or '' }}">
+                    </div>
+                    <div class="col-lg-2 d-flex align-items-end">
+                        <div class="w-100">
+                             <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search"></i> ค้นหา</button>
+                             <a href="{{ url_for('stock.sales_history_search') }}" class="btn btn-outline-secondary w-100 mt-2">ล้างค่า</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if has_searched %}
+        {% if sales_history %}
+        <h4>ผลการค้นหา ({{ sales_history|length }} รายการ)</h4>
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">วันที่/เวลา</th>
+                                <th scope="col" class="text-center">จำนวน</th>
+                                <th scope="col">รายการยาง</th>
+                                <th scope="col">ช่องทางขาย</th>
+                                <th scope="col">รายละเอียดลูกค้า</th>
+                                <th scope="col">ผู้บันทึก</th>
+                                <th scope="col">หมายเหตุ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in sales_history %}
+                            <tr>
+                                <td class="text-nowrap">{{ sale.timestamp.day }} {{ THAI_MONTHS[sale.timestamp.month - 1] }} {{ sale.timestamp.year + 543 }} {{ sale.timestamp.strftime('%H:%M') }}</td>
+                                <td class="text-center">{{ sale.quantity_change }}</td>
+                                <td>{{ sale.tire_brand }} {{ sale.tire_model }} ({{ sale.tire_size }})</td>
+                                <td>{{ sale.channel_name }}</td>
+                                <td>
+                                    {% if sale.online_platform_name %}
+                                        {{ sale.online_platform_name }}
+                                    {% elif sale.wholesale_customer_name %}
+                                        {{ sale.wholesale_customer_name }}
+                                    {% else %}
+                                        หน้าร้าน
+                                    {% endif %}
+                                </td>
+                                <td>{{ sale.user_username }}</td>
+                                <td>{{ sale.notes }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">สรุปผลรวมทั้งหมด</h5>
+                        <p class="card-text fs-4 fw-bold text-success">{{ total_all_items }} เส้น</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">แยกตามยี่ห้อ</h5>
+                        {% if total_by_brand %}
+                        <ul class="list-group list-group-flush">
+                            {% for brand, total in total_by_brand.items()|sort %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <strong>{{ brand.title() }}</strong>
+                                    <span class="badge bg-primary rounded-pill">{{ total }} เส้น</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                            <p class="text-muted text-center mt-3 mb-0">ไม่พบข้อมูลแยกตามยี่ห้อ</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+            <div class="alert alert-warning text-center">
+                <i class="fas fa-exclamation-circle me-2"></i> ไม่พบประวัติการขายที่ตรงกับเงื่อนไขการค้นหา
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-info">
+            <h5 class="alert-heading"><i class="fas fa-info-circle"></i> วิธีการค้นหา</h5>
+            <p>คุณสามารถค้นหาประวัติการขายโดยใช้เงื่อนไขต่างๆ ร่วมกันได้:</p>
+            <ul>
+                <li><strong>ค้นหาสินค้า:</strong> พิมพ์ยี่ห้อ, รุ่น หรือขนาดของยาง แล้วเลือกจากรายการที่แสดง</li>
+                <li><strong>ค้นหาลูกค้า:</strong> พิมพ์ชื่อลูกค้า (สำหรับลูกค้าค้าส่ง) หรือชื่อแพลตฟอร์ม (สำหรับออนไลน์)</li>
+                <li><strong>เลือกช่วงวันที่:</strong> กำหนดวันเริ่มต้นและสิ้นสุดเพื่อจำกัดขอบเขตการค้นหา</li>
+            </ul>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {# ไม่ต้องโหลด jQuery และ jQuery UI อีก เพราะมีอยู่ใน base.html แล้ว #}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // ตั้งค่า Autocomplete สำหรับช่องค้นหายาง
+        $("#tire-search").autocomplete({
+            source: function(request, response) {
+                $.getJSON("{{ url_for('stock.api_search_tires_for_autocomplete') }}", {
+                    term: request.term
+                }, response);
+            },
+            minLength: 2,
+            select: function(event, ui) {
+                // เมื่อผู้ใช้เลือกรายการ ให้เก็บ ID ใน hidden input และแสดงชื่อในช่องค้นหา
+                $("#tire-id-hidden").val(ui.item.id);
+                $("#tire-search").val(ui.item.value); 
+                return false; 
+            }
+        });
+
+        // ตั้งค่า Autocomplete สำหรับช่องค้นหาลูกค้า
+        $("#customer-search").autocomplete({
+            source: function(request, response) {
+                $.getJSON("{{ url_for('stock.api_search_customers') }}", {
+                    term: request.term
+                }, response);
+            },
+            minLength: 2
+        });
+        
+        // ตั้งค่า Flatpickr
+        flatpickr("#start-date-picker", {
+            locale: "th",
+            dateFormat: "Y-m-d",
+        });
+        flatpickr("#end-date-picker", {
+            locale: "th",
+            dateFormat: "Y-m-d",
+        });
+    });
+    </script>
+{% endblock %}

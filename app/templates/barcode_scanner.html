@@ -1,0 +1,927 @@
+{% extends 'base.html' %}
+
+{% block page_title %}จัดการสต็อกด้วยบาร์โค้ด{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    #total-summary-box {
+        position: fixed;
+        bottom: 90px;
+        right: 20px;
+        background-color: #2c3e50;
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        z-index: 1050;
+        min-width: 220px;
+        display: none;
+        transition: opacity 0.3s ease-in-out;
+    }
+    #total-summary-box h5 {
+        margin-top: 0;
+        border-bottom: 1px solid #46627f;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        font-size: 1.1rem;
+    }
+    .total-line {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 1rem;
+    }
+    .total-line span {
+        opacity: 0.9;
+    }
+    /* Style for Modal Details */
+    .detail-label {
+        font-weight: bold;
+        color: #555;
+    }
+    .detail-value {
+        padding-left: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_fixed_elements %}
+<div id="total-summary-box">
+    <h5><i class="fas fa-calculator me-2"></i>ยอดรวมในรายการ</h5>
+    <div id="totals-content">
+        </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header">
+        <h4 class="mb-0"><i class="fas fa-barcode me-2"></i>จัดการสต็อกด้วยบาร์โค้ด</h4>
+    </div>
+    <div class="card-body">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="mb-3">
+                    <label class="form-label fs-5">เลือกวิธีการสแกน:</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="scanMode" id="modeBarcode" value="barcode" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="modeBarcode"><i class="fas fa-barcode me-2"></i>เครื่องยิงบาร์โค้ด</label>
+                        
+                        <input type="radio" class="btn-check" name="scanMode" id="modeQr" value="qr" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="modeQr"><i class="fas fa-camera me-2"></i>กล้อง QR Code</label>
+                    </div>
+                </div>
+
+                <div id="barcode-input-container">
+                    <input type="text" class="form-control form-control-lg text-center" id="barcodeInput" autofocus placeholder="ยิงบาร์โค้ดที่นี่...">
+                </div>
+
+                <div id="qr-reader-container" class="text-center" style="display: none;">
+                    <div id="qr-reader" style="width: 100%; max-width: 500px; margin: 0 auto; border-radius: .375rem;"></div>
+                    <div id="qr-scan-status" class="text-muted mt-2"></div>
+                    <button id="start-qr-scan-btn" class="btn btn-success mt-2" style="display: none;">
+                        <i class="fas fa-camera me-2"></i>เริ่มสแกน QR อีกครั้ง
+                    </button>
+                </div>
+                
+                <div id="scanStatus" class="mt-3"></div> </div>
+        </div>
+
+        <hr class="my-4">
+
+        <h5 class="mb-3">รายการที่สแกนแล้ว</h5>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-sm" id="scannedItemsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>ประเภท</th>
+                        <th>ยี่ห้อ/รุ่น/ชื่อ</th>
+                        <th>ข้อมูลจำเพาะ/Part No.</th>
+                        <th class="text-center">สต็อกปัจจุบัน</th>
+                        <th class="text-center" style="width: 120px;">จำนวน</th>
+                        <th class="text-center">ลบ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="6" class="text-center text-muted">ยังไม่มีรายการที่สแกน</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card mt-4 bg-light border">
+            <div class="card-body">
+                <h5 class="card-title mb-3">รายละเอียดการทำรายการ</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="transactionType" class="form-label"><strong>ประเภทรายการ<span class="text-danger">*</span></strong></label>
+                        <select id="transactionType" class="form-select">
+                            <option value="OUT">จ่ายออก (OUT)</option>
+                            <option value="IN">รับเข้า (IN)</option>
+                            <option value="RETURN">รับคืน (RETURN)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="channel_id" class="form-label"><strong>ช่องทางการเคลื่อนไหว<span class="text-danger">*</span></strong></label>
+                        <select class="form-select" id="channel_id" name="channel_id" required>
+                            <option value="">-- กรุณาเลือก --</option>
+                            {% for channel in sales_channels %}
+                            <option value="{{ channel.id }}">{{ channel.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 conditional-field" id="online_platform_container" style="display: none;">
+                        <label for="online_platform_id" class="form-label">แพลตฟอร์มออนไลน์ <span class="text-danger">*</span></label>
+                        <select class="form-select" id="online_platform_id" name="online_platform_id">
+                            <option value="">-- กรุณาเลือก --</option>
+                            {% for platform in online_platforms %}
+                            <option value="{{ platform.id }}">{{ platform.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 conditional-field" id="wholesale_customer_container" style="display: none;">
+                        <label for="wholesale_customer_id" class="form-label">ชื่อลูกค้าค้าส่ง <span class="text-danger">*</span></label>
+                        <select class="form-select" id="wholesale_customer_id" name="wholesale_customer_id">
+                            <option value="">-- กรุณาเลือก --</option>
+                            {% for customer in wholesale_customers %}
+                            <option value="{{ customer.id }}">{{ customer.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-12 conditional-field" id="return_container" style="display: none;">
+                         <div class="row g-3">
+                             <div class="col-md-6">
+                                <label for="return_customer_type" class="form-label">คืนจาก <span class="text-danger">*</span></label>
+                                <select class="form-select" id="return_customer_type" name="return_customer_type">
+                                    <option value="">-- กรุณาเลือก --</option>
+                                    <option value="หน้าร้านลูกค้าทั่วไป">หน้าร้าน (ลูกค้าทั่วไป)</option>
+                                    <option value="หน้าร้านร้านยาง">หน้าร้าน (ร้านยาง)</option>
+                                    <option value="ออนไลน์">ออนไลน์</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6" id="return_wholesale_customer_container" style="display: none;">
+                                <label for="return_wholesale_customer_id" class="form-label">ชื่อร้านยาง <span class="text-danger">*</span></label>
+                                <select class="form-select" id="return_wholesale_customer_id" name="return_wholesale_customer_id">
+                                     <option value="">-- กรุณาเลือก --</option>
+                                     {% for customer in wholesale_customers %}
+                                     <option value="{{ customer.id }}">{{ customer.name }}</option>
+                                     {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6" id="return_online_platform_container" style="display: none;">
+                                 <label for="return_online_platform_id" class="form-label">แพลตฟอร์มออนไลน์ <span class="text-danger">*</span></label>
+                                 <select class="form-select" id="return_online_platform_id" name="return_online_platform_id">
+                                     <option value="">-- กรุณาเลือก --</option>
+                                     {% for platform in online_platforms %}
+                                     <option value="{{ platform.id }}">{{ platform.name }}</option>
+                                     {% endfor %}
+                                 </select>
+                            </div>
+                         </div>
+                    </div>
+                    <div class="col-12">
+                        <label for="transactionNotes" class="form-label">หมายเหตุ (ถ้ามี):</label>
+                        <textarea id="transactionNotes" class="form-control" rows="2" placeholder="เช่น ขายหน้าร้าน, ค้าส่งร้าน A / ขายออนไลน์"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label for="bill_image" class="form-label">แนบรูปบิล (ถ้ามี):</label>
+                        <input class="form-control" type="file" id="bill_image" name="bill_image" accept="image/*">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4 d-flex justify-content-center gap-2">
+            <button id="processTransactionBtn" class="btn btn-lg btn-primary"><i class="fas fa-check-circle me-2"></i>ยืนยันการทำรายการ</button>
+            <button id="clearAllBtn" class="btn btn-secondary"><i class="fas fa-times me-2"></i>ล้างทั้งหมด</button>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>ประวัติการเคลื่อนไหวล่าสุด</h5>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="historyTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tires-history-tab" data-bs-toggle="tab" data-bs-target="#tires-history" type="button" role="tab" aria-controls="tires-history" aria-selected="true"><i class="fas fa-tire me-2"></i>ยาง</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="wheels-history-tab" data-bs-toggle="tab" data-bs-target="#wheels-history" type="button" role="tab" aria-controls="wheels-history" aria-selected="false"><i class="fas fa-compact-disc me-2"></i>แม็ก</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="spare-parts-history-tab" data-bs-toggle="tab" data-bs-target="#spare-parts-history" type="button" role="tab" aria-controls="spare-parts-history" aria-selected="false"><i class="fas fa-tools me-2"></i>อะไหล่</button>
+                    </li>
+                </ul>
+        
+                <div class="tab-content pt-3" id="historyTabsContent">
+                    <div class="tab-pane fade show active" id="tires-history" role="tabpanel" aria-labelledby="tires-history-tab">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>เวลา</th>
+                                        <th>ข้อมูล</th>
+                                        <th>ประเภท</th>
+                                        <th class="text-center">จำนวน</th>
+                                        <th class="text-center">คงเหลือ</th>
+                                        <th>ช่องทาง/ลูกค้า</th>
+                                        <th>พนักงาน</th>
+                                        <th>หมายเหตุ</th>
+                                        <th class="text-center">หลักฐาน</th>
+                                        {% if current_user.can_edit() %}<th class="text-center">จัดการ</th>{% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for m in recent_tire_movements %}
+                                    <tr>
+                                        <td class="text-nowrap">{{ m.timestamp.strftime('%d/%m %H:%M') }}</td>
+                                        <td>{{ m.brand|title }} {{ m.model|title }}<br><small class="text-muted">{{ m.size }}</small></td>
+                                        <td>{% if m.type=='IN' %}<span class="badge text-bg-success">รับเข้า</span>{% elif m.type=='OUT' %}<span class="badge text-bg-danger">จ่ายออก</span>{% elif m.type=='RETURN' %}<span class="badge text-bg-info">รับคืน</span>{% endif %}</td>
+                                        <td class="text-center fw-bold">{{ m.quantity_change }}</td>
+                                        <td class="text-center">{{ m.remaining_quantity }}</td>
+                                        <td>{% if m.channel_name=='ออนไลน์'%}{{m.online_platform_name|default('-')}}{% elif m.channel_name=='ค้าส่ง'%}{{m.wholesale_customer_name|default('-')}}{% elif m.type=='RETURN' and m.return_customer_type%}{{m.return_customer_type}}{% if m.return_customer_type=='ออนไลน์'%}({{m.online_platform_name|default('-')}}){% elif m.return_customer_type=='หน้าร้านร้านยาง'%}({{m.wholesale_customer_name|default('-')}}){% endif %}{% else %}{{m.channel_name|default('-')}}{% endif %}</td>
+                                        <td>{{ m.user_username|default('-') }}</td>
+                                        <td style="white-space: pre-wrap; word-break: break-word;">{{ m.notes|default('')}}</td>
+                                        <td class="text-center">
+                                            {% if m.image_filename %}<button type="button" class="btn btn-outline-primary btn-sm py-0 px-1" data-bs-toggle="modal" data-bs-target="#imageProofModal" data-image-url="{{ m.image_filename }}"><i class="fas fa-image"></i></button>{% else %}-{% endif %}
+                                        </td>
+                                        {% if current_user.can_edit() %}
+                                        <td class="text-center">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <a href="{{url_for('stock.edit_tire_movement', movement_id=m.id)}}" class="btn btn-warning btn-sm py-0 px-1" title="แก้ไขรายการเคลื่อนไหว"><i class="fas fa-history"></i></a>
+                                                {% if current_user.is_admin() %}
+                                                <form action="{{url_for('stock.delete_tire_movement_action', movement_id=m.id)}}" method="POST" class="d-inline movement-delete-form">
+                                                    <button type="submit" class="btn btn-danger btn-sm py-0 px-1" title="ลบรายการเคลื่อนไหว"><i class="fas fa-trash-alt"></i></button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="{% if current_user.can_edit() %}10{% else %}9{% endif %}" class="text-center text-muted">ยังไม่มีข้อมูลการเคลื่อนไหว</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="wheels-history" role="tabpanel" aria-labelledby="wheels-history-tab">
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm table-striped table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>เวลา</th>
+                                        <th>ข้อมูล</th>
+                                        <th>ประเภท</th>
+                                        <th class="text-center">จำนวน</th>
+                                        <th class="text-center">คงเหลือ</th>
+                                        <th>ช่องทาง/ลูกค้า</th>
+                                        <th>พนักงาน</th>
+                                        <th>หมายเหตุ</th>
+                                        <th class="text-center">หลักฐาน</th>
+                                        {% if current_user.can_edit() %}<th class="text-center">จัดการ</th>{% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for m in recent_wheel_movements %}
+                                    <tr>
+                                        <td class="text-nowrap">{{ m.timestamp.strftime('%d/%m %H:%M') }}</td>
+                                        <td>{{ m.brand|title }} {{ m.model|title }}<br><small class="text-muted">{{ m.diameter }}x{{ m.width }} {{ m.pcd }} ET{{ m.et }}</small></td>
+                                        <td>{% if m.type=='IN' %}<span class="badge text-bg-success">รับเข้า</span>{% elif m.type=='OUT' %}<span class="badge text-bg-danger">จ่ายออก</span>{% elif m.type=='RETURN' %}<span class="badge text-bg-info">รับคืน</span>{% endif %}</td>
+                                        <td class="text-center fw-bold">{{ m.quantity_change }}</td>
+                                        <td class="text-center">{{ m.remaining_quantity }}</td>
+                                        <td>{% if m.channel_name=='ออนไลน์'%}{{m.online_platform_name|default('-')}}{% elif m.channel_name=='ค้าส่ง'%}{{m.wholesale_customer_name|default('-')}}{% elif m.type=='RETURN' and m.return_customer_type%}{{m.return_customer_type}}{% if m.return_customer_type=='ออนไลน์'%}({{m.online_platform_name|default('-')}}){% elif m.return_customer_type=='หน้าร้านร้านยาง'%}({{m.wholesale_customer_name|default('-')}}){% endif %}{% else %}{{m.channel_name|default('-')}}{% endif %}</td>
+                                        <td>{{ m.user_username|default('-') }}</td>
+                                        <td style="white-space: pre-wrap; word-break: break-word;">{{ m.notes|default('')}}</td>
+                                        <td class="text-center">
+                                            {% if m.image_filename %}<button type="button" class="btn btn-outline-primary btn-sm py-0 px-1" data-bs-toggle="modal" data-bs-target="#imageProofModal" data-image-url="{{ m.image_filename }}"><i class="fas fa-image"></i></button>{% else %}-{% endif %}
+                                        </td>
+                                        {% if current_user.can_edit() %}
+                                        <td class="text-center">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <a href="{{url_for('stock.edit_wheel_movement', movement_id=m.id)}}" class="btn btn-warning btn-sm py-0 px-1" title="แก้ไขรายการเคลื่อนไหว"><i class="fas fa-history"></i></a>
+                                                {% if current_user.is_admin() %}
+                                                <form action="{{url_for('stock.delete_wheel_movement_action', movement_id=m.id)}}" method="POST" class="d-inline movement-delete-form">
+                                                    <button type="submit" class="btn btn-danger btn-sm py-0 px-1" title="ลบรายการเคลื่อนไหว"><i class="fas fa-trash-alt"></i></button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="{% if current_user.can_edit() %}10{% else %}9{% endif %}" class="text-center text-muted">ยังไม่มีข้อมูลการเคลื่อนไหว</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="spare-parts-history" role="tabpanel" aria-labelledby="spare-parts-history-tab">
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm table-striped table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>เวลา</th>
+                                        <th>ข้อมูล</th>
+                                        <th>ประเภท</th>
+                                        <th class="text-center">จำนวน</th>
+                                        <th class="text-center">คงเหลือ</th>
+                                        <th>ช่องทาง/ลูกค้า</th>
+                                        <th>พนักงาน</th>
+                                        <th>หมายเหตุ</th>
+                                        <th class="text-center">หลักฐาน</th>
+                                        {% if current_user.can_edit() %}<th class="text-center">จัดการ</th>{% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for m in recent_spare_part_movements %}
+                                     <tr>
+                                        <td class="text-nowrap">{{ m.timestamp.strftime('%d/%m %H:%M') }}</td>
+                                        <td>{{ m.spare_part_name }} {% if m.spare_part_brand %}({{ m.spare_part_brand|title }}){% endif %}<br><small class="text-muted">Part No: {{ m.part_number or '-' }}</small></td>
+                                        <td>{% if m.type=='IN' %}<span class="badge text-bg-success">รับเข้า</span>{% elif m.type=='OUT' %}<span class="badge text-bg-danger">จ่ายออก</span>{% elif m.type=='RETURN' %}<span class="badge text-bg-info">รับคืน</span>{% endif %}</td>
+                                        <td class="text-center fw-bold">{{ m.quantity_change }}</td>
+                                        <td class="text-center">{{ m.remaining_quantity }}</td>
+                                        <td>{% if m.channel_name=='ออนไลน์'%}{{m.online_platform_name|default('-')}}{% elif m.channel_name=='ค้าส่ง'%}{{m.wholesale_customer_name|default('-')}}{% elif m.type=='RETURN' and m.return_customer_type%}{{m.return_customer_type}}{% if m.return_customer_type=='ออนไลน์'%}({{m.online_platform_name|default('-')}}){% elif m.return_customer_type=='หน้าร้านร้านยาง'%}({{m.wholesale_customer_name|default('-')}}){% endif %}{% else %}{{m.channel_name|default('-')}}{% endif %}</td>
+                                        <td>{{ m.user_username|default('-') }}</td>
+                                        <td style="white-space: pre-wrap; word-break: break-word;">{{ m.notes|default('')}}</td>
+                                        <td class="text-center">
+                                            {% if m.image_filename %}<button type="button" class="btn btn-outline-primary btn-sm py-0 px-1" data-bs-toggle="modal" data-bs-target="#imageProofModal" data-image-url="{{ m.image_filename }}"><i class="fas fa-image"></i></button>{% else %}-{% endif %}
+                                        </td>
+                                        {% if current_user.can_edit() %}
+                                        <td class="text-center">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <a href="{{url_for('stock.edit_spare_part_movement', movement_id=m.id)}}" class="btn btn-warning btn-sm py-0 px-1" title="แก้ไขรายการเคลื่อนไหว"><i class="fas fa-history"></i></a>
+                                                {% if current_user.is_admin() %}
+                                                <form action="{{url_for('stock.delete_spare_part_movement_action', movement_id=m.id)}}" method="POST" class="d-inline movement-delete-form">
+                                                    <button type="submit" class="btn btn-danger btn-sm py-0 px-1" title="ลบรายการเคลื่อนไหว"><i class="fas fa-trash-alt"></i></button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="{% if current_user.can_edit() %}10{% else %}9{% endif %}" class="text-center text-muted">ยังไม่มีข้อมูลการเคลื่อนไหว</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="imageProofModal" tabindex="-1" aria-labelledby="imageProofModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="imageProofModalLabel">หลักฐานการเคลื่อนไหว</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img src="" id="modalImageProof" class="img-fluid" alt="Proof Image">
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="linkBarcodeModal" tabindex="-1" aria-labelledby="linkBarcodeModalLabel" aria-hidden="true">
+</div>
+
+<audio id="scanSuccessSound" src="https://cdn.freesound.org/previews/148/148694_2512692-lq.mp3" preload="auto"></audio>
+<audio id="scanErrorSound" src="https://cdn.freesound.org/previews/516/516905_4864041-lq.mp3" preload="auto"></audio>
+{% endblock %}
+
+
+{% block scripts %}
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+    let scannedItems = {}; 
+
+    // --- START: เพิ่มฟังก์ชันคำนวณยอดรวม ---
+    function updateTotals() {
+        const totalBox = document.getElementById('total-summary-box');
+        const totalsContent = document.getElementById('totals-content');
+        totalsContent.innerHTML = ''; // ล้างค่าเก่าทิ้งก่อน
+
+        let totalTires = 0;
+        let totalWheels = 0;
+        let totalSpareParts = 0;
+
+        for (const key in scannedItems) {
+            const item = scannedItems[key].data;
+            const quantity = scannedItems[key].quantity_to_process;
+            if (item.type === 'tire') {
+                totalTires += quantity;
+            } else if (item.type === 'wheel') {
+                totalWheels += quantity;
+            } else if (item.type === 'spare_part') {
+                totalSpareParts += quantity;
+            }
+        }
+
+        let contentHtml = '';
+        if (totalTires > 0) {
+            contentHtml += `<div class="total-line"><span><i class="fas fa-tire fa-fw me-2"></i>ยาง:</span> <strong>${totalTires} เส้น</strong></div>`;
+        }
+        if (totalWheels > 0) {
+            contentHtml += `<div class="total-line"><span><i class="fas fa-compact-disc fa-fw me-2"></i>แม็ก:</span> <strong>${totalWheels} วง</strong></div>`;
+        }
+        if (totalSpareParts > 0) {
+            contentHtml += `<div class="total-line"><span><i class="fas fa-tools fa-fw me-2"></i>อะไหล่:</span> <strong>${totalSpareParts} ชิ้น</strong></div>`;
+        }
+
+        if (totalTires > 0 || totalWheels > 0 || totalSpareParts > 0) {
+            totalsContent.innerHTML = contentHtml;
+            totalBox.style.display = 'block'; // แสดงกล่องถ้ามีรายการ
+        } else {
+            totalBox.style.display = 'none'; // ซ่อนกล่องถ้าไม่มีรายการ
+        }
+    }
+    // --- END: เพิ่มฟังก์ชันคำนวณยอดรวม ---
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const scanStatus = document.getElementById('scanStatus');
+        const scannedItemsTableBody = document.querySelector('#scannedItemsTable tbody');
+        const processTransactionBtn = document.getElementById('processTransactionBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const scanModeRadios = document.querySelectorAll('input[name="scanMode"]');
+        const barcodeInputContainer = document.getElementById('barcode-input-container');
+        const barcodeInput = document.getElementById('barcodeInput');
+        const qrReaderContainer = document.getElementById('qr-reader-container');
+        const qrReaderDiv = document.getElementById('qr-reader');
+        const qrScanStatus = document.getElementById('qr-scan-status');
+        const startQrScanBtn = document.getElementById('start-qr-scan-btn');
+        const transactionTypeSelect = document.getElementById('transactionType');
+        const transactionNotesInput = document.getElementById('transactionNotes');
+        const billImageInput = document.getElementById('bill_image');
+        const channelSelect = document.getElementById('channel_id');
+        const onlinePlatformContainer = document.getElementById('online_platform_container');
+        const wholesaleCustomerContainer = document.getElementById('wholesale_customer_container');
+        const returnContainer = document.getElementById('return_container');
+        const returnCustomerTypeSelect = document.getElementById('return_customer_type');
+        const returnWholesaleContainer = document.getElementById('return_wholesale_customer_container');
+        const returnOnlineContainer = document.getElementById('return_online_platform_container');
+        const scanSuccessSound = document.getElementById('scanSuccessSound');
+        const scanErrorSound = document.getElementById('scanErrorSound');
+        const linkBarcodeModalEl = document.getElementById('linkBarcodeModal');
+        let linkBarcodeModalInstance = null;
+        let currentTimeout = null;
+        let isProcessingScan = false;
+        const originalChannelOptions = Array.from(channelSelect.options).map(option => ({ value: option.value, text: option.text }));
+
+        /**
+         * เปลี่ยนจากการแสดง Bootstrap Alert เป็น SweetAlert2 Toast
+         * หรือ SweetAlert ธรรมดา
+         * @param {string} message ข้อความที่ต้องการแสดง
+         * @param {string} type ประเภทของข้อความ (success, error, warning, info)
+         * @param {boolean} isSticky ถ้าเป็น true จะแสดงเป็น SweetAlert ธรรมดา (modal) ถ้าเป็น false จะเป็น Toast (popup เล็กๆ ด้านบน)
+         */
+        function showStatus(message, type = 'info', isSticky = false) {
+            if (isSticky) {
+                // แสดงเป็น SweetAlert ธรรมดา (Modal) สำหรับข้อความที่สำคัญ/ข้อผิดพลาด
+                 Swal.fire({
+                    title: (type === 'success' ? 'สำเร็จ!' : (type === 'error' ? 'ข้อผิดพลาด!' : 'แจ้งเตือน')),
+                    html: message,
+                    icon: type === 'warning' ? 'warning' : (type === 'info' ? 'info' : type),
+                    confirmButtonText: 'ตกลง'
+                });
+            } else {
+                // แสดงเป็น SweetAlert Toast สำหรับการสแกนหรือสถานะทั่วไป
+                const toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+
+                toast.fire({
+                    icon: type === 'warning' ? 'warning' : (type === 'info' ? 'info' : type),
+                    title: message
+                });
+            }
+            
+            // ล้างเนื้อหาใน scanStatus div เนื่องจากไม่ได้ใช้ Bootstrap Alert แล้ว
+            scanStatus.innerHTML = '';
+        }
+
+        function playScanFeedback(isSuccess = true) {
+            const soundToPlay = isSuccess ? scanSuccessSound : scanErrorSound;
+            soundToPlay.currentTime = 0;
+            soundToPlay.play().catch(e => console.warn("Could not play sound:", e));
+            if ("vibrate" in navigator) navigator.vibrate(isSuccess ? 100 : [100, 50, 100]);
+        }
+        
+        // --- SweetAlert function สำหรับ Confirm ---
+        function showConfirmAlert(title, text, confirmButtonText = 'ใช่, ยืนยัน', icon = 'warning') {
+            return Swal.fire({
+                title: title,
+                text: text,
+                icon: icon,
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: confirmButtonText,
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => result.isConfirmed);
+        }
+        // --- สิ้นสุด SweetAlert function สำหรับ Confirm ---
+
+
+        function renderScannedItems() {
+            scannedItemsTableBody.innerHTML = '';
+            if (Object.keys(scannedItems).length === 0) {
+                scannedItemsTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">ยังไม่มีรายการที่สแกน</td></tr>`;
+            } else {
+                for (const key in scannedItems) {
+                    const item = scannedItems[key].data;
+                    const quantityToProcess = scannedItems[key].quantity_to_process;
+                    let display_type = '', main_info = '', spec_info = '';
+                    if (item.type === 'tire') {
+                        display_type = 'ยาง';
+                        main_info = `<strong>${item.brand || ''}</strong> ${item.model || ''}`;
+                        spec_info = item.size;
+                    } else if (item.type === 'wheel') {
+                        display_type = 'แม็ก';
+                        main_info = `<strong>${item.brand || ''}</strong> ${item.model || ''}`;
+                        spec_info = `${item.diameter || ''}x${item.width || ''} ${item.pcd || ''} ${item.et ? 'ET'+item.et : ''}`;
+                    } else if (item.type === 'spare_part') {
+                        display_type = 'อะไหล่';
+                        const categoryDisplay = item.category_name ? `<strong class="text-primary">[${item.category_name}]</strong> ` : '';
+                        main_info = `${categoryDisplay}<strong>${item.name || ''}</strong> ${item.brand ? '(' + item.brand + ')' : ''}`;
+                        spec_info = item.part_number || '-';
+                    }
+                    const row = document.createElement('tr');
+                    row.dataset.itemKey = key;
+                    row.innerHTML = `
+                        <td>${display_type}</td>
+                        <td>${main_info}</td>
+                        <td>${spec_info}</td>
+                        <td class="text-center">${item.current_quantity}</td>
+                        <td><input type="number" value="${quantityToProcess}" min="1" class="form-control form-control-sm qty-input" data-item-key="${key}"></td>
+                        <td class="text-center"><button class="btn btn-outline-danger btn-sm remove-item-btn" data-item-key="${key}"><i class="fas fa-times"></i></button></td>
+                    `;
+                    scannedItemsTableBody.appendChild(row);
+                }
+            }
+            document.querySelectorAll('.qty-input').forEach(input => {
+                input.onchange = function() {
+                    let newQty = parseInt(this.value);
+                    scannedItems[this.dataset.itemKey].quantity_to_process = (isNaN(newQty) || newQty < 1) ? 1 : newQty;
+                    this.value = scannedItems[this.dataset.itemKey].quantity_to_process;
+                    updateTotals(); // <-- เรียกฟังก์ชันอัปเดตยอดรวมเมื่อเปลี่ยนจำนวน
+                };
+            });
+            document.querySelectorAll('.remove-item-btn').forEach(button => {
+                button.onclick = () => { delete scannedItems[button.dataset.itemKey]; renderScannedItems(); updateTotals(); }; // <-- เรียกฟังก์ชันอัปเดตยอดรวมเมื่อลบรายการ
+            });
+            updateTotals(); // <-- เรียกฟังก์ชันอัปเดตยอดรวมเมื่อ Render เสร็จ
+        }
+        
+        function showLinkBarcodeModal(message, barcode) {
+            linkBarcodeModalEl.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="linkBarcodeModalLabel">ไม่พบสินค้าสำหรับบาร์โค้ด</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-warning">${message}</div>
+                            <p><strong>บาร์โค้ดที่สแกน:</strong> <code class="fs-5">${barcode}</code></p>
+                            <hr>
+                            <h5>ตัวเลือก:</h5>
+                            <div class="d-grid gap-3">
+                                <a href="/add_item?barcode_id_for_add=${barcode}&tab=tire" class="btn btn-lg btn-success">
+                                    <i class="fas fa-plus-circle me-2"></i>
+                                    1. เพิ่มเป็นสินค้าใหม่ (ไปที่หน้า Add Item)
+                                </a>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="card-title"><i class="fas fa-link me-2"></i>2. เชื่อมโยงกับสินค้าที่มีอยู่แล้ว</h6>
+                                        <div class="mb-3">
+                                            <label for="itemSearchInput" class="form-label">ค้นหาสินค้า:</label>
+                                            <input type="text" class="form-control" id="itemSearchInput" placeholder="พิมพ์ชื่อ, รุ่น, หรือเบอร์ยาง...">
+                                        </div>
+                                        <div id="searchResultsContainer" class="list-group" style="max-height: 250px; overflow-y: auto;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            linkBarcodeModalInstance = new bootstrap.Modal(linkBarcodeModalEl);
+            linkBarcodeModalInstance.show();
+
+            const itemSearchInput = document.getElementById('itemSearchInput');
+            const searchResultsContainer = document.getElementById('searchResultsContainer');
+            let searchTimeout = null;
+
+            itemSearchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    const query = itemSearchInput.value.trim();
+                    if (query.length < 2) {
+                        searchResultsContainer.innerHTML = '';
+                        return;
+                    }
+                    searchResultsContainer.innerHTML = '<div class="text-center p-3"><span class="spinner-border spinner-border-sm"></span> กำลังค้นหา...</div>';
+                    fetch(`/api/search_items_for_link?query=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            searchResultsContainer.innerHTML = '';
+                            if (data.success && data.items.length > 0) {
+                                data.items.forEach(item => {
+                                    let displayText = '';
+                                    if (item.type === 'tire') displayText = `[ยาง] ${item.brand} ${item.model} ${item.size}`;
+                                    else if (item.type === 'wheel') displayText = `[แม็ก] ${item.brand} ${item.model} ${item.pcd}`;
+                                    else if (item.type === 'spare_part') displayText = `[อะไหล่] ${item.name} (${item.part_number || item.brand})`;
+                                    
+                                    const button = document.createElement('button');
+                                    button.type = 'button';
+                                    button.className = 'list-group-item list-group-item-action';
+                                    button.textContent = displayText;
+                                    button.dataset.itemId = item.id;
+                                    button.dataset.itemType = item.type;
+                                    searchResultsContainer.appendChild(button);
+                                });
+                            } else {
+                                searchResultsContainer.innerHTML = '<div class="list-group-item">ไม่พบสินค้าที่ตรงกัน</div>';
+                            }
+                        });
+                }, 300);
+            });
+
+            searchResultsContainer.addEventListener('click', function(e) {
+                if (e.target && e.target.classList.contains('list-group-item-action')) {
+                    const itemId = e.target.dataset.itemId;
+                    const itemType = e.target.dataset.itemType;
+                    
+                    // --- เปลี่ยน confirm เป็น SweetAlert ---
+                    showConfirmAlert(
+                        'ยืนยันการเชื่อมโยงบาร์โค้ด',
+                        `คุณต้องการเชื่อมโยงบาร์โค้ด <strong>'${barcode}'</strong> กับ <strong>'${e.target.textContent}'</strong> ใช่หรือไม่?`
+                    ).then(confirmed => {
+                        if (!confirmed) return;
+                        
+                        fetch('/api/link_barcode_to_item', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ scanned_barcode: barcode, item_id: itemId, item_type: itemType })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showStatus(data.message, 'success', false); // ใช้ showStatus ที่ถูกเปลี่ยนเป็น Toast
+                                linkBarcodeModalInstance.hide();
+                                fetchAndProcess(barcode);
+                            } else {
+                                Swal.fire('เกิดข้อผิดพลาด', `เกิดข้อผิดพลาด: ${data.message}`, 'error'); // ใช้ Swal.fire โดยตรง
+                            }
+                        });
+                    });
+                    // --- สิ้นสุดการเปลี่ยน confirm เป็น SweetAlert ---
+                }
+            });
+        }
+
+        function fetchAndProcess(barcode) {
+            if (isProcessingScan) return;
+            isProcessingScan = true;
+            fetch(`/api/scan_item_lookup?barcode_id=${barcode}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const item_data = data.item;
+                        const item_key = `${item_data.type}-${item_data.id}`;
+                        if (scannedItems[item_key]) {
+                            scannedItems[item_key].quantity_to_process++;
+                        } else {
+                            scannedItems[item_key] = { data: item_data, quantity_to_process: 1 };
+                        }
+                        showStatus(`สแกน <strong>${item_data.brand || item_data.name}</strong> สำเร็จ!`, 'success', false); // เปลี่ยนเป็น showStatus ใหม่
+                        renderScannedItems();
+                        playScanFeedback(true);
+                    } else {
+                        if (data.action_required === 'link_new_barcode') {
+                            showLinkBarcodeModal(data.message, data.scanned_barcode);
+                        } else {
+                            showStatus(data.message, 'warning', true); // เปลี่ยนเป็น showStatus ใหม่ (isSticky=true ให้ออกเป็น Modal)
+                        }
+                        playScanFeedback(false);
+                    }
+                })
+                .catch(error => { console.error('Error:', error); showStatus('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'danger', true); playScanFeedback(false); })
+                .finally(() => { isProcessingScan = false; });
+        }
+
+        function processScannedBarcode(barcode) {
+             if (!barcode || barcode.length < 3) return;
+             if (currentTimeout) clearTimeout(currentTimeout);
+             currentTimeout = setTimeout(() => {
+                 fetchAndProcess(barcode);
+                 barcodeInput.value = '';
+             }, 100);
+        }
+        
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+            fetchAndProcess(decodedText);
+            stopQrScan(true);
+        };
+        function startQrScan() {
+            qrReaderDiv.style.display = 'block';
+            startQrScanBtn.style.display = 'none';
+            qrScanStatus.textContent = "กำลังเปิดกล้อง...";
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, (err) => {})
+                .then(() => { qrScanStatus.textContent = "วาง QR Code ในกรอบเพื่อสแกน"; })
+                .catch(err => {
+                    qrScanStatus.textContent = `เกิดข้อผิดพลาด: ${err}`;
+                    qrReaderDiv.style.display = 'none';
+                    startQrScanBtn.style.display = 'block';
+                });
+        }
+        function stopQrScan(isSuccess = false) {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().catch(err => console.error("Error stopping scanner:", err));
+            }
+            qrReaderDiv.style.display = 'none';
+            startQrScanBtn.style.display = 'block';
+            qrScanStatus.textContent = isSuccess ? "สแกนสำเร็จ! กดปุ่มเพื่อสแกนอีกครั้ง" : "พร้อมสำหรับสแกนครั้งต่อไป";
+        }
+        startQrScanBtn.addEventListener('click', startQrScan);
+        scanModeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'qr') {
+                    barcodeInputContainer.style.display = 'none';
+                    qrReaderContainer.style.display = 'block';
+                    startQrScan();
+                } else {
+                    stopQrScan();
+                    qrReaderContainer.style.display = 'none';
+                    barcodeInputContainer.style.display = 'block';
+                    barcodeInput.focus();
+                }
+            });
+        });
+
+        function updateChannelOptions() {
+            const transactionType = transactionTypeSelect.value;
+            let validChannels = [];
+            if (transactionType === 'OUT') validChannels = ['หน้าร้าน', 'ออนไลน์', 'ค้าส่ง'];
+            else if (transactionType === 'IN') validChannels = ['ซื้อเข้า'];
+            else if (transactionType === 'RETURN') validChannels = ['รับคืน'];
+            
+            channelSelect.innerHTML = '';
+            originalChannelOptions.forEach(opt => {
+                if (opt.value === '' || validChannels.includes(opt.text)) {
+                    channelSelect.add(new Option(opt.text, opt.value));
+                }
+            });
+            if (transactionType === 'IN' || transactionType === 'RETURN') {
+                if (channelSelect.options.length > 1) channelSelect.selectedIndex = 1;
+            }
+            channelSelect.dispatchEvent(new Event('change'));
+        }
+        function toggleChannelFields() {
+            const channelName = channelSelect.options[channelSelect.selectedIndex]?.text;
+            const transactionType = transactionTypeSelect.value;
+            onlinePlatformContainer.style.display = 'none';
+            wholesaleCustomerContainer.style.display = 'none';
+            returnContainer.style.display = 'none';
+            if (transactionType === 'OUT') {
+                if (channelName === 'ออนไลน์') onlinePlatformContainer.style.display = 'block';
+                else if (channelName === 'ค้าส่ง') wholesaleCustomerContainer.style.display = 'block';
+            } else if (transactionType === 'RETURN' && channelName === 'รับคืน') {
+                returnContainer.style.display = 'block';
+                toggleReturnFields();
+            }
+        }
+        function toggleReturnFields() {
+            const returnType = returnCustomerTypeSelect.value;
+            returnWholesaleContainer.style.display = (returnType === 'หน้าร้านร้านยาง') ? 'block' : 'none';
+            returnOnlineContainer.style.display = (returnType === 'ออนไลน์') ? 'block' : 'none';
+        }
+        function processTransaction() {
+            if (Object.keys(scannedItems).length === 0) { showStatus('ไม่มีรายการให้ทำรายการ', 'warning', true); return; } // เปลี่ยนเป็น showStatus ใหม่
+            const formData = new FormData();
+            formData.append('type', transactionTypeSelect.value);
+            formData.append('notes', transactionNotesInput.value.trim());
+            formData.append('channel_id', channelSelect.value);
+            formData.append('online_platform_id', document.getElementById('online_platform_id').value);
+            formData.append('wholesale_customer_id', document.getElementById('wholesale_customer_id').value);
+            formData.append('return_customer_type', returnCustomerTypeSelect.value);
+            formData.append('return_wholesale_customer_id', document.getElementById('return_wholesale_customer_id').value);
+            formData.append('return_online_platform_id', document.getElementById('return_online_platform_id').value);
+            if (billImageInput.files.length > 0) formData.append('bill_image', billImageInput.files[0]);
+
+            const itemsToProcess = Object.values(scannedItems).map(item => ({ id: item.data.id, item_type: item.data.type, quantity: item.quantity_to_process }));
+            formData.append('items_json', JSON.stringify(itemsToProcess));
+            processTransactionBtn.disabled = true;
+            processTransactionBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังประมวลผล...';
+            fetch('/api/process_stock_transaction', { method: 'POST', body: formData })
+                .then(response => response.json().then(data => ({ status: response.status, body: data })))
+                .then(({ status, body }) => {
+                    showStatus(body.message, status >= 200 && status < 300 ? 'success' : 'error', true); // เปลี่ยนเป็น showStatus ใหม่
+                    if (status >= 200 && status < 300) {
+                        scannedItems = {};
+                        renderScannedItems();
+                        transactionNotesInput.value = '';
+                        billImageInput.value = '';
+                    }
+                })
+                .catch(err => { showStatus('เกิดข้อผิดพลาดในการทำรายการ', 'error', true); }) // เปลี่ยนเป็น showStatus ใหม่
+                .finally(() => {
+                    processTransactionBtn.disabled = false;
+                    processTransactionBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>ยืนยันการทำรายการ';
+                });
+        }
+        
+        barcodeInput.addEventListener('keypress', e => { if (e.key === 'Enter') { e.preventDefault(); processScannedBarcode(barcodeInput.value.trim()); } });
+        processTransactionBtn.addEventListener('click', processTransaction);
+        
+        // --- เปลี่ยน confirm เป็น SweetAlert ---
+        clearAllBtn.addEventListener('click', () => { 
+            showConfirmAlert(
+                'ล้างรายการทั้งหมด',
+                'คุณแน่ใจหรือไม่ว่าต้องการล้างรายการสินค้าที่สแกนทั้งหมด?',
+                'ใช่, ล้างรายการ'
+            ).then(confirmed => {
+                if (confirmed) {
+                    scannedItems = {}; 
+                    renderScannedItems(); 
+                    transactionNotesInput.value = ''; 
+                    billImageInput.value = ''; 
+                    showStatus('ล้างรายการแล้ว', 'info', false); // เปลี่ยนเป็น showStatus ใหม่ (Toast)
+                }
+            });
+        });
+        // --- สิ้นสุดการเปลี่ยน confirm เป็น SweetAlert ---
+        
+        transactionTypeSelect.addEventListener('change', updateChannelOptions);
+        channelSelect.addEventListener('change', toggleChannelFields);
+        returnCustomerTypeSelect.addEventListener('change', toggleReturnFields);
+        
+        renderScannedItems();
+        updateChannelOptions();
+        updateTotals(); // <-- เรียกฟังก์ชันนี้เมื่อโหลดหน้าเสร็จสิ้น
+
+        // --- START: เพิ่ม JS สำหรับ Modal ดูรูป และ ปุ่มลบ ---
+        const imageProofModalEl = document.getElementById('imageProofModal');
+        if (imageProofModalEl) {
+            const imageProofModal = new bootstrap.Modal(imageProofModalEl);
+            const modalImageProof = document.getElementById('modalImageProof');
+            
+            document.getElementById('historyTabsContent').addEventListener('click', function (event) {
+                let targetButton = event.target;
+                if (targetButton.tagName === 'I' && targetButton.parentElement.dataset.bsToggle === 'modal') {
+                    targetButton = targetButton.parentElement;
+                }
+
+                if (targetButton.dataset.bsToggle === 'modal' && targetButton.dataset.bsTarget === '#imageProofModal') {
+                    const imageUrl = targetButton.dataset.imageUrl;
+                    if (modalImageProof && imageUrl) {
+                        modalImageProof.src = imageUrl;
+                        imageProofModal.show();
+                    }
+                }
+            });
+        }
+
+        document.querySelectorAll('.movement-delete-form').forEach(form => {
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                Swal.fire({
+                    title: 'ยืนยันการลบรายการ?',
+                    text: "การกระทำนี้จะปรับปรุงยอดสต็อกคงเหลือและไม่สามารถย้อนกลับได้!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'ใช่, ลบเลย!',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+        // --- END: เพิ่ม JS สำหรับ Modal ดูรูป และ ปุ่มลบ ---
+    });
+</script>
+{% endblock %}

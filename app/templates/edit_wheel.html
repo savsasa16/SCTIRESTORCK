@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+
+{% block page_title %}แก้ไขข้อมูลแม็ก{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">
+            <i class="fas fa-compact-disc me-2"></i>แก้ไขข้อมูลแม็ก: {{ wheel.brand | title }} {{ wheel.model | title }}
+        </h4>
+        <a href="{{ url_for('stock.index', tab='wheels') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> กลับไปหน้าสต็อก
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form action="{{ url_for('stock.edit_wheel', wheel_id=wheel.id) }}" method="post" enctype="multipart/form-data">
+                        <h5 class="mb-3 border-bottom pb-2">ข้อมูลหลัก</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="brand" class="form-label">ยี่ห้อ*</label>
+                                <input type="text" id="brand" name="brand" class="form-control" value="{{ wheel.brand }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="model" class="form-label">ลาย*</label>
+                                <input type="text" id="model" name="model" class="form-control" value="{{ wheel.model }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="diameter" class="form-label">ขอบ (นิ้ว)*</label>
+                                <input type="number" id="diameter" name="diameter" class="form-control" value="{{ '%.1f'|format(wheel.diameter) }}" step="0.1" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="width" class="form-label">กว้าง (นิ้ว)*</label>
+                                <input type="number" id="width" name="width" class="form-control" value="{{ '%.1f'|format(wheel.width) }}" step="0.1" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="pcd" class="form-label">รู*</label>
+                                <input type="text" id="pcd" name="pcd" class="form-control" value="{{ wheel.pcd }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="et" class="form-label">ET (ออฟเซ็ต)</label>
+                                <input type="number" id="et" name="et" class="form-control" value="{{ wheel.et if wheel.et is not none else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="color" class="form-label">สี</label>
+                                <input type="text" id="color" name="color" class="form-control" value="{{ wheel.color if wheel.color is not none else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="retail_price" class="form-label">ราคาขายหน้าร้าน*</label>
+                                <input type="number" id="retail_price" name="retail_price" class="form-control" value="{{ '%.2f'|format(wheel.retail_price) }}" step="0.01" required>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+                        <h5 class="mb-3 border-bottom pb-2">ต้นทุนและราคาขายส่ง (ไม่บังคับ)</h5>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label for="cost" class="form-label">ทุน</label>
+                                <input type="number" id="cost" name="cost" class="form-control" value="{{ '%.2f'|format(wheel.cost) if wheel.cost is not none else '' }}" step="0.01">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="cost_online" class="form-label">ทุน Online</label>
+                                <input type="number" id="cost_online" name="cost_online" class="form-control" value="{{ '%.2f'|format(wheel.cost_online) if wheel.cost_online is not none else '' }}" step="0.01">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="wholesale_price1" class="form-label">ราคาส่ง 1</label>
+                                <input type="number" id="wholesale_price1" name="wholesale_price1" class="form-control" value="{{ '%.2f'|format(wheel.wholesale_price1) if wheel.wholesale_price1 is not none else '' }}" step="0.01">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="wholesale_price2" class="form-label">ราคาส่งหน้าร้าน</label>
+                                <input type="number" id="wholesale_price2" name="wholesale_price2" class="form-control" value="{{ '%.2f'|format(wheel.wholesale_price2) if wheel.wholesale_price2 is not none else '' }}" step="0.01">
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+                        <h5 class="mb-3 border-bottom pb-2">รูปภาพ</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="image_file" class="form-label">อัปโหลดรูปแม็กใหม่ (จะแทนที่รูปเดิม)</label>
+                                <input type="file" id="image_file" name="image_file" class="form-control" accept="image/*">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">รูปแม็กปัจจุบัน:</label>
+                                {% if wheel.image_filename %}
+                                    <div>
+                                        <a href="{{ wheel.image_filename }}" target="_blank">
+                                            <img src="{{ wheel.image_filename }}" alt="Wheel Image" class="img-thumbnail" style="max-width: 150px;">
+                                        </a>
+                                        <div class="form-check mt-2">
+                                            <input type="checkbox" class="form-check-input" id="delete_existing_image" name="delete_existing_image">
+                                            <label class="form-check-label" for="delete_existing_image">ลบรูปแม็กปัจจุบัน</label>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted">ไม่มีรูปแม็กปัจจุบัน</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer bg-light text-end mt-4">
+                            <a href="{{ url_for('stock.index', tab='wheels') }}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>ยกเลิก</a>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>บันทึกการแก้ไข</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-barcode me-2"></i>จัดการ Barcode ID</h5>
+                    <a href="{{ url_for('stock.print_barcodes', item_type='wheel', item_id=wheel.id) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-print me-1"></i> พิมพ์
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div id="barcodeStatus"></div>
+                    <div class="mb-3">
+                        <label for="new_wheel_barcode" class="form-label">เพิ่ม Barcode ID ใหม่:</label>
+                        <div class="input-group">
+                            <input type="text" id="new_wheel_barcode" class="form-control" placeholder="ยิงหรือพิมพ์ Barcode ID ใหม่">
+                            <button id="gen_barcode_btn" class="btn btn-outline-primary" type="button" title="สร้างเลข Barcode ใหม่">สร้างบาร์โค้ด</button>
+                            <button id="add_wheel_barcode_btn" class="btn btn-outline-success" type="button">เพิ่ม</button>
+                        </div>
+                    </div>
+
+                    <h6>Barcode ID ที่ผูกอยู่:</h6>
+                    <ul id="wheel_barcodes_list" class="list-group">
+                        </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const wheelId = {{ wheel.id }};
+        const newBarcodeInput = document.getElementById('new_wheel_barcode');
+        const addBarcodeBtn = document.getElementById('add_wheel_barcode_btn');
+        const wheelBarcodesList = document.getElementById('wheel_barcodes_list');
+        const barcodeStatusDiv = document.getElementById('barcodeStatus');
+        const genBarcodeBtn = document.getElementById('gen_barcode_btn');
+
+        function showBarcodeStatus(message, type = 'info') {
+            barcodeStatusDiv.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                                            ${message}
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                          </div>`;
+        }
+
+        function renderBarcodes(barcodes) {
+            wheelBarcodesList.innerHTML = '';
+            if (!barcodes || barcodes.length === 0) {
+                wheelBarcodesList.innerHTML = '<li class="list-group-item text-muted">ยังไม่มี Barcode ID ผูกอยู่</li>';
+                return;
+            }
+            barcodes.forEach(barcode_item => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                
+                const primaryBadge = barcode_item.is_primary_barcode 
+                    ? '<span class="badge text-bg-primary ms-2">หลัก</span>' 
+                    : '';
+
+                li.innerHTML = `
+                    <span class="fw-bold font-monospace">${barcode_item.barcode_string} ${primaryBadge}</span>
+                    <button class="btn btn-danger btn-sm delete-barcode-btn" data-barcode="${barcode_item.barcode_string}" title="ลบ Barcode">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                `;
+                wheelBarcodesList.appendChild(li);
+            });
+            addDeleteBarcodeEventListeners();
+        }
+
+        async function fetchBarcodesAndRender() {
+            try {
+                const response = await fetch(`/api/wheel/${wheelId}/barcodes`);
+                const data = await response.json();
+                if (data.success) {
+                    renderBarcodes(data.barcodes);
+                } else {
+                    showBarcodeStatus(data.message || 'ไม่สามารถโหลดรายการบาร์โค้ดได้', 'danger');
+                }
+            } catch (error) {
+                console.error('Error fetching barcodes:', error);
+                showBarcodeStatus('เกิดข้อผิดพลาดในการเชื่อมต่อเพื่อโหลดบาร์โค้ด', 'danger');
+            }
+        }
+
+        function addDeleteBarcodeEventListeners() {
+            document.querySelectorAll('.delete-barcode-btn').forEach(button => {
+                button.onclick = function() {
+                    const barcodeToDelete = this.dataset.barcode;
+                    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบ Barcode ID: ${barcodeToDelete} ?`)) {
+                        fetch(`/api/wheel/${wheelId}/barcodes`, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ barcode_string: barcodeToDelete })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            showBarcodeStatus(data.message, data.success ? 'success' : 'danger');
+                            if (data.success) {
+                                fetchBarcodesAndRender();
+                            }
+                        });
+                    }
+                };
+            });
+        }
+        
+        addBarcodeBtn.addEventListener('click', function() {
+            const newBarcode = newBarcodeInput.value.trim();
+            if (!newBarcode) {
+                showBarcodeStatus('กรุณากรอก Barcode ID', 'warning');
+                return;
+            }
+
+            fetch(`/api/wheel/${wheelId}/barcodes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ barcode_string: newBarcode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showBarcodeStatus(data.message, data.success ? 'success' : 'danger');
+                if (data.success) {
+                    newBarcodeInput.value = '';
+                    fetchBarcodesAndRender();
+                }
+            });
+        });
+
+        genBarcodeBtn.addEventListener('click', async function() {
+            newBarcodeInput.value = 'กำลังสร้าง...';
+            genBarcodeBtn.disabled = true;
+
+            try {
+                // *** เปลี่ยนจาก 'tire' เป็น 'wheel' ***
+                const response = await fetch('/api/generate_unique_barcode/wheel');
+                const data = await response.json();
+
+                if (data.success) {
+                    newBarcodeInput.value = data.new_barcode;
+                } else {
+                    newBarcodeInput.value = '';
+                    showBarcodeStatus(data.message || 'ไม่สามารถสร้างบาร์โค้ดได้', 'danger');
+                }
+            } catch (error) {
+                newBarcodeInput.value = '';
+                showBarcodeStatus('การเชื่อมต่อเพื่อสร้างบาร์โค้ดล้มเหลว', 'danger');
+            } finally {
+                genBarcodeBtn.disabled = false;
+            }
+        });
+
+        // Initial load of barcodes
+        fetchBarcodesAndRender();
+    });
+</script>
+{% endblock %}

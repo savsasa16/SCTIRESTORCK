@@ -1,0 +1,101 @@
+{% extends 'service/base_service.html' %}
+{% block title %}แก้ไข Template ใบงาน{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h2><i class="fas fa-drafting-compass me-2"></i>จัดการ Template ใบงาน</h2>
+    <p>คุณสามารถแก้ไขข้อความ, โลโก้, และคอลัมน์ที่ปรากฏในใบงานได้จากฟอร์มด้านล่างนี้</p>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('service.manage_job_template') }}" enctype="multipart/form-data">
+                
+                <h5 class="mb-3">ข้อมูลร้านและโลโก้</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="shop_name" class="form-label">ชื่อร้าน</label>
+                        <input type="text" class="form-control" id="shop_name" name="shop_name" value="{{ template.shop_name or '' }}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="header_text" class="form-label">หัวข้อเอกสาร</label>
+                        <input type="text" class="form-control" id="header_text" name="header_text" value="{{ template.header_text or '' }}">
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label for="shop_details" class="form-label">รายละเอียดร้าน (ที่อยู่, เบอร์โทร)</label>
+                        <textarea class="form-control" id="shop_details" name="shop_details" rows="2">{{ template.shop_details or '' }}</textarea>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                         <label for="logo" class="form-label">อัปโหลดโลโก้ใหม่</label>
+                         <input class="form-control" type="file" id="logo" name="logo" accept="image/png, image/jpeg">
+                         <div class="form-text">หากไม่ต้องการเปลี่ยนโลโก้ ให้เว้นว่างไว้</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">โลโก้ปัจจุบัน</label>
+                        <div>
+                            {% if template.logo_url %}
+                                <img src="{{ url_for('stock.uploaded_file', filename=template.logo_url.split('/')[-1]) }}" alt="Logo" style="max-height: 60px; border: 1px solid #ddd; padding: 5px;">
+                            {% else %}
+                                <span class="text-muted">ยังไม่มีโลโก้</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+
+                <h5 class="mb-3">การแสดงผลข้อมูล</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>ข้อมูลส่วนหัวใบงาน</h6>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="show_technician" id="show_technician" value="true" {% if template.options.header_fields.show_technician %}checked{% endif %}>
+                            <label class="form-check-label" for="show_technician">แสดงชื่อช่างผู้รับผิดชอบ</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="show_car_brand" id="show_car_brand" value="true" {% if template.options.header_fields.show_car_brand %}checked{% endif %}>
+                            <label class="form-check-label" for="show_car_brand">แสดงยี่ห้อ/รุ่นรถ</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>คอลัมน์ในตารางรายการ</h6>
+                        {% set default_cols = {
+                            'description': 'รายการ', 
+                            'unit_price': 'ราคา/หน่วย', 
+                            'quantity': 'จำนวน', 
+                            'discount': 'ส่วนลด', 
+                            'total_price': 'ราคารวม'
+                        } %}
+                        {% for key, default_label in default_cols.items() %}
+                            {% set col = (template.options.table_columns | selectattr('key', 'equalto', key) | list | first) or {'show': True, 'label': default_label} %}
+                            <div class="input-group mb-2">
+                                <div class="input-group-text">
+                                    <input class="form-check-input mt-0" type="checkbox" name="col_show_{{ key }}" value="true" {% if col.show %}checked{% endif %}>
+                                </div>
+                                <input type="text" class="form-control" name="col_label_{{ key }}" value="{{ col.label }}">
+                            </div>
+                        {% endfor %}
+                        </div>
+                </div>
+
+                <hr class="my-4">
+
+                <h5 class="mb-3">ส่วนท้ายเอกสาร</h5>
+                <div class="row">
+                     <div class="col-md-6 mb-3">
+                        <label for="footer_signature_1" class="form-label">ข้อความใต้ลายเซ็นฝั่งซ้าย</label>
+                        <input type="text" class="form-control" id="footer_signature_1" name="footer_signature_1" value="{{ template.footer_signature_1 or '' }}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="footer_signature_2" class="form-label">ข้อความใต้ลายเซ็นฝั่งขวา</label>
+                        <input type="text" class="form-control" id="footer_signature_2" name="footer_signature_2" value="{{ template.footer_signature_2 or '' }}">
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save me-2"></i>บันทึก Template</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

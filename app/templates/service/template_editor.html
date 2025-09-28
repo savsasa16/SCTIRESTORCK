@@ -1,0 +1,226 @@
+{% extends 'service/base_service.html' %}
+{% block title %}Drag & Drop Template Editor{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    #editor-container { display: flex; gap: 20px; }
+    #toolbox { width: 200px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; }
+    .tool-item { padding: 8px; margin-bottom: 8px; background: #e9ecef; border: 1px solid #ddd; cursor: grab; text-align: center; }
+    #page-canvas {
+        width: 21cm; height: 29.7cm;
+        border: 2px solid #333;
+        position: relative;
+        background: white;
+        transform-origin: top left;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .canvas-element {
+        position: absolute;
+        padding: 5px;
+        border: 1px dashed #0d6efd;
+        background: rgba(13, 110, 253, 0.1);
+        touch-action: none;
+        box-sizing: border-box;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <h2><i class="fas fa-palette me-2"></i>Drag & Drop Template Editor</h2>
+    <p>ลากองค์ประกอบจากกล่องเครื่องมือด้านซ้ายไปวางบนหน้ากระดาษเพื่อออกแบบ Layout</p>
+
+    <div class="mb-3">
+        <button id="save-layout-btn" class="btn btn-primary"><i class="fas fa-save"></i> บันทึก Layout</button>
+    </div>
+
+    <div id="editor-container">
+        <div id="toolbox">
+            <h5>เครื่องมือ</h5>
+            <div class="tool-item" data-type="logo">โลโก้ร้าน</div>
+            <div class="tool-item" data-type="shop_name">ชื่อร้าน</div>
+            <div class="tool-item" data-type="shop_details">ที่อยู่ร้าน</div>
+            <div class="tool-item" data-type="header_text">หัวข้อเอกสาร</div>
+            <div class="tool-item" data-type="customer_name">ชื่อลูกค้า</div>
+            <div class="tool-item" data-type="job_number">เลขที่ใบงาน</div>
+            <div class="tool-item" data-type="items_table">ตารางรายการ</div>
+            <div class="tool-item" data-type="summary_table">ตารางสรุปยอด</div>
+        </div>
+        <div id="editor-wrapper" style="overflow: auto; flex-grow: 1;">
+             <div id="page-canvas">
+                </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('page-canvas');
+    // ค่ามาตรฐานของกระดาษ A4 (72 DPI)
+    const A4_WIDTH_PT = 595.27;
+    const A4_HEIGHT_PT = 841.89;
+
+    // --- ฟังก์ชันแปลงหน่วย ---
+    function ptToPx(pt) { return pt * (canvas.offsetWidth / A4_WIDTH_PT); }
+    function pxToPt(px) { return px * (A4_WIDTH_PT / canvas.offsetWidth); }
+
+    // ★ 1. สร้างฟังก์ชันสำหรับอัปเดตตำแหน่งของสิ่งที่กำลังลาก (ส่วนที่ขาดไป)
+    function dragMoveListener(event) {
+        const target = event.target;
+        const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+        const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+
+        // อัปเดต style transform เพื่อให้แสดงผลว่ากำลังเคลื่อนที่
+        target.style.transform = `translate(${x}px, ${y}px)`;
+
+        // เก็บค่าตำแหน่งใหม่ไว้ใน data attributes
+        target.setAttribute('data-x', x);
+        target.setAttribute('data-y', y);
+    }
+
+    function makeElementInteractive(element) {
+        interact(element)
+            .draggable({
+                inertia: true,
+                modifiers: [
+                    interact.modifiers.restrictRect({
+                        restriction: 'parent',
+                        endOnly: true
+                    })
+                ],
+                autoScroll: true,
+                listeners: {
+                    // เรียกใช้ฟังก์ชัน dragMoveListener ที่นี่
+                    move: dragMoveListener
+                }
+            })
+            .resizable({
+                edges: { left: true, right: true, bottom: true, top: true },
+                listeners: {
+                    move(event) {
+                        let { x, y } = event.target.dataset;
+                        x = parseFloat(x) || 0;
+                        y = parseFloat(y) || 0;
+                        Object.assign(event.target.style, {
+                            width: `${event.rect.width}px`,
+                            height: `${event.rect.height}px`,
+                        });
+                        // ไม่ต้องอัปเดต x, y ที่นี่ เพราะ resizable ไม่ได้เปลี่ยน transform translate
+                    }
+                },
+                modifiers: [
+                    interact.modifiers.restrictRect({ restriction: 'parent' })
+                ]
+            });
+    }
+
+    function createElementOnCanvas(type, text, layout) {
+        const el = document.createElement('div');
+        el.className = 'canvas-element';
+        el.dataset.type = type;
+        el.textContent = text;
+        el.style.width = `${ptToPx(layout.width)}px`;
+        el.style.height = `${ptToPx(layout.height)}px`;
+        el.style.transform = `translate(${ptToPx(layout.x)}px, ${ptToPx(layout.y)}px)`;
+        el.setAttribute('data-x', ptToPx(layout.x));
+        el.setAttribute('data-y', ptToPx(layout.y));
+        canvas.appendChild(el);
+        makeElementInteractive(el);
+    }
+
+    // ★ 2. แก้ไข .draggable() ให้เรียกใช้ dragMoveListener
+    interact('.tool-item').draggable({
+        inertia: true,
+        autoScroll: true,
+        listeners: {
+            move: dragMoveListener // ทำให้เครื่องมือลอยตามเมาส์
+        }
+    });
+
+    interact(canvas).dropzone({
+        accept: '.tool-item',
+        ondrop: function (event) {
+            const toolItem = event.relatedTarget;
+            const type = toolItem.dataset.type;
+            const text = toolItem.textContent;
+            
+            const canvasRect = canvas.getBoundingClientRect();
+            // ตำแหน่งที่ปล่อยคือตำแหน่งของ toolItem ไม่ใช่ตำแหน่งของเมาส์
+            const toolRect = toolItem.getBoundingClientRect();
+            const dropX = toolRect.left - canvasRect.left;
+            const dropY = toolRect.top - canvasRect.top;
+
+            const defaultLayout = {
+                x: pxToPt(dropX),
+                y: pxToPt(dropY),
+                width: type === 'items_table' ? 400 : 150,
+                height: type === 'items_table' ? 200 : 25,
+            };
+            createElementOnCanvas(type, text, defaultLayout);
+
+            // ★ 3. เพิ่มการ 'รีเซ็ต' ตำแหน่งของเครื่องมือหลังวางสำเร็จ
+            toolItem.style.transform = 'translate(0px, 0px)';
+            toolItem.setAttribute('data-x', '0');
+            toolItem.setAttribute('data-y', '0');
+        }
+    });
+
+    async function saveLayout() {
+        const elements = [];
+        document.querySelectorAll('.canvas-element').forEach(el => {
+            elements.push({
+                type: el.dataset.type,
+                x: pxToPt(parseFloat(el.dataset.x) || 0),
+                y: pxToPt(parseFloat(el.dataset.y) || 0),
+                width: pxToPt(el.offsetWidth),
+                height: pxToPt(el.offsetHeight)
+            });
+        });
+        const layout = { elements: elements };
+
+        try {
+            const response = await fetch("{{ url_for('service.api_save_template_layout', template_name='Job Order') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(layout)
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert('บันทึก Layout สำเร็จ!');
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
+        }
+    }
+
+    async function loadLayout() {
+        try {
+            const response = await fetch("{{ url_for('service.api_get_template_layout', template_name='Job Order') }}");
+            const result = await response.json();
+            if (result.success && result.layout && result.layout.elements) {
+                result.layout.elements.forEach(elData => {
+                    const toolItem = document.querySelector(`.tool-item[data-type="${elData.type}"]`);
+                    const text = toolItem ? toolItem.textContent : elData.type;
+                    createElementOnCanvas(elData.type, text, elData);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading layout:', error);
+        }
+    }
+    
+    document.getElementById('save-layout-btn').addEventListener('click', saveLayout);
+    loadLayout(); // Load existing layout on page load
+});
+</script>
+{% endblock %}

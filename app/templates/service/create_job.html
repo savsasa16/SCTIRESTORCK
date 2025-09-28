@@ -1,0 +1,384 @@
+{% extends 'service/base_service.html' %} 
+{% block title %}เปิดจ๊อป{% endblock %} 
+
+{% block styles %}
+{{ super() }}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+<style>
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+        background-color: #0d6efd;
+        color: white;
+        border: none;
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+        color: white;
+        background-color: transparent;
+        border: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2><i class="fas fa-file-alt"></i> เปิดจ๊อป</h2>
+  <hr />
+
+  <div class="card mb-4">
+    <div class="card-header">ข้อมูลลูกค้าและรถยนต์</div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="customer_name" class="form-label">ชื่อลูกค้า <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="customer_name" required />
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="customer_phone" class="form-label">เบอร์โทรศัพท์</label>
+          <input type="text" class="form-control" id="customer_phone" />
+        </div>
+        <div class="col-md-4 mb-3">
+          <label for="car_plate" class="form-label">ทะเบียนรถ</label>
+          <input type="text" class="form-control" id="car_plate"/>
+        </div>
+        <div class="col-md-4 mb-3">
+          <label for="car_brand" class="form-label">ยี่ห้อ/รุ่นรถ</label>
+          <input type="text" class="form-control" id="car_brand" />
+        </div>
+        <div class="col-md-4 mb-3">
+          <label for="mileage" class="form-label">เลขไมล์</label>
+          <input type="text" class="form-control" id="mileage" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="salesperson_id" class="form-label">พนักงานรับรถ</label>
+            <select id="salesperson_id" class="form-select">
+                <option value="">-- ไม่ระบุ --</option>
+                {% for sp in salespersons %}
+                <option value="{{ sp.id }}">{{ sp.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="technician_id" class="form-label">ช่างผู้รับผิดชอบ</label>
+            <select id="technician_id" class="form-select" multiple>
+                {% for technician in technicians %}
+                <option value="{{ technician.id }}">{{ technician.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-12 mb-3">
+          <label for="notes" class="form-label">หมายเหตุ</label>
+          <textarea class="form-control" id="notes" rows="3"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <i class="fas fa-box"></i> รายการสินค้าและบริการ
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-10 mb-3">
+              <label for="search_item" class="form-label">ค้นหาสินค้าหรือบริการ</label>
+              <select class="form-control" id="search_item"></select>
+            </div>
+            <div class="col-md-2 mb-3">
+              <label class="form-label">เพิ่มเอง</label>
+              <button type="button" class="btn btn-info w-100" data-bs-toggle="modal" data-bs-target="#addItemModal">
+                <i class="fas fa-plus"></i> เพิ่ม
+              </button>
+            </div>
+        </div>
+        <table class="table table-bordered table-striped mt-3">
+            <thead>
+              <tr>
+                <th>รายการ</th>
+                <th class="text-end">ราคา/หน่วย</th>
+                <th class="text-center">จำนวน</th>
+                <th class="text-end">ส่วนลด</th>
+                <th class="text-end">รวม</th>
+                <th class="text-center">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="job_items_table">
+            </tbody>
+        </table>
+    </div>
+  </div>
+
+  <div class="row justify-content-end">
+    <div class="col-md-6">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">สรุปยอด</div>
+        <div class="card-body">
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" value="" id="has_vat_toggle" checked />
+                <label class="form-check-label" for="has_vat_toggle">
+                  คิดภาษีมูลค่าเพิ่ม (VAT 7%)
+                </label>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span>ยอดรวม (Subtotal):</span>
+                <span id="subtotal">0.00</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span>ภาษีมูลค่าเพิ่ม (VAT 7%):</span>
+                <span id="vat">0.00</span>
+            </div>
+            <hr />
+            <div class="d-flex justify-content-between fs-5 fw-bold text-success">
+                <span>ยอดรวมสุทธิ (Grand Total):</span>
+                <span id="grandtotal">0.00</span>
+            </div>
+        </div>
+      </div>
+      <div class="d-grid gap-2">
+        <button id="save_open_job_btn" class="btn btn-primary btn-lg" type="button">
+            <i class="fas fa-check-circle"></i> บันทึกและเปิดใบงาน
+        </button>
+        <button id="save_draft_btn" class="btn btn-secondary" type="button">
+            <i class="fas fa-save"></i> บันทึกเป็นฉบับร่าง
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addItemModalLabel">เพิ่มรายการเอง</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="custom_item_name" class="form-label">ชื่อรายการ</label>
+          <input type="text" class="form-control" id="custom_item_name" required />
+        </div>
+        <div class="mb-3">
+          <label for="custom_item_price" class="form-label">ราคาต่อหน่วย</label>
+          <input type="number" class="form-control" id="custom_item_price" min="0" step="0.01" value="0.00" required />
+        </div>
+        <div class="mb-3">
+          <label for="custom_item_quantity" class="form-label">จำนวน</label>
+          <input type="number" class="form-control" id="custom_item_quantity" min="1" value="1" required />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          ยกเลิก
+        </button>
+        <button type="button" class="btn btn-primary" id="add_custom_item_btn">
+          เพิ่มรายการ
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+  let jobItems = [];
+  const VAT_RATE = 0.07;
+  const saveOpenBtn = document.getElementById("save_open_job_btn");
+  const saveDraftBtn = document.getElementById("save_draft_btn");
+  const hasVatToggle = document.getElementById("has_vat_toggle");
+  const addCustomItemBtn = document.getElementById("add_custom_item_btn");
+
+  async function saveJob(status) {
+    const button = (status === 'open') ? saveOpenBtn : saveDraftBtn;
+    const originalText = button.innerHTML;
+    
+    saveOpenBtn.disabled = true;
+    saveDraftBtn.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> กำลังบันทึก...';
+    
+    const jobDataForSave = {
+      job_details: {
+        customer_name: document.getElementById("customer_name").value.trim(),
+        customer_phone: document.getElementById("customer_phone").value.trim(),
+        car_plate: document.getElementById("car_plate").value.trim(),
+        car_brand: document.getElementById("car_brand").value.trim(),
+        mileage: document.getElementById("mileage").value.trim(),
+        salesperson_id: document.getElementById("salesperson_id").value,
+        technician_ids: $('#technician_id').val(),
+        notes: document.getElementById("notes").value.trim(),
+        has_vat: document.getElementById("has_vat_toggle").checked,
+        sub_total: parseFloat(document.getElementById("subtotal").innerText.replace(/,/g, "")),
+        vat: parseFloat(document.getElementById("vat").innerText.replace(/,/g, "")),
+        grand_total: parseFloat(document.getElementById("grandtotal").innerText.replace(/,/g, "")),
+        status: status,
+        vehicle_damage_json: '[]'
+      },
+      items: jobItems.map(item => ({
+        description: item.description,
+        item_type: item.item_type,
+        unit_price: item.unit_price,
+        original_unit_price: item.original_unit_price,
+        quantity: item.quantity,
+        total_price: item.unit_price * item.quantity,
+        notes: item.notes || null,
+        item_id: item.item_id
+      })),
+    };
+
+    if (!jobDataForSave.job_details.customer_name || jobDataForSave.items.length === 0) {
+      alert("กรุณากรอกชื่อลูกค้าและเพิ่มรายการอย่างน้อย 1 รายการ");
+      saveOpenBtn.disabled = false;
+      saveDraftBtn.disabled = false;
+      button.innerHTML = originalText;
+      return;
+    }
+
+    try {
+        const response = await fetch("{{ url_for('service.api_create_job') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(jobDataForSave)
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(result.message);
+            window.location.href = `{{ url_for('service.view_job', job_id=0) }}`.replace('0', result.job_id);
+        } else {
+            throw new Error(result.message);
+        }
+    } catch (error) {
+        alert("เกิดข้อผิดพลาด: " + error.message);
+        saveOpenBtn.disabled = false;
+        saveDraftBtn.disabled = false;
+        button.innerHTML = originalText;
+    }
+  }
+  
+  function formatCurrency(amount) {
+    if (typeof amount !== 'number') { amount = 0; }
+    return amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,");
+  }
+
+  function renderJobItems() { updateTotals(); }
+
+  function updateTotals() {
+    const tableBody = document.getElementById("job_items_table");
+    tableBody.innerHTML = "";
+    let subtotal = 0;
+
+    jobItems.forEach((item, index) => {
+        const row = document.createElement("tr");
+        const displayUnitPrice = parseFloat(item.original_unit_price || item.unit_price);
+        const calculatedUnitPrice = parseFloat(item.unit_price);
+        const quantity = parseInt(item.quantity);
+        const total = calculatedUnitPrice * quantity;
+        subtotal += total;
+        const totalDiscount = (displayUnitPrice - calculatedUnitPrice) * quantity;
+        
+        row.innerHTML = `
+            <td>${item.description}</td>
+            <td class="text-end">${formatCurrency(displayUnitPrice)}</td>
+            <td class="text-center d-flex justify-content-center"><input type="number" value="${quantity}" min="1" class="form-control form-control-sm text-center quantity-input" data-index="${index}" style="width: 80px;"></td>
+            <td class="text-end text-danger">${totalDiscount > 0 ? formatCurrency(totalDiscount) : '-'}</td>
+            <td class="text-end">${formatCurrency(total)}</td>
+            <td class="text-center"><button type="button" class="btn btn-danger btn-sm remove-item-btn" data-index="${index}"><i class="fas fa-times"></i></button></td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    let vat = 0;
+    if (hasVatToggle.checked) { vat = subtotal * VAT_RATE; }
+    let grandtotal = subtotal + vat;
+    document.getElementById("subtotal").innerText = formatCurrency(subtotal);
+    document.getElementById("vat").innerText = formatCurrency(vat);
+    document.getElementById("grandtotal").innerText = formatCurrency(grandtotal);
+  }
+
+  document.addEventListener("change", (e) => {
+    if (e.target.classList.contains("quantity-input")) {
+      const index = e.target.dataset.index;
+      const newQuantity = parseInt(e.target.value);
+      if (newQuantity > 0) {
+        jobItems[index].quantity = newQuantity;
+        updateTotals();
+      } else { e.target.value = jobItems[index].quantity; }
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    const targetButton = e.target.closest('.remove-item-btn');
+    if (targetButton) {
+      const index = targetButton.dataset.index;
+      jobItems.splice(index, 1);
+      updateTotals();
+    }
+  });
+  
+  addCustomItemBtn.addEventListener("click", () => {
+    const name = document.getElementById("custom_item_name").value.trim();
+    const price = parseFloat(document.getElementById("custom_item_price").value);
+    const quantity = parseInt(document.getElementById("custom_item_quantity").value);
+    if (name && price >= 0 && quantity > 0) {
+      const newItem = { 
+          unique_id: `custom-${Date.now()}`, item_id: null, item_type: "custom_service", 
+          description: name, unit_price: price, original_unit_price: price, quantity: quantity, 
+      };
+      jobItems.push(newItem);
+      updateTotals();
+      const modalEl = document.getElementById("addItemModal");
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      modal.hide();
+      document.getElementById("custom_item_name").value = "";
+      document.getElementById("custom_item_price").value = "0.00";
+      document.getElementById("custom_item_quantity").value = "1";
+    } else { alert("กรุณากรอกข้อมูลรายการที่เพิ่มเองให้ครบถ้วน"); }
+  });
+
+  hasVatToggle.addEventListener("change", updateTotals);
+  
+  $(document).ready(function() {
+      $('#salesperson_id').select2({
+          theme: "bootstrap-5",
+          placeholder: '-- ไม่ระบุ --',
+          allowClear: true
+      });
+      $('#technician_id').select2({
+          theme: "bootstrap-5",
+          placeholder: 'เลือกช่างที่รับผิดชอบ'
+      });
+      $('#search_item').select2({
+          theme: "bootstrap-5",
+          placeholder: 'ค้นหาด้วยชื่อ, รหัส, ยี่ห้อ...',
+          minimumInputLength: 2,
+          ajax: {
+              url: "{{ url_for('service.api_job_search_products') }}",
+              dataType: 'json',
+              delay: 250,
+              data: function (params) { return { q: params.term }; },
+              processResults: function (data) { return { results: data.results }; },
+              cache: true
+          }
+      }).on('select2:select', function (e) {
+          var data = e.params.data.data;
+          const uniqueId = data.unique_id;
+          const isAdded = jobItems.some(jobItem => jobItem.unique_id === uniqueId);
+          if (!isAdded) {
+              jobItems.push({ 
+                  unique_id: uniqueId, item_id: data.item_id, item_type: data.item_type, 
+                  description: data.description, unit_price: data.promo_unit_price || data.unit_price,
+                  original_unit_price: data.unit_price, promo_description: data.promo_description, 
+                  quantity: 1 
+                });
+              updateTotals();
+          } else { alert('รายการนี้ถูกเพิ่มในใบงานแล้ว'); }
+          $(this).val(null).trigger('change');
+      });
+  });
+
+  saveOpenBtn.addEventListener('click', () => saveJob('open'));
+  saveDraftBtn.addEventListener('click', () => saveJob('draft'));
+</script>
+{% endblock %}
