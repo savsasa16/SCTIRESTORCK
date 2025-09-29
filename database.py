@@ -3847,51 +3847,162 @@ def deactivate_all_announcements(conn):
     else: # SQLite
         conn.execute(query, (False,))
 
-def get_wholesale_customers_with_summary(conn, query=None):
+# แทนที่ฟังก์ชันเดิมด้วยฟังก์ชันนี้
+def get_wholesale_customers_with_summary(conn, query=None, start_date=None, end_date=None, limit=None, offset=None, sort_by='last_purchase_date', order='desc'):
     """
-    ดึงข้อมูลลูกค้าค้าส่งทั้งหมดพร้อมสรุปยอดซื้อ (OUT) รวม
-    และสามารถค้นหาตามชื่อได้
+    เวอร์ชันอัปเกรด 4 (Final): แยกยอดซื้อตามประเภทสินค้า และอัปเดตการเรียงข้อมูล
     """
+    cursor = conn.cursor()
     is_postgres = "psycopg2" in str(type(conn))
+    placeholder = "%s" if is_postgres else "?"
 
-    # ใช้ Subquery เพื่อรวมยอดซื้อจากทั้งยาง, แม็ก, และอะไหล่
+    # SQL query ที่ลบคอมเมนต์ที่ผิดพลาดออกแล้ว
     sql = f"""
         SELECT
             wc.id,
             wc.name,
-            COALESCE(SUM(total_out.quantity), 0) as total_items_purchased
+            COALESCE(SUM(CASE WHEN m.item_type = 'tire' THEN m.quantity_change ELSE 0 END), 0) as tires_purchased,
+            COALESCE(SUM(CASE WHEN m.item_type = 'wheel' THEN m.quantity_change ELSE 0 END), 0) as wheels_purchased,
+            COALESCE(SUM(CASE WHEN m.item_type = 'spare_part' THEN m.quantity_change ELSE 0 END), 0) as spare_parts_purchased,
+            MAX(m.timestamp) as last_purchase_date
         FROM wholesale_customers wc
         LEFT JOIN (
-            SELECT wholesale_customer_id, quantity_change as quantity FROM tire_movements WHERE type = 'OUT'
+            SELECT 'tire' as item_type, wholesale_customer_id, quantity_change, timestamp FROM tire_movements WHERE type = 'OUT'
             UNION ALL
-            SELECT wholesale_customer_id, quantity_change as quantity FROM wheel_movements WHERE type = 'OUT'
+            SELECT 'wheel' as item_type, wholesale_customer_id, quantity_change, timestamp FROM wheel_movements WHERE type = 'OUT'
             UNION ALL
-            SELECT wholesale_customer_id, quantity_change as quantity FROM spare_part_movements WHERE type = 'OUT'
-        ) AS total_out ON wc.id = total_out.wholesale_customer_id
+            SELECT 'spare_part' as item_type, wholesale_customer_id, quantity_change, timestamp FROM spare_part_movements WHERE type = 'OUT'
+        ) AS m ON wc.id = m.wholesale_customer_id
     """
-
+    
+    if not end_date: end_date = get_bkk_time()
+    if not start_date: start_date = end_date - timedelta(days=30)
+        
     params = []
-    where_clauses = []
+    
+    where_clauses = [f"m.timestamp BETWEEN {placeholder} AND {placeholder}"]
+    params.extend([start_date.isoformat(), end_date.isoformat()])
 
     if query:
         like_operator = "ILIKE" if is_postgres else "LIKE"
-        placeholder = "%s" if is_postgres else "?"
         where_clauses.append(f"wc.name {like_operator} {placeholder}")
         params.append(f"%{query}%")
 
-    if where_clauses:
-        sql += " WHERE " + " AND ".join(where_clauses)
+    sql += " WHERE " + " AND ".join(where_clauses)
+    sql += " GROUP BY wc.id, wc.name"
 
-    # แก้ไขแล้ว: ไม่มีเว้นวรรคข้างหน้า
-    sql += """
-GROUP BY wc.id, wc.name
-ORDER BY wc.name;
-"""
+    # Whitelist สำหรับการเรียงข้อมูล
+    sortable_columns = {
+        'name': 'wc.name',
+        'tires': 'tires_purchased',
+        'wheels': 'wheels_purchased',
+        'spare_parts': 'spare_parts_purchased',
+        'last_purchase_date': 'last_purchase_date'
+    }
+    
+    sort_column = sortable_columns.get(sort_by, 'last_purchase_date')
+    sort_order = 'ASC' if order.lower() == 'asc' else 'DESC'
+    nulls_handling = "NULLS LAST" if is_postgres else ""
+    sql += f" ORDER BY {sort_column} {sort_order} {nulls_handling}, wc.name ASC"
 
-    cursor = conn.cursor()
+    if limit is not None and offset is not None:
+        sql += f" LIMIT {placeholder} OFFSET {placeholder}"
+        params.extend([limit, offset])
+
     cursor.execute(sql, tuple(params))
+    
+    results = []
+    for row in cursor.fetchall():
+        row_dict = dict(row)
+        if row_dict.get('last_purchase_date'):
+             row_dict['last_purchase_date'] = convert_to_bkk_time(row_dict['last_purchase_date'])
+        results.append(row_dict)
+        
+    return results
 
-    return [dict(row) for row in cursor.fetchall()]
+def get_wholesale_customer_details_with_breakdown(conn, customer_id):
+    """
+    ฟังก์ชันใหม่: ดึงข้อมูลสรุปลูกค้า พร้อมแยกยอดซื้อตามประเภทสินค้า
+    """
+    cursor = conn.cursor()
+    is_postgres = "psycopg2" in str(type(conn))
+    placeholder = "%s" if is_postgres else "?"
+    
+    sql = f"""
+        SELECT
+            wc.id,
+            wc.name,
+            COALESCE(SUM(m.quantity_change), 0) as total_all_items,
+            COALESCE(SUM(CASE WHEN m.item_type = 'tire' THEN m.quantity_change ELSE 0 END), 0) as total_tires,
+            COALESCE(SUM(CASE WHEN m.item_type = 'wheel' THEN m.quantity_change ELSE 0 END), 0) as total_wheels,
+            COALESCE(SUM(CASE WHEN m.item_type = 'spare_part' THEN m.quantity_change ELSE 0 END), 0) as total_spare_parts,
+            MAX(m.timestamp) as last_purchase_date
+        FROM wholesale_customers wc
+        LEFT JOIN (
+            SELECT 'tire' as item_type, wholesale_customer_id, quantity_change, timestamp FROM tire_movements WHERE type = 'OUT'
+            UNION ALL
+            SELECT 'wheel' as item_type, wholesale_customer_id, quantity_change, timestamp FROM wheel_movements WHERE type = 'OUT'
+            UNION ALL
+            SELECT 'spare_part' as item_type, wholesale_customer_id, quantity_change, timestamp FROM spare_part_movements WHERE type = 'OUT'
+        ) AS m ON wc.id = m.wholesale_customer_id
+        WHERE wc.id = {placeholder}
+        GROUP BY wc.id, wc.name;
+    """
+
+    cursor.execute(sql, (customer_id,))
+    customer_data = cursor.fetchone()
+
+    if customer_data:
+        customer_dict = dict(customer_data)
+        if customer_dict.get('last_purchase_date'):
+            customer_dict['last_purchase_date'] = convert_to_bkk_time(customer_dict['last_purchase_date'])
+        return customer_dict
+    return None
+
+def get_wholesale_customers_count(conn, query=None, start_date=None, end_date=None):
+    """
+    ฟังก์ชันใหม่ (เวอร์ชันแก้ไข): นับจำนวนลูกค้าที่ตรงตามเงื่อนไขการค้นหา
+    และมีกิจกรรมในช่วงวันที่ที่กำหนด
+    """
+    cursor = conn.cursor()
+    is_postgres = "psycopg2" in str(type(conn))
+    placeholder = "%s" if is_postgres else "?"
+
+    # สร้าง Query หลักที่ซับซ้อนขึ้นเพื่อให้นับได้ถูกต้อง
+    # เรานับจำนวน id ที่ไม่ซ้ำกันจากผลลัพธ์ของการ JOIN
+    sql = f"""
+        SELECT COUNT(DISTINCT wc.id) as total
+        FROM wholesale_customers wc
+        JOIN (
+            SELECT wholesale_customer_id, timestamp FROM tire_movements WHERE type = 'OUT'
+            UNION ALL
+            SELECT wholesale_customer_id, timestamp FROM wheel_movements WHERE type = 'OUT'
+            UNION ALL
+            SELECT wholesale_customer_id, timestamp FROM spare_part_movements WHERE type = 'OUT'
+        ) AS m ON wc.id = m.wholesale_customer_id
+    """
+    
+    # กำหนดค่า Default หากไม่มีการส่งวันที่มา
+    if not end_date:
+        end_date = get_bkk_time()
+    if not start_date:
+        start_date = end_date - timedelta(days=30)
+        
+    params = []
+    
+    where_clauses = [f"m.timestamp BETWEEN {placeholder} AND {placeholder}"]
+    params.extend([start_date.isoformat(), end_date.isoformat()])
+
+    if query:
+        like_operator = "ILIKE" if is_postgres else "LIKE"
+        where_clauses.append(f"wc.name {like_operator} {placeholder}")
+        params.append(f"%{query}%")
+
+    sql += " WHERE " + " AND ".join(where_clauses)
+        
+    cursor.execute(sql, tuple(params))
+    result = cursor.fetchone()
+    return result['total'] if result else 0
 
 def get_wholesale_customer_details(conn, customer_id):
     """
@@ -3931,6 +4042,7 @@ def get_wholesale_customer_details(conn, customer_id):
 def get_wholesale_customer_purchase_history(conn, customer_id, start_date=None, end_date=None):
     """
     ดึงประวัติการซื้อ (OUT) ทั้งหมดของลูกค้า สามารถกรองตามช่วงวันที่ได้
+    เวอร์ชันอัปเดต: เพิ่ม image_filename
     """
     is_postgres = "psycopg2" in str(type(conn))
     placeholder = "%s" if is_postgres else "?"
@@ -3941,7 +4053,8 @@ def get_wholesale_customer_purchase_history(conn, customer_id, start_date=None, 
 
     # Tire Movements
     sql_parts.append(f"""
-        SELECT 'tire' as item_type, tm.timestamp, t.brand, t.model, t.size AS item_details, tm.quantity_change
+        SELECT 'tire' as item_type, tm.id, tm.timestamp, t.brand, t.model, t.size AS item_details, 
+               tm.quantity_change, tm.image_filename
         FROM tire_movements tm
         JOIN tires t ON tm.tire_id = t.id
         WHERE tm.type = 'OUT' AND tm.wholesale_customer_id = {placeholder}
@@ -3954,9 +4067,9 @@ def get_wholesale_customer_purchase_history(conn, customer_id, start_date=None, 
     # Wheel Movements
     wheel_size_concat = "CONCAT(w.diameter, 'x', w.width, ' ', w.pcd)" if is_postgres else "(w.diameter || 'x' || w.width || ' ' || w.pcd)"
     sql_parts.append(f"""
-        SELECT 'wheel' as item_type, wm.timestamp, w.brand, w.model,
+        SELECT 'wheel' as item_type, wm.id, wm.timestamp, w.brand, w.model,
                {wheel_size_concat} as item_details,
-               wm.quantity_change
+               wm.quantity_change, wm.image_filename
         FROM wheel_movements wm
         JOIN wheels w ON wm.wheel_id = w.id
         WHERE wm.type = 'OUT' AND wm.wholesale_customer_id = {placeholder}
@@ -3966,12 +4079,12 @@ def get_wholesale_customer_purchase_history(conn, customer_id, start_date=None, 
         sql_parts[-1] += f" AND wm.timestamp BETWEEN {placeholder}{timestamp_cast} AND {placeholder}{timestamp_cast}"
         params.extend([start_date.isoformat(), end_date.isoformat()])
 
-    # NEW: Spare Part Movements (เพิ่มส่วนนี้เข้ามา)
+    # Spare Part Movements
     spare_part_details_concat = "CONCAT(sp.name, ' (', COALESCE(sp.brand, 'N/A'), ')')" if is_postgres else "(sp.name || ' (' || COALESCE(sp.brand, 'N/A') || ')')"
     sql_parts.append(f"""
-        SELECT 'spare_part' as item_type, spm.timestamp, sp.name AS brand, sp.part_number AS model,
+        SELECT 'spare_part' as item_type, spm.id, spm.timestamp, sp.name AS brand, sp.part_number AS model,
                {spare_part_details_concat} as item_details,
-               spm.quantity_change
+               spm.quantity_change, spm.image_filename
         FROM spare_part_movements spm
         JOIN spare_parts sp ON spm.spare_part_id = sp.id
         WHERE spm.type = 'OUT' AND spm.wholesale_customer_id = {placeholder}
@@ -3981,13 +4094,11 @@ def get_wholesale_customer_purchase_history(conn, customer_id, start_date=None, 
         sql_parts[-1] += f" AND spm.timestamp BETWEEN {placeholder}{timestamp_cast} AND {placeholder}{timestamp_cast}"
         params.extend([start_date.isoformat(), end_date.isoformat()])
 
-
     full_sql = " UNION ALL ".join(sql_parts)
     full_sql += " ORDER BY timestamp DESC"
 
-    # Replace placeholders for SQLite
     if not is_postgres:
-        full_sql = full_sql.replace(timestamp_cast, "") # Remove timestamp cast for SQLite
+        full_sql = full_sql.replace(timestamp_cast, "")
         full_sql = full_sql.replace(placeholder, '?')
 
     cursor = conn.cursor()
@@ -5744,3 +5855,13 @@ def toggle_item_analysis_status(conn, item_type, item_id, ignore_status):
         query = query.replace('?', '%s')
 
     cursor.execute(query, (ignore_status, item_id))
+
+def search_wholesale_customer_names(conn, term):
+    cursor = conn.cursor()
+    is_postgres = "psycopg2" in str(type(conn))
+    like_op = "ILIKE" if is_postgres else "LIKE"
+    placeholder = "%s" if is_postgres else "?"
+
+    query = f"SELECT name FROM wholesale_customers WHERE name {like_op} {placeholder} ORDER BY name LIMIT 20"
+    cursor.execute(query, (f"%{term}%",))
+    return [row['name'] for row in cursor.fetchall()]

@@ -343,8 +343,12 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
     <script>
-        flatpickr("#start_date", { dateFormat: "Y-m-d", locale: "th" });
-        flatpickr("#end_date", { dateFormat: "Y-m-d", locale: "th" });
+        flatpickr("#start_date, #end_date", {
+        dateFormat: "Y-m-d", // รูปแบบวันที่ YYYY-MM-DD
+        "locale": "th",      // ใช้ภาษาไทย
+        altInput: true,      // แสดงวันที่รูปแบบที่อ่านง่าย
+        altFormat: "j F Y",  // รูปแบบวันที่ที่แสดง (เช่น 29 กันยายน 2568)
+    });
 
         // Script to handle URL hash for main tabs
         document.addEventListener('DOMContentLoaded', function() {

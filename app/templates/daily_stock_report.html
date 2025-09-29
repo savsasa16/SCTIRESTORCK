@@ -9,7 +9,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0 text-gray-800">รายงานสต็อกประจำวัน: {{ report_date_obj.strftime('%d-%m-%Y') }}</h1>
+    <h1 class="h3 mb-0 text-gray-800">รายงานสต็อกประจำวัน: {{ display_date_str }}</h1>
 
     <div class="d-flex align-items-center gap-2">
         <a href="{{ url_for('stock.daily_stock_report', date=yesterday_date_param) }}" class="btn btn-outline-secondary">
@@ -379,18 +379,18 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {        
         flatpickr("#reportDateInput", {
-            dateFormat: "Y-m-d",
-            altInput: true,
-            altFormat: "d-m-Y",
-            locale: "th",
-            defaultDate: "{{ report_date_param }}",
-            maxDate: "today",
-            onChange: function(selectedDates, dateStr, instance) {
-                window.location.href = "{{ url_for('stock.daily_stock_report') }}?date=" + dateStr;
-            }
-        });
+        dateFormat: "Y-m-d", // รูปแบบวันที่ YYYY-MM-DD
+        "locale": "th",      // ใช้ภาษาไทย
+        altInput: true,      // แสดงวันที่รูปแบบที่อ่านง่าย
+        altFormat: "j F Y",  // รูปแบบวันที่ที่แสดง (เช่น 29 กันยายน 2568)
+        maxDate: "today",
+        defaultDate: "{{ report_date_param }}",
+        onChange: function(selectedDates, dateStr, instance) {
+            window.location.href = "{{ url_for('stock.daily_stock_report') }}?date=" + dateStr;
+        }
+    });
 
         const searchInput = document.getElementById('universalSearchInput');
         const tireTableBody = document.querySelector('#tireMovementTable tbody');

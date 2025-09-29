@@ -1,118 +1,221 @@
 {% extends 'base.html' %}
 
-{% block page_title %}รายละเอียดลูกค้า: {{ customer.name }}{% endblock %}
-
-{% block head_scripts %}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-{% endblock %}
+{% block page_title %}รายละเอียดลูกค้า: {{ customer_summary.name }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <a href="{{ url_for('stock.wholesale_dashboard') }}" class="btn btn-sm btn-outline-secondary mb-2">
-            <i class="fas fa-arrow-left me-2"></i>กลับไปหน้าค้นหา
+            <i class="fas fa-arrow-left me-2"></i>กลับไปหน้าลูกค้าทั้งหมด
         </a>
-        <h1 class="h3 mb-0 text-gray-800">รายละเอียดลูกค้า: <strong>{{ customer.name }}</strong></h1>
+        <h1 class="h3 mb-0 text-gray-800">รายละเอียดลูกค้า: <strong>{{ customer_summary.name }}</strong></h1>
     </div>
 </div>
 
+{# --- การ์ดสรุปยอด 4 ใบ (เหมือนเดิม) --- #}
 <div class="row g-4 mb-4">
-    <div class="col-md-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title text-primary"><i class="fas fa-shopping-cart me-2"></i>ยอดซื้อทั้งหมด</h5>
-                <p class="fs-2 fw-bold mb-0">{{ customer.total_items_purchased }}</p>
-                <p class="card-text">ชิ้น</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title text-success"><i class="fas fa-calendar-check me-2"></i>วันที่ซื้อล่าสุด</h5>
-                <p class="fs-4 fw-bold mb-0">
-                    {{ customer.last_purchase_date.strftime('%d %b %Y') if customer.last_purchase_date else 'ไม่มีข้อมูล' }}
-                </p>
-            </div>
-        </div>
-    </div>
+    <div class="col-xl-3 col-md-6"><div class="card shadow-sm h-100"><div class="card-body"><div class="row align-items-center"><div class="col"><div class="text-xs fw-bold text-primary text-uppercase mb-1">ยอดซื้อรวม (ทั้งหมด)</div><div class="h5 mb-0 fw-bold text-gray-800">{{ customer_summary.total_all_items }} ชิ้น</div></div><div class="col-auto"><i class="fas fa-shopping-cart fa-2x text-gray-300"></i></div></div></div></div></div>
+    <div class="col-xl-3 col-md-6"><div class="card shadow-sm h-100"><div class="card-body"><div class="row align-items-center"><div class="col"><div class="text-xs fw-bold text-dark text-uppercase mb-1">ยอดซื้อยาง</div><div class="h5 mb-0 fw-bold text-gray-800">{{ customer_summary.total_tires }} ชิ้น</div></div><div class="col-auto"><i class="fas fa-tire fa-2x text-gray-300"></i></div></div></div></div></div>
+    <div class="col-xl-3 col-md-6"><div class="card shadow-sm h-100"><div class="card-body"><div class="row align-items-center"><div class="col"><div class="text-xs fw-bold text-secondary text-uppercase mb-1">ยอดซื้อแม็ก</div><div class="h5 mb-0 fw-bold text-gray-800">{{ customer_summary.total_wheels }} ชิ้น</div></div><div class="col-auto"><i class="fas fa-compact-disc fa-2x text-gray-300"></i></div></div></div></div></div>
+    <div class="col-xl-3 col-md-6"><div class="card shadow-sm h-100"><div class="card-body"><div class="row align-items-center"><div class="col"><div class="text-xs fw-bold text-info text-uppercase mb-1">ยอดซื้ออะไหล่</div><div class="h5 mb-0 fw-bold text-gray-800">{{ customer_summary.total_spare_parts }} ชิ้น</div></div><div class="col-auto"><i class="fas fa-cogs fa-2x text-gray-300"></i></div></div></div></div></div>
 </div>
 
 <div class="card shadow-sm">
-    <div class="card-header">
-        <h5 class="mb-0">ประวัติการซื้อ</h5>
-    </div>
+    <div class="card-header"><h5 class="mb-0">ประวัติการซื้อ</h5></div>
     <div class="card-body">
-        <form method="GET" action="{{ url_for('stock.wholesale_customer_detail', customer_id=customer.id) }}" class="mb-4">
+        <form method="GET" action="{{ url_for('stock.wholesale_customer_detail', customer_id=customer_summary.id) }}" class="mb-4">
             <div class="row g-3 align-items-end">
-                <div class="col-md">
-                    <label for="start_date" class="form-label">จากวันที่:</label>
-                    <input type="text" id="start_date" name="start_date" class="form-control" value="{{ start_date_param }}">
-                </div>
-                <div class="col-md">
-                    <label for="end_date" class="form-label">ถึงวันที่:</label>
-                    <input type="text" id="end_date" name="end_date" class="form-control" value="{{ end_date_param }}">
-                </div>
-                <div class="col-md-auto">
-                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-2"></i>ดูประวัติ</button>
-                </div>
+                <div class="col-md"><label for="start_date" class="form-label">จากวันที่:</label><input type="text" id="start_date" name="start_date" class="form-control" value="{{ start_date_param }}"></div>
+                <div class="col-md"><label for="end_date" class="form-label">ถึงวันที่:</label><input type="text" id="end_date" name="end_date" class="form-control" value="{{ end_date_param }}"></div>
+                <div class="col-md-auto"><button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-2"></i>ดูประวัติ</button></div>
             </div>
         </form>
 
-        <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead class="table-light">
-                    <tr>
-                        <th>วันที่</th>
-                        <th>ประเภทสินค้า</th>
-                        <th>รายการ</th>
-                        <th class="text-center">จำนวน</th>
-                    </tr>
-                </thead>
-                <tbody>
-    {% for item in history %}
-    <tr>
-        <td>{{ item.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
-        <td>
-            {% if item.item_type == 'tire' %}
-                <span class="badge text-bg-dark"><i class="fas fa-tire me-1"></i> ยาง</span>
-            {% elif item.item_type == 'wheel' %}
-                <span class="badge text-bg-secondary"><i class="fas fa-compact-disc me-1"></i> แม็ก</span>
-            
-            {% elif item.item_type == 'spare_part' %}
-                <span class="badge text-bg-info"><i class="fas fa-cogs me-1"></i> อะไหล่</span>
-            {% endif %}
-        </td>
-        
-        <td>{{ item.item_details }}</td>
-        
-        <td class="text-center">{{ item.quantity_change }}</td>
-    </tr>
-    {% else %}
-                    <tr>
-                        <td colspan="4" class="text-center text-muted py-4">ไม่พบประวัติการซื้อในข่วงเวลานี้</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <ul class="nav nav-tabs" id="historyTab" role="tablist">
+            <li class="nav-item" role="presentation"><button class="nav-link active" id="tires-tab" data-bs-toggle="tab" data-bs-target="#tires-tab-pane" type="button" role="tab"><i class="fas fa-tire me-1"></i> ยาง ({{ tire_history|length }})</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" id="wheels-tab" data-bs-toggle="tab" data-bs-target="#wheels-tab-pane" type="button" role="tab"><i class="fas fa-compact-disc me-1"></i> แม็ก ({{ wheel_history|length }})</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" id="spare-parts-tab" data-bs-toggle="tab" data-bs-target="#spare-parts-tab-pane" type="button" role="tab"><i class="fas fa-cogs me-1"></i> อะไหล่ ({{ spare_part_history|length }})</button></li>
+        </ul>
+
+        <div class="tab-content" id="historyTabContent">
+            <div class="tab-pane fade show active" id="tires-tab-pane" role="tabpanel">
+                <div class="table-responsive mt-3">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-light"><tr><th>วันที่</th><th>รายการ</th><th class="text-center">จำนวน</th></tr></thead>
+                        <tbody>
+                        {% for item in tire_history %}
+                            <tr class="clickable-row" style="cursor: pointer;" data-movement-id="{{ item.id }}" data-item-type="{{ item.item_type }}">
+                                <td>{{ item.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>
+                                    {{ item.brand }} {{ item.model }} ({{ item.item_details }})
+                                    {# --- ✨ START: เพิ่มไอคอนถ้ามีรูป --- #}
+                                    {% if item.image_filename %}
+                                        <i class="fas fa-camera text-muted ms-2" title="มีรูปบิล"></i>
+                                    {% endif %}
+                                    {# --- END: ✨ สิ้นสุดการเพิ่มไอคอน --- #}
+                                </td>
+                                <td class="text-center">{{ item.quantity_change }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="3" class="text-center text-muted py-4">ไม่พบประวัติการซื้อยางในช่วงเวลานี้</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="wheels-tab-pane" role="tabpanel">
+                <div class="table-responsive mt-3">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-light"><tr><th>วันที่</th><th>รายการ</th><th class="text-center">จำนวน</th></tr></thead>
+                        <tbody>
+                        {% for item in wheel_history %}
+                            <tr class="clickable-row" style="cursor: pointer;" data-movement-id="{{ item.id }}" data-item-type="{{ item.item_type }}">
+                                <td>{{ item.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>
+                                    {{ item.brand }} {{ item.model }} ({{ item.item_details }})
+                                    {# --- ✨ START: เพิ่มไอคอนถ้ามีรูป --- #}
+                                    {% if item.image_filename %}
+                                        <i class="fas fa-camera text-muted ms-2" title="มีรูปบิล"></i>
+                                    {% endif %}
+                                    {# --- END: ✨ สิ้นสุดการเพิ่มไอคอน --- #}
+                                </td>
+                                <td class="text-center">{{ item.quantity_change }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="3" class="text-center text-muted py-4">ไม่พบประวัติการซื้อแม็กในช่วงเวลานี้</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="spare-parts-tab-pane" role="tabpanel">
+                <div class="table-responsive mt-3">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-light"><tr><th>วันที่</th><th>รายการ</th><th class="text-center">จำนวน</th></tr></thead>
+                        <tbody>
+                        {% for item in spare_part_history %}
+                            <tr class="clickable-row" style="cursor: pointer;" data-movement-id="{{ item.id }}" data-item-type="{{ item.item_type }}">
+                                <td>{{ item.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>
+                                    {{ item.item_details }}
+                                    {# --- ✨ START: เพิ่มไอคอนถ้ามีรูป --- #}
+                                    {% if item.image_filename %}
+                                        <i class="fas fa-camera text-muted ms-2" title="มีรูปบิล"></i>
+                                    {% endif %}
+                                    {# --- END: ✨ สิ้นสุดการเพิ่มไอคอน --- #}
+                                </td>
+                                <td class="text-center">{{ item.quantity_change }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="3" class="text-center text-muted py-4">ไม่พบประวัติการซื้ออะไหล่ในช่วงเวลานี้</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+{# --- START: ✨ เพิ่ม HTML ของ Modal เข้าไปที่นี่ (ท้าย Block Content) --- #}
+<div class="modal fade" id="movementDetailModal" tabindex="-1" aria-labelledby="movementDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="movementDetailModalLabel">รายละเอียดการเคลื่อนไหว</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-center">กำลังโหลดข้อมูล...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
+{# --- END: ✨ สิ้นสุด HTML ของ Modal --- #}
+
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        flatpickr("#start_date", {
-            dateFormat: "Y-m-d",
-            locale: "th"
-        });
-        flatpickr("#end_date", {
-            dateFormat: "Y-m-d",
-            locale: "th"
+document.addEventListener('DOMContentLoaded', function() {
+    flatpickr("#start_date, #end_date", {
+        dateFormat: "Y-m-d", locale: "th", altInput: true, altFormat: "j F Y"
+    });
+
+    // --- START: ✨ เพิ่ม JavaScript สำหรับจัดการ Modal ---
+    const movementDetailModal = new bootstrap.Modal(document.getElementById('movementDetailModal'));
+    const modalBody = document.querySelector('#movementDetailModal .modal-body');
+
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', function() {
+            const movementId = this.dataset.movementId;
+            const itemType = this.dataset.itemType;
+            
+            // 1. แสดงสถานะ "กำลังโหลด"
+            modalBody.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">กำลังโหลดข้อมูล...</p></div>';
+            movementDetailModal.show();
+
+            // 2. เรียก API เพื่อดึงข้อมูล
+            fetch(`{{ url_for('stock.api_get_movement_details') }}?item_type=${itemType}&movement_id=${movementId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 3. สร้าง HTML เพื่อแสดงผล
+                        const details = data.details;
+                        let html = `
+                            <dl class="row">
+                                <dt class="col-sm-3">ประเภท:</dt>
+                                <dd class="col-sm-9"><span class="badge bg-primary">${details.type}</span></dd>
+
+                                <dt class="col-sm-3">จำนวน:</dt>
+                                <dd class="col-sm-9">${details.quantity_change}</dd>
+
+                                <dt class="col-sm-3">ผู้บันทึก:</dt>
+                                <dd class="col-sm-9">${details.username || 'N/A'}</dd>
+                                
+                                <dt class="col-sm-3">ช่องทาง:</dt>
+                                <dd class="col-sm-9">${details.channel_name || 'N/A'}</dd>
+                        `;
+
+                        if (details.online_platform_name) {
+                            html += `<dt class="col-sm-3">แพลตฟอร์ม:</dt><dd class="col-sm-9">${details.online_platform_name}</dd>`;
+                        }
+                        if (details.wholesale_customer_name) {
+                            html += `<dt class="col-sm-3">ลูกค้า:</dt><dd class="col-sm-9">${details.wholesale_customer_name}</dd>`;
+                        }
+
+                        html += `
+                                <dt class="col-sm-3">หมายเหตุ:</dt>
+                                <dd class="col-sm-9">${details.notes || '-'}</dd>
+                            </dl>
+                        `;
+                        
+                        if (details.image_filename) {
+                            html += `
+                                <hr>
+                                <h5>รูปภาพประกอบ:</h5>
+                                <a href="${details.image_filename}" target="_blank">
+                                    <img src="${details.image_filename}" class="img-fluid rounded" alt="Movement Image" style="max-height: 300px;">
+                                </a>
+                            `;
+                        }
+
+                        modalBody.innerHTML = html;
+                    } else {
+                        modalBody.innerHTML = `<p class="text-danger">เกิดข้อผิดพลาด: ${data.message}</p>`;
+                    }
+                })
+                .catch(error => {
+                    modalBody.innerHTML = `<p class="text-danger">เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error}</p>`;
+                });
         });
     });
+    // --- END: ✨ สิ้นสุด JavaScript ---
+});
 </script>
 {% endblock %}

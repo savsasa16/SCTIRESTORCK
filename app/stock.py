@@ -3139,15 +3139,27 @@ def summary_details():
 @bp.route('/daily_stock_report')
 @login_required
 def daily_stock_report():
-    # Check permission directly inside the route function
     if not (current_user.is_admin() or current_user.is_editor() or current_user.is_wholesale_sales() or current_user.is_accountant()):
         flash('คุณไม่มีสิทธิ์เข้าถึงหน้ารายงานสต็อกประจำวัน', 'danger')
         return redirect(url_for('stock.index'))
 
     conn = get_db()
-
     report_date_str = request.args.get('date')
-    report_datetime_obj = None
+    
+    try:
+        report_date_obj = datetime.strptime(report_date_str, '%Y-%m-%d').date() if report_date_str else get_bkk_time().date()
+    except (ValueError, TypeError):
+        flash("รูปแบบวันที่ไม่ถูกต้อง, ใช้ YYYY-MM-DD", "danger")
+        report_date_obj = get_bkk_time().date()
+        
+    # --- START: ✨ ส่วนที่เพิ่มเข้ามา ---
+    THAI_MONTHS_FULL = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+    
+    # สร้างข้อความแสดงผลวันที่แบบไทย
+    day = report_date_obj.day
+    month_th = THAI_MONTHS_FULL[report_date_obj.month - 1]
+    year_be = report_date_obj.year + 543
+    display_date_str = f"{day} {month_th} {year_be}"
 
     if report_date_str:
         try:
@@ -3813,31 +3825,29 @@ def daily_stock_report():
     tomorrow_date_calc = report_datetime_obj + timedelta(days=1)
 
     return render_template('daily_stock_report.html',
-                           display_date_str=report_date.strftime('%d %b %Y'),
-                           report_date_obj=report_date,
-                           report_date_param=report_date.strftime('%Y-%m-%d'),
-                           yesterday_date_param=yesterday_date_calc.strftime('%Y-%m-%d'),
-                           tomorrow_date_param=tomorrow_date_calc.strftime('%Y-%m-%d'),
-
+                           display_date_str=display_date_str, # <--- ส่งค่าภาษาไทยที่ถูกต้อง
+                           report_date_obj=report_date_obj,
+                           report_date_param=report_date_obj.strftime('%Y-%m-%d'),
+                           yesterday_date_param=(report_date_obj - timedelta(days=1)).strftime('%Y-%m-%d'),
+                           tomorrow_date_param=(report_date_obj + timedelta(days=1)).strftime('%Y-%m-%d'),
                            tire_report=sorted_detailed_tire_report,
                            wheel_report=sorted_detailed_wheel_report,
-                           spare_part_report=sorted_detailed_spare_part_report, # NEW
+                           spare_part_report=sorted_detailed_spare_part_report,
                            tire_total_in=tire_total_in,
                            tire_total_out=tire_total_out,
-                           tire_total_return=tire_total_return, #
+                           tire_total_return=tire_total_return,
                            tire_total_remaining=tire_total_remaining_for_report_date,
                            wheel_total_in=wheel_total_in,
                            wheel_total_out=wheel_total_out,
-                           wheel_total_return=wheel_total_return, #
+                           wheel_total_return=wheel_total_return,
                            wheel_total_remaining=wheel_total_remaining_for_report_date,
-                           spare_part_total_in=spare_part_total_in, # NEW
-                           spare_part_total_out=spare_part_total_out, # NEW
-                           spare_part_total_return=spare_part_total_return, # NEW
-                           spare_part_total_remaining=spare_part_total_remaining_for_report_date, # NEW
-
-                           tire_movements_raw=tire_movements_raw, # Pass raw movements for detailed view per day
-                           wheel_movements_raw=wheel_movements_raw, # Pass raw movements for detailed view per day
-                           spare_part_movements_raw=spare_part_movements_raw, # NEW
+                           spare_part_total_in=spare_part_total_in,
+                           spare_part_total_out=spare_part_total_out,
+                           spare_part_total_return=spare_part_total_return,
+                           spare_part_total_remaining=spare_part_total_remaining_for_report_date,
+                           tire_movements_raw=tire_movements_raw,
+                           wheel_movements_raw=wheel_movements_raw,
+                           spare_part_movements_raw=spare_part_movements_raw,
                            current_user=current_user
                           )
 
@@ -3846,75 +3856,69 @@ def daily_stock_report():
 @bp.route('/summary_stock_report')
 @login_required
 def summary_stock_report():
-    # Check permission directly inside the route function
     if not (current_user.is_admin() or current_user.is_editor() or current_user.is_wholesale_sales() or current_user.is_accountant()):
         flash('คุณไม่มีสิทธิ์เข้าถึงหน้ารายงานสรุปสต็อก', 'danger')
         return redirect(url_for('stock.index'))
 
     conn = get_db()
-
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
 
-    # Define Bangkok timezone
-    bkk_tz = pytz.timezone('Asia/Bangkok')
-
-    if not start_date_str or not end_date_str:
-        today = database.get_bkk_time().date()
-        first_day_of_month = today.replace(day=1)
-        start_date_obj = bkk_tz.localize(datetime(first_day_of_month.year, first_day_of_month.month, first_day_of_month.day, 0, 0, 0))
-        end_date_obj = bkk_tz.localize(datetime(today.year, today.month, today.day, 23, 59, 59, 999999))
-        display_range_str = f"จากวันที่ {start_date_obj.strftime('%d %b %Y')} ถึงวันที่ {end_date_obj.strftime('%d %b %Y')}"
-    else:
-        try:
-            start_date_obj = bkk_tz.localize(datetime.strptime(start_date_str, '%Y-%m-%d')).replace(hour=0, minute=0, second=0, microsecond=0)
-            end_date_obj = bkk_tz.localize(datetime.strptime(end_date_str, '%Y-%m-%d')).replace(hour=23, minute=59, second=59, microsecond=999999)
-
-            if start_date_obj > end_date_obj:
-                flash("วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด", "danger")
-                conn.rollback()
-                today = database.get_bkk_time().date()
-                first_day_of_month = today.replace(day=1)
-                start_date_obj = bkk_tz.localize(datetime(first_day_of_month.year, first_day_of_month.month, first_day_of_month.day, 0, 0, 0))
-                end_date_obj = bkk_tz.localize(datetime(today.year, today.month, today.day, 23, 59, 59, 999999))
-                display_range_str = f"จากวันที่ {start_date_obj.strftime('%d %b %Y')} ถึงวันที่ {end_date_obj.strftime('%d %b %Y')}"
-            else:
-                display_range_str = f"จากวันที่ {start_date_obj.strftime('%d %b %Y')} ถึงวันที่ {end_date_obj.strftime('%d %b %Y')}"
-        except ValueError:
-            flash("รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้YYYY-MM-DD", "danger")
-            conn.rollback()
-            today = database.get_bkk_time().date()
+    try:
+        if not start_date_str or not end_date_str:
+            today = get_bkk_time().date()
             first_day_of_month = today.replace(day=1)
-            start_date_obj = bkk_tz.localize(datetime(first_day_of_month.year, first_day_of_month.month, first_day_of_month.day, 0, 0, 0))
-            end_date_obj = bkk_tz.localize(datetime(today.year, today.month, today.day, 23, 59, 59, 999999))
-            display_range_str = f"จากวันที่ {start_date_obj.strftime('%d %b %Y')} ถึงวันที่ {end_date_obj.strftime('%d %b %Y')}"
+            start_date_obj = BKK_TZ.localize(datetime.combine(first_day_of_month, datetime.min.time()))
+            end_date_obj = BKK_TZ.localize(datetime.combine(today, datetime.max.time()))
+        else:
+            start_date_obj = BKK_TZ.localize(datetime.strptime(start_date_str, '%Y-%m-%d')).replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date_obj = BKK_TZ.localize(datetime.strptime(end_date_str, '%Y-%m-%d')).replace(hour=23, minute=59, second=59, microsecond=999999)
+            if start_date_obj > end_date_obj:
+                raise ValueError("วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด")
+    except (ValueError, TypeError) as e:
+        flash(f"รูปแบบวันที่ไม่ถูกต้อง: {e}", "danger")
+        today = get_bkk_time().date()
+        first_day_of_month = today.replace(day=1)
+        start_date_obj = BKK_TZ.localize(datetime.combine(first_day_of_month, datetime.min.time()))
+        end_date_obj = BKK_TZ.localize(datetime.combine(today, datetime.max.time()))
+
+    THAI_MONTHS_FULL = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+    start_day = start_date_obj.day
+    start_month_th = THAI_MONTHS_FULL[start_date_obj.month - 1]
+    start_year_be = start_date_obj.year + 543
+    end_day = end_date_obj.day
+    end_month_th = THAI_MONTHS_FULL[end_date_obj.month - 1]
+    end_year_be = end_date_obj.year + 543
+
+    if start_year_be == end_year_be:
+        if start_month_th == end_month_th and start_day == end_day:
+            display_range_str = f"วันที่ {start_day} {start_month_th} {start_year_be}"
+        elif start_month_th == end_month_th:
+            display_range_str = f"จากวันที่ {start_day} - {end_day} {start_month_th} {start_year_be}"
+        else:
+            display_range_str = f"จากวันที่ {start_day} {start_month_th} - {end_day} {end_month_th} {end_year_be}"
+    else:
+        display_range_str = f"จากวันที่ {start_day} {start_month_th} {start_year_be} - {end_day} {end_month_th} {end_year_be}"
 
     is_psycopg2_conn = "psycopg2" in str(type(conn))
     timestamp_cast = "::timestamptz" if is_psycopg2_conn else ""
     placeholder = "%s" if is_psycopg2_conn else "?"
-
     start_of_period_iso = start_date_obj.isoformat()
     end_of_period_iso = end_date_obj.isoformat()
 
-    # Initialize all final output variables outside try-except to ensure they are always defined
     sorted_tire_movements_by_channel = OrderedDict()
     sorted_wheel_movements_by_channel = OrderedDict()
-    sorted_spare_part_movements_by_channel = OrderedDict() # NEW
-
+    sorted_spare_part_movements_by_channel = OrderedDict()
     tires_by_brand_for_summary_report = OrderedDict()
     wheels_by_brand_for_summary_report = OrderedDict()
-    spare_parts_by_category_and_brand_for_summary_report = OrderedDict() # NEW
-
+    spare_parts_by_category_and_brand_for_summary_report = OrderedDict()
     tire_brand_totals_for_summary_report = OrderedDict()
     wheel_brand_totals_for_summary_report = OrderedDict()
-    spare_part_category_totals_for_summary_report = OrderedDict() # NEW
+    spare_part_category_totals_for_summary_report = OrderedDict()
 
-
-    # Initialize defaultdicts here for each run
-    # MODIFIED: 'RETURN' now holds a list of return details
     tire_movements_by_channel_data = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': [], 'online_platforms': defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': 0}), 'wholesale_customers': defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': 0})})
     wheel_movements_by_channel_data = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': [], 'online_platforms': defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': 0}), 'wholesale_customers': defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': 0})})
-    spare_part_movements_by_channel_data = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': [], 'online_platforms': defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': 0}), 'wholesale_customers': defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': 0})}) # NEW
+    spare_part_movements_by_channel_data = defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': [], 'online_platforms': defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': 0}), 'wholesale_customers': defaultdict(lambda: {'IN': 0, 'OUT': 0, 'RETURN': 0})})
 
 
     # --- Tire Movements by Channel, Platform, Customer (Summary by Channel) ---
@@ -4725,35 +4729,30 @@ def summary_stock_report():
                            start_date_param=start_date_obj.strftime('%Y-%m-%d'),
                            end_date_param=end_date_obj.strftime('%Y-%m-%d'),
                            display_range_str=display_range_str,
-
                            tire_movements_by_channel=sorted_tire_movements_by_channel,
                            wheel_movements_by_channel=sorted_wheel_movements_by_channel,
-                           spare_part_movements_by_channel=sorted_spare_part_movements_by_channel, # NEW
-
+                           spare_part_movements_by_channel=sorted_spare_part_movements_by_channel,
                            overall_tire_initial=overall_tire_initial,
                            overall_tire_in=overall_tire_in_period,
                            overall_tire_out=overall_tire_out_period,
                            overall_tire_return=overall_tire_return_period,
                            overall_tire_final=overall_tire_final,
-
                            overall_wheel_initial=overall_wheel_initial,
                            overall_wheel_in=overall_wheel_in_period,
                            overall_wheel_out=overall_wheel_out_period,
                            overall_wheel_return=overall_wheel_return_period,
                            overall_wheel_final=overall_wheel_final,
-
-                           overall_spare_part_initial=overall_spare_part_initial, # NEW
-                           overall_spare_part_in=overall_spare_part_in_period, # NEW
-                           overall_spare_part_out=overall_spare_part_out_period, # NEW
-                           overall_spare_part_return=overall_spare_part_return_period, # NEW
-                           overall_spare_part_final=overall_spare_part_final, # NEW
-
+                           overall_spare_part_initial=overall_spare_part_initial,
+                           overall_spare_part_in=overall_spare_part_in_period,
+                           overall_spare_part_out=overall_spare_part_out_period,
+                           overall_spare_part_return=overall_spare_part_return_period,
+                           overall_spare_part_final=overall_spare_part_final,
                            tires_by_brand_for_summary_report=tires_with_movement,
                            wheels_by_brand_for_summary_report=wheels_with_movement,
-                           spare_parts_by_category_and_brand_for_summary_report=spare_parts_with_movement, # NEW
+                           spare_parts_by_category_and_brand_for_summary_report=spare_parts_with_movement,
                            tire_brand_totals_for_summary_report=tire_brand_totals_for_summary_report,
                            wheel_brand_totals_for_summary_report=wheel_brand_totals_for_summary_report,
-                           spare_part_category_totals_for_summary_report=spare_part_category_totals_for_summary_report, # NEW
+                           spare_part_category_totals_for_summary_report=spare_part_category_totals_for_summary_report,
                            current_user=current_user)
 
 # --- Import/Export Routes (assuming these are already in your app.py) ---
@@ -7011,34 +7010,85 @@ def wholesale_dashboard():
     if not (current_user.can_edit() or current_user.is_accountant()):
         flash('คุณไม่มีสิทธิ์เข้าถึงหน้านี้', 'danger')
         return redirect(url_for('stock.index'))
+    
     conn = get_db()
-    search_query = request.args.get('search_query', '').strip()
+    
+    # --- ✨ START: เพิ่ม List เดือนภาษาไทย ---
+    THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+    # --- END: ✨ สิ้นสุดส่วนที่เพิ่ม ---
 
-    cache_key = f"wholesalesummary_{search_query}"
-    customers = get_cached_wholesale_summary(query=search_query)
+    PER_PAGE = 20
+    page = request.args.get('page', 1, type=int)
+    offset = (page - 1) * PER_PAGE
+    
+    sort_by = request.args.get('sort_by', 'last_purchase_date')
+    order = request.args.get('order', 'desc')
+
+    search_query = request.args.get('search_query', '').strip()
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    # (ส่วนของ try-except จัดการวันที่ยังคงเหมือนเดิม)
+    try:
+        if start_date_str: start_date_filter = datetime.strptime(start_date_str, '%Y-%m-%d')
+        else: start_date_filter = get_bkk_time() - timedelta(days=29)
+        if end_date_str: end_date_filter = datetime.strptime(end_date_str, '%Y-%m-%d')
+        else: end_date_filter = get_bkk_time()
+        start_date_filter = start_date_filter.replace(hour=0, minute=0, second=0)
+        end_date_filter = end_date_filter.replace(hour=23, minute=59, second=59)
+    except ValueError:
+        flash("รูปแบบวันที่ไม่ถูกต้อง", "danger")
+        end_date_filter = get_bkk_time()
+        start_date_filter = end_date_filter - timedelta(days=29)
+
+    total_customers = database.get_wholesale_customers_count(
+        conn, 
+        query=search_query,
+        start_date=start_date_filter,
+        end_date=end_date_filter
+    )
+    total_pages = (total_customers + PER_PAGE - 1) // PER_PAGE
+
+    customers = database.get_wholesale_customers_with_summary(
+        conn, 
+        query=search_query, 
+        start_date=start_date_filter, 
+        end_date=end_date_filter,
+        limit=PER_PAGE,
+        offset=offset,
+        sort_by=sort_by,
+        order=order
+    )
+    
+    today = get_bkk_time()
 
     return render_template('wholesale_dashboard.html', 
                            customers=customers, 
                            search_query=search_query,
-                           current_user=current_user)
+                           start_date=start_date_filter.strftime('%Y-%m-%d'),
+                           end_date=end_date_filter.strftime('%Y-%m-%d'),
+                           current_user=current_user,
+                           current_page=page,
+                           total_pages=total_pages,
+                           total_customers=total_customers,
+                           today=today,
+                           sort_by=sort_by,
+                           order=order,
+                           # --- ✨ ส่ง List เดือนไปที่ Template ---
+                           THAI_MONTHS=THAI_MONTHS
+                           )
 
 @bp.route('/api/search_wholesale_customers')
 @login_required
 def api_search_wholesale_customers():
-    if not current_user.can_edit():
-        return jsonify({"error": "Unauthorized"}), 403
+    # ... (permission check) ...
     conn = get_db()
-    # รับคำค้นหาจาก query parameter ที่ชื่อว่า 'term'
     search_term = request.args.get('term', '').strip()
-
     if not search_term:
         return jsonify([])
 
-    # ใช้ฟังก์ชันเดิมที่เรามีอยู่แล้ว แต่ดึงมาแค่ 10 รายการก็พอ
-    customers = database.get_wholesale_customers_with_summary(conn, query=search_term)
-
-    # ดึงมาเฉพาะชื่อลูกค้า
-    customer_names = [customer['name'] for customer in customers[:10]]
+    # เรียกใช้ฟังก์ชันใหม่ที่เบาและเร็วกว่ามาก
+    customer_names = database.search_wholesale_customer_names(conn, search_term)
 
     return jsonify(customer_names)                           
 
@@ -7051,22 +7101,21 @@ def wholesale_customer_detail(customer_id):
 
     conn = get_db()
 
-    # ดึงข้อมูลพื้นฐานของลูกค้าก่อนเพื่อตรวจสอบว่ามีตัวตนจริง
-    customer_name = database.get_wholesale_customer_name(conn, customer_id)
-    if not customer_name:
+    # --- START: ✨ ส่วนที่แก้ไข ---
+    
+    # 1. ดึงข้อมูลสรุปยอดรวมทั้งหมด (แยกตามประเภท) จากฟังก์ชันใหม่
+    customer_summary = database.get_wholesale_customer_details_with_breakdown(conn, customer_id)
+    if not customer_summary:
         flash(f"ไม่พบข้อมูลลูกค้า ID: {customer_id}", "danger")
-        conn.rollback()
         return redirect(url_for('stock.wholesale_dashboard'))
 
+    # 2. จัดการเรื่องการกรองวันที่ (เหมือนเดิม)
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
 
-    # หากไม่มีการระบุวันที่ ให้ใช้ค่าเริ่มต้นเป็น 30 วันล่าสุด
     if not start_date_str or not end_date_str:
         today = get_bkk_time()
-    # วันที่สิ้นสุดคือวันนี้
         end_date_obj = today.replace(hour=23, minute=59, second=59)
-    # วันที่เริ่มต้นคือวันที่ 1 ของเดือนปัจจุบัน
         start_date_obj = today.replace(day=1, hour=0, minute=0, second=0)
     else:
         try:
@@ -7074,33 +7123,24 @@ def wholesale_customer_detail(customer_id):
             end_date_obj = BKK_TZ.localize(datetime.strptime(end_date_str, '%Y-%m-%d')).replace(hour=23, minute=59, second=59)
         except (ValueError, TypeError):
             flash("รูปแบบวันที่ไม่ถูกต้อง", "warning")
-            conn.rollback() # <--- เพิ่ม conn.rollback() ตรงนี้
             end_date_obj = get_bkk_time()
             start_date_obj = end_date_obj - timedelta(days=30)
 
-    # ---- START: ส่วนที่แก้ไข ----
+    # 3. ดึงประวัติการซื้อทั้งหมดในช่วงวันที่ที่เลือก
+    history_all = database.get_wholesale_customer_purchase_history(conn, customer_id, start_date=start_date_obj, end_date=end_date_obj)
 
-    # 1. ดึงประวัติการซื้อตามช่วงวันที่ที่เลือกมาก่อน
-    history = database.get_wholesale_customer_purchase_history(conn, customer_id, start_date=start_date_obj, end_date=end_date_obj)
+    # 4. แยกประวัติออกเป็น 3 list สำหรับแต่ละ Tab
+    tire_history = [item for item in history_all if item['item_type'] == 'tire']
+    wheel_history = [item for item in history_all if item['item_type'] == 'wheel']
+    spare_part_history = [item for item in history_all if item['item_type'] == 'spare_part']
 
-    # 2. คำนวณยอดสรุปจาก "ประวัติที่ถูกฟิลเตอร์แล้ว"
-    total_items_in_period = sum(item['quantity_change'] for item in history)
-    # วันที่ซื้อล่าสุดในข่วงเวลานี้ (คือรายการแรกสุดเพราะเราเรียงลำดับ DESC)
-    last_purchase_in_period = history[0]['timestamp'] if history else None
-
-    # 3. สร้าง Dictionary ใหม่เพื่อส่งไปหน้าเว็บ
-    customer_data = {
-        'id': customer_id,
-        'name': customer_name,
-        'total_items_purchased': total_items_in_period,
-        'last_purchase_date': last_purchase_in_period
-    }
-
-    # ---- END: ส่วนที่แก้ไข ----
+    # --- END: ✨ สิ้นสุดส่วนที่แก้ไข ---
 
     return render_template('wholesale_customer_detail.html',
-                           customer=customer_data, # ส่ง Dictionary ใหม่นี้ไปแทน
-                           history=history,
+                           customer_summary=customer_summary, # <--- ส่งข้อมูลสรุปใหม่
+                           tire_history=tire_history,         # <--- ส่งประวัติยาง
+                           wheel_history=wheel_history,       # <--- ส่งประวัติแม็ก
+                           spare_part_history=spare_part_history, # <--- ส่งประวัติอะไหล่
                            start_date_param=start_date_obj.strftime('%Y-%m-%d'),
                            end_date_param=end_date_obj.strftime('%Y-%m-%d'),
                            current_user=current_user)

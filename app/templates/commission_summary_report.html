@@ -144,8 +144,12 @@ document.addEventListener('DOMContentLoaded', function() {
         dateFormat: "Y-m-d",
         allowInput: true
     };
-    flatpickr("#start_date", flatpickrConfig);
-    flatpickr("#end_date", flatpickrConfig);
+    flatpickr("#start_date, #end_date", {
+        dateFormat: "Y-m-d", // รูปแบบวันที่ YYYY-MM-DD
+        "locale": "th",      // ใช้ภาษาไทย
+        altInput: true,      // แสดงวันที่รูปแบบที่อ่านง่าย
+        altFormat: "j F Y",  // รูปแบบวันที่ที่แสดง (เช่น 29 กันยายน 2568)
+    });
 
     // --- START: เพิ่ม Script สำหรับจัดการ Modal ---
     const imageProofModal = document.getElementById('imageProofModal');
